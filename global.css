@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: 32 104 228;
+  --color-secondary: 15 23 42;
+  --color-accent: 59 130 246;
+  --color-text: 17 24 39;
+  --color-muted: 100 116 139;
+  --color-surface: 248 250 252;
+}
