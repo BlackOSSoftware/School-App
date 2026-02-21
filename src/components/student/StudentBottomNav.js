@@ -6,12 +6,12 @@ import { useAppTheme } from '../../theme/ThemeContext';
 const TABS = [
   { key: 'dashboard', label: 'Dashboard', icon: 'grid-outline' },
   { key: 'attendance', label: 'Attendance', icon: 'checkmark-done-outline' },
-  { key: 'announcement', label: 'Announcement', icon: 'megaphone-outline' },
-  { key: 'reports', label: 'Reports', icon: 'bar-chart-outline' },
+  { key: 'notes', label: 'Notes', icon: 'document-text-outline' },
+  { key: 'homework', label: 'Homework', icon: 'book-outline' },
   { key: 'profile', label: 'Profile', icon: 'person-circle-outline' },
 ];
 
-export default function AdminBottomNav({ activeTab, onTabChange }) {
+export default function StudentBottomNav({ activeTab, onTabChange }) {
   const { colors } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -25,14 +25,8 @@ export default function AdminBottomNav({ activeTab, onTabChange }) {
             style={[styles.navItem, isActive ? styles.navItemActive : null]}
             onPress={() => onTabChange(tab.key)}
           >
-            <Ionicons
-              name={tab.icon}
-              size={16}
-              style={[styles.navIcon, isActive ? styles.navIconActive : null]}
-            />
-            <Text style={[styles.navLabel, isActive ? styles.navLabelActive : null]}>
-              {tab.label}
-            </Text>
+            <Ionicons name={tab.icon} size={16} style={[styles.navIcon, isActive ? styles.navIconActive : null]} />
+            <Text style={[styles.navLabel, isActive ? styles.navLabelActive : null]}>{tab.label}</Text>
           </Pressable>
         );
       })}
@@ -58,9 +52,9 @@ const createStyles = colors =>
       shadowRadius: 14,
       shadowOffset: { width: 0, height: 4 },
       elevation: 10,
+      backgroundColor: colors.student.navDock,
       borderWidth: 1,
-      borderColor: colors.admin.borderStrong,
-      backgroundColor: colors.admin.navDock,
+      borderColor: colors.student.borderStrong,
     },
     navItem: {
       flex: 1,
@@ -70,10 +64,10 @@ const createStyles = colors =>
       borderRadius: 14,
     },
     navItemActive: {
-      backgroundColor: colors.admin.navBg,
+      backgroundColor: colors.student.navBg,
     },
     navIcon: {
-      color: colors.admin.mutedIcon,
+      color: colors.student.mutedIcon,
       fontSize: 16,
     },
     navIconActive: {
@@ -82,7 +76,7 @@ const createStyles = colors =>
     navLabel: {
       marginTop: 3,
       fontSize: 10.5,
-      color: colors.admin.textSecondary,
+      color: colors.student.textSecondary,
       fontWeight: '700',
     },
     navLabelActive: {

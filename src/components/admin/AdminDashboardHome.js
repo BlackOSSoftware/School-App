@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import Ionicons from '@react-native-vector-icons/ionicons';
 import { useAppTheme } from '../../theme/ThemeContext';
 
 const KPI_DATA = [
@@ -10,12 +11,12 @@ const KPI_DATA = [
 ];
 
 const ACTIONS = [
-  { key: 'session', title: 'Session', desc: 'Academic year controls', icon: '\u25A3' },
-  { key: 'manage-student', title: 'Students', desc: 'Manage student records', icon: '\u{1F465}' },
-  { key: 'manage-teacher', title: 'Teachers', desc: 'Manage teacher records', icon: '\u{1F393}' },
-  { key: 'manage-class', title: 'Classes', desc: 'Class and section setup', icon: '\u{1F3EB}' },
-  { key: 'attendance', title: 'Attendance', desc: 'Track daily attendance', icon: '\u2714' },
-  { key: 'announcement', title: 'Announcements', desc: 'Post school updates', icon: '\u{1F4E2}' },
+  { key: 'session', title: 'Session', desc: 'Academic year controls', icon: 'calendar-outline' },
+  { key: 'manage-student', title: 'Students', desc: 'Manage student records', icon: 'people-outline' },
+  { key: 'manage-teacher', title: 'Teachers', desc: 'Manage teacher records', icon: 'school-outline' },
+  { key: 'manage-class', title: 'Classes', desc: 'Class and section setup', icon: 'library-outline' },
+  { key: 'attendance', title: 'Attendance', desc: 'Track daily attendance', icon: 'checkmark-circle-outline' },
+  { key: 'announcement', title: 'Announcements', desc: 'Post school updates', icon: 'megaphone-outline' },
 ];
 
 function KpiStrip({ reveal, styles }) {
@@ -77,7 +78,7 @@ function QuickActions({ onQuickActionPress, reveal, styles }) {
             ]}
           >
             <Pressable style={styles.actionCard} onPress={() => onQuickActionPress(action.key)}>
-              <Text style={styles.actionIcon}>{action.icon}</Text>
+              <Ionicons name={action.icon} size={20} style={styles.actionIcon} />
               <Text style={styles.actionTitle}>{action.title}</Text>
               <Text style={styles.actionDesc}>{action.desc}</Text>
             </Pressable>
@@ -139,8 +140,14 @@ const createStyles = colors =>
     heroCard: {
       borderRadius: 24,
       backgroundColor: colors.admin.heroBgAlt,
-      borderWidth: 0,
+      borderWidth: 1,
+      borderColor: colors.admin.borderSoft,
       padding: 16,
+      shadowColor: '#1b3f86',
+      shadowOpacity: 0.22,
+      shadowRadius: 14,
+      shadowOffset: { width: 0, height: 5 },
+      elevation: 7,
     },
     heroKicker: {
       color: colors.auth.subtitle,
@@ -176,6 +183,11 @@ const createStyles = colors =>
       backgroundColor: colors.admin.surface,
       borderWidth: 1,
       borderColor: colors.admin.borderStrong,
+      shadowColor: '#1e3a8a',
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 2,
     },
     kpiValue: {
       color: colors.admin.textPrimary,
@@ -209,12 +221,17 @@ const createStyles = colors =>
     },
     actionCard: {
       borderRadius: 16,
-      backgroundColor: colors.admin.surfaceStrong,
+      backgroundColor: colors.admin.surface,
       borderWidth: 1,
-      borderColor: colors.admin.border,
+      borderColor: colors.admin.borderStrong,
       paddingHorizontal: 12,
       paddingVertical: 12,
       minHeight: 110,
+      shadowColor: '#1e3a8a',
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 2,
     },
     actionIcon: {
       color: colors.admin.accent,

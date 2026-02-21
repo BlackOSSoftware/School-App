@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import Ionicons from '@react-native-vector-icons/ionicons';
 import {
   useCreateTeacherMutation,
   useDeleteTeacherMutation,
@@ -32,6 +33,9 @@ function getErrorMessage(error, fallback) {
 }
 
 function normalizeSubjectsInput(value) {
+  if (Array.isArray(value)) {
+    return [...new Set(value.map(item => String(item ?? '').trim()).filter(Boolean))];
+  }
   return String(value ?? '')
     .split(',')
     .map(item => item.trim())
@@ -43,10 +47,16 @@ function getEntityId(value) {
     return '';
   }
   if (typeof value === 'string') {
-    return value;
+    return value.trim();
   }
   if (typeof value === 'object') {
-    return String(value?._id ?? value?.id ?? '');
+    const nested = value?._id ?? value?.id ?? value?.$oid ?? '';
+    if (typeof nested === 'string') {
+      return nested.trim();
+    }
+    if (nested && typeof nested === 'object' && typeof nested.$oid === 'string') {
+      return nested.$oid.trim();
+    }
   }
   return '';
 }
@@ -106,17 +116,23 @@ function ClassSelectModal({ visible, onClose, classes, onSelect, styles }) {
             <Pressable style={styles.selectorItem} onPress={() => onSelect('')}>
               <Text style={styles.selectorItemText}>None</Text>
             </Pressable>
-            {classes.map(item => (
+            {classes.map(item => {
+              const classId = getEntityId(item);
+              if (!classId) {
+                return null;
+              }
+              return (
               <Pressable
-                key={item._id}
+                key={classId}
                 style={styles.selectorItem}
-                onPress={() => onSelect(item._id)}
+                onPress={() => onSelect(classId)}
               >
                 <Text style={styles.selectorItemText}>
                   {item.name} - {item.section}
                 </Text>
               </Pressable>
-            ))}
+              );
+            })}
           </ScrollView>
           <Pressable style={styles.selectorCloseBtn} onPress={onClose}>
             <Text style={styles.selectorCloseText}>Close</Text>
@@ -136,6 +152,7 @@ function TeacherFormModal({
   colors,
   isSaving,
   title,
+  mode,
   form,
   setForm,
 }) {
@@ -144,12 +161,15 @@ function TeacherFormModal({
   const classLabelById = useMemo(() => {
     const map = new Map();
     classes.forEach(item => {
-      map.set(item._id, `${item.name} - ${item.section}`);
+      const classId = getEntityId(item);
+      if (classId) {
+        map.set(classId, `${item.name} - ${item.section}`);
+      }
     });
     return map;
   }, [classes]);
 
-  const subjects = useMemo(() => normalizeSubjectsInput(form.subjectsInput), [form.subjectsInput]);
+  const subjects = useMemo(() => normalizeSubjectsInput(form.subjects), [form.subjects]);
 
   const applyAssignmentSubjectRules = assignments =>
     assignments.map(item => {
@@ -170,6 +190,33 @@ function TeacherFormModal({
         assignments: applyAssignmentSubjectRules(nextAssignments),
       };
     });
+  };
+
+  const addSubject = () => {
+    const next = String(form.subjectDraft ?? '').trim();
+    if (!next) {
+      return;
+    }
+    if (subjects.some(item => item.toLowerCase() === next.toLowerCase())) {
+      setForm(prev => ({ ...prev, subjectDraft: '' }));
+      return;
+    }
+    setForm(prev => ({
+      ...prev,
+      subjects: [...prev.subjects, next],
+      subjectDraft: '',
+      assignments: applyAssignmentSubjectRules(prev.assignments),
+    }));
+  };
+
+  const removeSubject = subjectToRemove => {
+    setForm(prev => ({
+      ...prev,
+      subjects: prev.subjects.filter(item => item !== subjectToRemove),
+      assignments: prev.assignments.map(item =>
+        item.subject === subjectToRemove ? { ...item, subject: '' } : item,
+      ),
+    }));
   };
 
   const openPicker = target => setClassPicker({ open: true, target });
@@ -203,48 +250,91 @@ function TeacherFormModal({
             </Text>
 
             <Text style={styles.inputLabel}>Name</Text>
-            <TextInput
-              style={styles.input}
-              value={form.name}
-              onChangeText={value => setForm(prev => ({ ...prev, name: value }))}
-              placeholder="Teacher name"
-              placeholderTextColor={colors.text.muted}
-            />
+            <View style={styles.inputRow}>
+              <Ionicons name="person-outline" size={17} style={styles.inputIcon} />
+              <TextInput
+                style={styles.inputWithIcon}
+                value={form.name}
+                onChangeText={value => setForm(prev => ({ ...prev, name: value }))}
+                placeholder="Teacher name"
+                placeholderTextColor={colors.text.muted}
+              />
+            </View>
 
             <Text style={styles.inputLabel}>Email</Text>
-            <TextInput
-              style={styles.input}
-              value={form.email}
-              onChangeText={value => setForm(prev => ({ ...prev, email: value }))}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              placeholder="teacher@school.com"
-              placeholderTextColor={colors.text.muted}
-            />
+            <View style={styles.inputRow}>
+              <Ionicons name="mail-outline" size={17} style={styles.inputIcon} />
+              <TextInput
+                style={styles.inputWithIcon}
+                value={form.email}
+                onChangeText={value => setForm(prev => ({ ...prev, email: value }))}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                placeholder="teacher@school.com"
+                placeholderTextColor={colors.text.muted}
+              />
+            </View>
 
-            <Text style={styles.inputLabel}>Password</Text>
-            <TextInput
-              style={styles.input}
-              value={form.password}
-              onChangeText={value => setForm(prev => ({ ...prev, password: value }))}
-              placeholder="Enter password"
-              placeholderTextColor={colors.text.muted}
-            />
+            <Text style={styles.inputLabel}>
+              Password {mode === 'edit' ? '(optional)' : ''}
+            </Text>
+            <View style={styles.inputRow}>
+              <Ionicons name="lock-closed-outline" size={17} style={styles.inputIcon} />
+              <TextInput
+                style={styles.inputWithIcon}
+                value={form.password}
+                onChangeText={value => setForm(prev => ({ ...prev, password: value }))}
+                secureTextEntry
+                placeholder={mode === 'edit' ? 'Leave blank to keep current password' : 'Enter password'}
+                placeholderTextColor={colors.text.muted}
+              />
+            </View>
+            {mode === 'edit' ? <Text style={styles.inputNote}>Password empty chhodega to old password same rahega.</Text> : null}
 
-            <Text style={styles.inputLabel}>Subjects (comma separated)</Text>
-            <TextInput
-              style={styles.input}
-              value={form.subjectsInput}
-              onChangeText={value => {
-                setForm(prev => ({
-                  ...prev,
-                  subjectsInput: value,
-                  assignments: applyAssignmentSubjectRules(prev.assignments),
-                }));
-              }}
-              placeholder="English, Hindi"
-              placeholderTextColor={colors.text.muted}
-            />
+            <View style={styles.sectionCard}>
+              <View style={styles.sectionHeader}>
+                <View>
+                  <Text style={styles.sectionTitle}>Subjects</Text>
+                  <Text style={styles.sectionSubtitle}>Type subject and tap add.</Text>
+                </View>
+              </View>
+
+              <View style={styles.subjectEntryRow}>
+                <View style={[styles.inputRow, styles.subjectEntryInputWrap]}>
+                  <Ionicons name="reader-outline" size={17} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.inputWithIcon}
+                    value={form.subjectDraft}
+                    onChangeText={value => setForm(prev => ({ ...prev, subjectDraft: value }))}
+                    onSubmitEditing={addSubject}
+                    placeholder="e.g. English"
+                    placeholderTextColor={colors.text.muted}
+                    returnKeyType="done"
+                  />
+                </View>
+                <Pressable style={styles.smallAddBtn} onPress={addSubject}>
+                  <View style={styles.inlineAction}>
+                    <Ionicons name="add" size={14} color={colors.text.inverse} />
+                    <Text style={styles.smallAddText}>Add</Text>
+                  </View>
+                </Pressable>
+              </View>
+
+              <View style={styles.chipsWrap}>
+                {subjects.length ? (
+                  subjects.map(subject => (
+                    <View key={subject} style={styles.subjectChip}>
+                      <Text style={styles.subjectChipText}>{subject}</Text>
+                      <Pressable onPress={() => removeSubject(subject)} hitSlop={6}>
+                        <Ionicons name="close" size={15} color={colors.admin.textSecondary} />
+                      </Pressable>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={styles.sectionPlaceholder}>No subjects added yet.</Text>
+                )}
+              </View>
+            </View>
 
             <Text style={styles.inputLabel}>Class Teacher Of (optional)</Text>
             <Pressable style={styles.selectBtn} onPress={() => openPicker('classTeacherOf')}>
@@ -255,47 +345,97 @@ function TeacherFormModal({
               </Text>
             </Pressable>
 
-            <View style={styles.assignmentHeader}>
-              <Text style={styles.inputLabel}>Lecture Assignments</Text>
-              <Pressable
-                style={styles.smallAddBtn}
-                onPress={() =>
-                  updateAssignments(prev => [...prev, { classId: '', subject: subjects.length === 1 ? subjects[0] : '' }])
-                }
-              >
-                <Text style={styles.smallAddText}>+ Add</Text>
-              </Pressable>
-            </View>
-
-            {form.assignments.map((assignment, index) => (
-              <View key={`${assignment.classId}-${index}`} style={styles.assignmentCard}>
-                <Pressable style={styles.selectBtn} onPress={() => openPicker(`assignment:${index}`)}>
-                  <Text style={styles.selectBtnText}>
-                    {assignment.classId
-                      ? getClassDisplay(assignment.classId, classLabelById)
-                      : 'Select class (optional)'}
-                  </Text>
-                </Pressable>
-                <TextInput
-                  style={[styles.input, styles.assignmentSubjectInput]}
-                  value={assignment.subject}
-                  onChangeText={value =>
-                    updateAssignments(prev =>
-                      prev.map((item, idx) => (idx === index ? { ...item, subject: value } : item)),
-                    )
-                  }
-                  placeholder="Subject"
-                  placeholderTextColor={colors.text.muted}
-                  editable={subjects.length !== 1}
-                />
+            <View style={[styles.sectionCard, styles.assignmentSection]}>
+              <View style={styles.assignmentHeader}>
+                <View>
+                  <Text style={styles.sectionTitle}>Lecture Assignments</Text>
+                  <Text style={styles.sectionSubtitle}>Map class and subject for each lecture.</Text>
+                </View>
                 <Pressable
-                  style={styles.assignmentRemoveBtn}
-                  onPress={() => updateAssignments(prev => prev.filter((_, idx) => idx !== index))}
+                  style={styles.smallAddBtn}
+                  onPress={() =>
+                    updateAssignments(prev => [
+                      ...prev,
+                      { classId: '', subject: subjects.length === 1 ? subjects[0] : '' },
+                    ])
+                  }
                 >
-                  <Text style={styles.assignmentRemoveText}>Remove</Text>
+                  <View style={styles.inlineAction}>
+                    <Ionicons name="add" size={14} color={colors.text.inverse} />
+                    <Text style={styles.smallAddText}>Add</Text>
+                  </View>
                 </Pressable>
               </View>
-            ))}
+
+              {form.assignments.length ? (
+                form.assignments.map((assignment, index) => (
+                  <View key={`${assignment.classId}-${index}`} style={styles.assignmentCard}>
+                    <View style={styles.assignmentTopRow}>
+                      <Text style={styles.assignmentLabel}>Assignment {index + 1}</Text>
+                      <Pressable
+                        style={styles.assignmentRemoveBtn}
+                        onPress={() => updateAssignments(prev => prev.filter((_, idx) => idx !== index))}
+                      >
+                        <Ionicons name="trash-outline" size={14} color={colors.state.error} />
+                        <Text style={styles.assignmentRemoveText}>Remove</Text>
+                      </Pressable>
+                    </View>
+
+                    <Text style={styles.fieldMiniLabel}>Class</Text>
+                    <Pressable
+                      style={[styles.selectBtn, styles.assignmentField]}
+                      onPress={() => openPicker(`assignment:${index}`)}
+                    >
+                      <Ionicons name="business-outline" size={16} color={colors.admin.accent} />
+                      <Text style={styles.selectBtnText}>
+                        {assignment.classId
+                          ? getClassDisplay(assignment.classId, classLabelById)
+                          : 'Select class (optional)'}
+                      </Text>
+                      <Ionicons name="chevron-down" size={16} color={colors.admin.textSecondary} />
+                    </Pressable>
+
+                    <Text style={styles.fieldMiniLabel}>Subject</Text>
+                    <View style={[styles.inputRow, styles.assignmentSubjectInput, styles.assignmentField]}>
+                      <Ionicons name="book-outline" size={16} style={styles.inputIcon} />
+                      <TextInput
+                        style={styles.inputWithIcon}
+                        value={assignment.subject}
+                        onChangeText={value =>
+                          updateAssignments(prev =>
+                            prev.map((item, idx) => (idx === index ? { ...item, subject: value } : item)),
+                          )
+                        }
+                        placeholder="Select or type subject"
+                        placeholderTextColor={colors.text.muted}
+                      />
+                    </View>
+
+                    {subjects.length ? (
+                      <View style={styles.assignmentSubjectChips}>
+                        {subjects.map(subject => (
+                          <Pressable
+                            key={`${subject}-${index}`}
+                            style={styles.assignmentSubjectChip}
+                            onPress={() =>
+                              updateAssignments(prev =>
+                                prev.map((item, idx) =>
+                                  idx === index ? { ...item, subject } : item,
+                                ),
+                              )
+                            }
+                          >
+                            <Text style={styles.assignmentSubjectChipText}>{subject}</Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    ) : null}
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.sectionPlaceholder}>No assignments added yet.</Text>
+              )}
+            </View>
 
             <View style={styles.modalActions}>
               <Pressable style={styles.cancelBtn} onPress={onClose}>
@@ -328,7 +468,10 @@ function TeacherDetailModal({ visible, onClose, detail, loading, styles, colors,
   const classLabelById = useMemo(() => {
     const map = new Map();
     classes.forEach(item => {
-      map.set(item._id, `${item.name} - ${item.section}`);
+      const classId = getEntityId(item);
+      if (classId) {
+        map.set(classId, `${item.name} - ${item.section}`);
+      }
     });
     return map;
   }, [classes]);
@@ -376,7 +519,8 @@ function buildInitialForm(teacher) {
     email: teacher?.email ?? '',
     password: '',
     classTeacherOf: getEntityId(teacher?.classTeacherOf),
-    subjectsInput: Array.isArray(teacher?.subjects) ? teacher.subjects.join(', ') : '',
+    subjects: normalizeSubjectsInput(teacher?.subjects),
+    subjectDraft: '',
     assignments: Array.isArray(teacher?.lectureAssignments)
       ? teacher.lectureAssignments.map(item => ({
           classId: getEntityId(item?.classId),
@@ -419,6 +563,14 @@ export default function AdminTeacherScreen() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  useEffect(() => {
+    if (!message.text) {
+      return undefined;
+    }
+    const timer = setTimeout(() => setMessage({ type: '', text: '' }), 2800);
+    return () => clearTimeout(timer);
+  }, [message.text]);
+
   const closeMessage = () => setMessage({ type: '', text: '' });
 
   const openCreateModal = () => {
@@ -427,14 +579,19 @@ export default function AdminTeacherScreen() {
   };
 
   const openEditModal = teacher => {
+    const teacherId = getEntityId(teacher);
+    if (!teacherId) {
+      setMessage({ type: 'error', text: 'Invalid teacher record selected.' });
+      return;
+    }
     setForm(buildInitialForm(teacher));
-    setModalState({ visible: true, mode: 'edit', teacherId: teacher._id });
+    setModalState({ visible: true, mode: 'edit', teacherId });
   };
 
   const closeFormModal = () => setModalState({ visible: false, mode: 'create', teacherId: '' });
 
   const handleSave = async () => {
-    const subjects = normalizeSubjectsInput(form.subjectsInput);
+    const subjects = normalizeSubjectsInput(form.subjects);
     const assignments = normalizeAssignmentsInput(form.assignments);
     if (!form.name.trim()) {
       setMessage({ type: 'error', text: 'Teacher name is required.' });
@@ -446,6 +603,10 @@ export default function AdminTeacherScreen() {
     }
     if (modalState.mode === 'create' && !form.password.trim()) {
       setMessage({ type: 'error', text: 'Password is required for new teacher.' });
+      return;
+    }
+    if (!subjects.length) {
+      setMessage({ type: 'error', text: 'Please add at least one subject.' });
       return;
     }
 
@@ -479,6 +640,10 @@ export default function AdminTeacherScreen() {
   };
 
   const handleDelete = async id => {
+    if (!id) {
+      setMessage({ type: 'error', text: 'Invalid teacher id for delete.' });
+      return;
+    }
     setDeletingId(id);
     try {
       await deleteMutation.mutateAsync(id);
@@ -494,6 +659,10 @@ export default function AdminTeacherScreen() {
   };
 
   const openDetail = id => {
+    if (!id) {
+      setMessage({ type: 'error', text: 'Invalid teacher id for details.' });
+      return;
+    }
     setSelectedTeacherId(id);
     setDetailVisible(true);
   };
@@ -509,15 +678,21 @@ export default function AdminTeacherScreen() {
       </View>
 
       <View style={styles.searchRow}>
-        <TextInput
-          style={styles.searchInput}
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search by name or email"
-          placeholderTextColor={colors.text.muted}
-        />
+        <View style={styles.searchInputRow}>
+          <Ionicons name="search-outline" size={17} style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search by name or email"
+            placeholderTextColor={colors.text.muted}
+          />
+        </View>
         <Pressable style={styles.addBtn} onPress={openCreateModal}>
-          <Text style={styles.addBtnText}>+ Add</Text>
+          <View style={styles.inlineAction}>
+            <Ionicons name="add" size={14} color={colors.text.inverse} />
+            <Text style={styles.addBtnText}>Add</Text>
+          </View>
         </Pressable>
       </View>
 
@@ -525,10 +700,12 @@ export default function AdminTeacherScreen() {
 
       <FlatList
         data={teacherList}
-        keyExtractor={item => item._id}
+        keyExtractor={(item, index) => getEntityId(item) || `teacher-${index}`}
         contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <Pressable style={styles.teacherCard} onPress={() => openDetail(item._id)}>
+        renderItem={({ item }) => {
+          const teacherId = getEntityId(item);
+          return (
+            <Pressable style={styles.teacherCard} onPress={() => openDetail(teacherId)}>
             <View style={styles.teacherMain}>
               <Text style={styles.teacherName}>{item.name}</Text>
               <Text style={styles.teacherEmail}>{item.email}</Text>
@@ -540,8 +717,12 @@ export default function AdminTeacherScreen() {
               <Pressable style={styles.editBtn} onPress={() => openEditModal(item)}>
                 <Text style={styles.editBtnText}>Edit</Text>
               </Pressable>
-              <Pressable style={styles.deleteBtn} onPress={() => handleDelete(item._id)} disabled={deletingId === item._id}>
-                {deletingId === item._id ? (
+              <Pressable
+                style={styles.deleteBtn}
+                onPress={() => handleDelete(teacherId)}
+                disabled={deletingId === teacherId}
+              >
+                {deletingId === teacherId ? (
                   <ActivityIndicator size="small" color={colors.state.error} />
                 ) : (
                   <Text style={styles.deleteBtnText}>Delete</Text>
@@ -549,7 +730,8 @@ export default function AdminTeacherScreen() {
               </Pressable>
             </View>
           </Pressable>
-        )}
+          );
+        }}
         ListEmptyComponent={
           teachersQuery.isLoading ? (
             <ActivityIndicator size="small" color={colors.brand.primary} />
@@ -578,6 +760,7 @@ export default function AdminTeacherScreen() {
         colors={colors}
         isSaving={createMutation.isPending || updateMutation.isPending}
         title={modalState.mode === 'create' ? 'Create Teacher' : 'Edit Teacher'}
+        mode={modalState.mode}
         form={form}
         setForm={setForm}
       />
@@ -603,10 +786,17 @@ const createStyles = colors =>
       paddingTop: 10,
     },
     heroCard: {
-      borderRadius: 18,
-      backgroundColor: colors.admin.heroBg,
+      borderRadius: 22,
+      backgroundColor: colors.admin.heroBgAlt,
+      borderWidth: 1,
+      borderColor: colors.admin.borderSoft,
       padding: 14,
       marginBottom: 10,
+      shadowColor: '#1c4ca1',
+      shadowOpacity: 0.2,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 5 },
+      elevation: 6,
     },
     heroOverline: {
       color: colors.auth.subtitle,
@@ -632,26 +822,47 @@ const createStyles = colors =>
       gap: 8,
       marginBottom: 8,
     },
-    searchInput: {
+    searchInputRow: {
       flex: 1,
       borderWidth: 1,
       borderColor: colors.admin.borderStrong,
       borderRadius: 12,
       backgroundColor: colors.admin.surface,
       paddingHorizontal: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    searchIcon: {
+      color: colors.admin.accent,
+      marginRight: 8,
+    },
+    searchInput: {
+      flex: 1,
       paddingVertical: 10,
       color: colors.admin.textPrimary,
     },
     addBtn: {
       borderRadius: 12,
-      backgroundColor: colors.brand.primary,
+      backgroundColor: colors.admin.navBg,
+      borderWidth: 1,
+      borderColor: colors.admin.borderStrong,
       paddingHorizontal: 14,
       paddingVertical: 10,
+      shadowColor: '#1f4fa2',
+      shadowOpacity: 0.12,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 2,
     },
     addBtnText: {
       color: colors.text.inverse,
       fontWeight: '800',
       fontSize: 13,
+    },
+    inlineAction: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
     },
     banner: {
       borderRadius: 12,
@@ -688,12 +899,17 @@ const createStyles = colors =>
       paddingBottom: 20,
     },
     teacherCard: {
-      borderRadius: 14,
+      borderRadius: 16,
       borderWidth: 1,
       borderColor: colors.admin.borderStrong,
       backgroundColor: colors.admin.surface,
       padding: 12,
       marginBottom: 10,
+      shadowColor: '#1d447f',
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 2,
     },
     teacherMain: {
       marginBottom: 10,
@@ -768,13 +984,13 @@ const createStyles = colors =>
       justifyContent: 'flex-end',
     },
     formCard: {
-      borderTopLeftRadius: 22,
-      borderTopRightRadius: 22,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
       backgroundColor: colors.admin.surface,
       borderWidth: 1,
       borderColor: colors.admin.borderStrong,
       paddingHorizontal: 16,
-      paddingTop: 14,
+      paddingTop: 16,
       paddingBottom: 18,
       minHeight: '74%',
     },
@@ -790,9 +1006,10 @@ const createStyles = colors =>
     },
     formHint: {
       color: colors.admin.textSecondary,
-      fontSize: 12,
+      fontSize: 12.5,
       marginTop: 4,
-      marginBottom: 12,
+      marginBottom: 14,
+      lineHeight: 18,
     },
     headerCloseBtn: {
       width: 28,
@@ -811,7 +1028,72 @@ const createStyles = colors =>
     inputLabel: {
       color: colors.admin.textSecondary,
       fontSize: 12,
+      fontWeight: '700',
       marginBottom: 6,
+    },
+    inputNote: {
+      marginTop: -4,
+      marginBottom: 10,
+      color: colors.admin.textSecondary,
+      fontSize: 11.5,
+      fontWeight: '600',
+    },
+    sectionCard: {
+      borderWidth: 1,
+      borderColor: colors.admin.borderStrong,
+      borderRadius: 15,
+      padding: 12,
+      backgroundColor: colors.admin.surfaceStrong,
+      marginBottom: 12,
+    },
+    sectionHeader: {
+      marginBottom: 8,
+    },
+    sectionTitle: {
+      color: colors.admin.textPrimary,
+      fontSize: 13,
+      fontWeight: '800',
+    },
+    sectionSubtitle: {
+      marginTop: 2,
+      color: colors.admin.textSecondary,
+      fontSize: 11.5,
+    },
+    subjectEntryRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 8,
+    },
+    subjectEntryInputWrap: {
+      flex: 1,
+      marginBottom: 0,
+    },
+    chipsWrap: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    subjectChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.admin.border,
+      backgroundColor: colors.admin.surface,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+    },
+    subjectChipText: {
+      color: colors.admin.textPrimary,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    sectionPlaceholder: {
+      color: colors.admin.textSecondary,
+      fontSize: 12,
+      fontStyle: 'italic',
     },
     input: {
       borderWidth: 1,
@@ -822,28 +1104,57 @@ const createStyles = colors =>
       color: colors.admin.textPrimary,
       marginBottom: 10,
     },
+    inputRow: {
+      borderWidth: 1,
+      borderColor: colors.admin.borderSoft,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      marginBottom: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.admin.surfaceStrong,
+    },
+    inputIcon: {
+      color: colors.admin.accent,
+      marginRight: 8,
+    },
+    inputWithIcon: {
+      flex: 1,
+      color: colors.admin.textPrimary,
+      paddingVertical: 11,
+      fontSize: 13.5,
+    },
     selectBtn: {
       borderWidth: 1,
-      borderColor: colors.admin.borderStrong,
-      borderRadius: 10,
+      borderColor: colors.admin.borderSoft,
+      borderRadius: 12,
       paddingHorizontal: 12,
-      paddingVertical: 10,
-      marginBottom: 10,
+      paddingVertical: 11,
+      marginBottom: 12,
       backgroundColor: colors.admin.surfaceStrong,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
     },
     selectBtnText: {
       color: colors.admin.textPrimary,
-      fontSize: 13,
+      fontSize: 13.5,
+      fontWeight: '600',
+      flex: 1,
+    },
+    assignmentSection: {
+      marginTop: 2,
     },
     assignmentHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 8,
+      marginBottom: 10,
     },
     smallAddBtn: {
       borderRadius: 8,
-      backgroundColor: colors.brand.primary,
+      backgroundColor: colors.admin.navBg,
       paddingHorizontal: 10,
       paddingVertical: 5,
     },
@@ -856,22 +1167,63 @@ const createStyles = colors =>
       borderWidth: 1,
       borderColor: colors.admin.border,
       borderRadius: 10,
-      padding: 8,
+      padding: 10,
       marginBottom: 8,
-      backgroundColor: colors.admin.surfaceSoft,
+      backgroundColor: colors.admin.surface,
+    },
+    assignmentTopRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    assignmentLabel: {
+      color: colors.admin.textPrimary,
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    fieldMiniLabel: {
+      color: colors.admin.textSecondary,
+      fontSize: 11,
+      marginBottom: 4,
+      marginTop: 2,
+    },
+    assignmentField: {
+      marginBottom: 8,
     },
     assignmentSubjectInput: {
-      marginBottom: 8,
+      marginBottom: 0,
     },
     assignmentRemoveBtn: {
-      alignSelf: 'flex-end',
-      paddingVertical: 4,
-      paddingHorizontal: 8,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingVertical: 2,
+      paddingHorizontal: 2,
     },
     assignmentRemoveText: {
       color: colors.state.error,
       fontWeight: '700',
+      fontSize: 11,
+    },
+    assignmentSubjectChips: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 6,
+      marginTop: 2,
+    },
+    assignmentSubjectChip: {
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.admin.borderSoft,
+      paddingHorizontal: 9,
+      paddingVertical: 5,
+      backgroundColor: colors.admin.surfaceSoft,
+    },
+    assignmentSubjectChipText: {
+      color: colors.admin.textPrimary,
       fontSize: 11.5,
+      fontWeight: '600',
     },
     modalActions: {
       marginTop: 8,
@@ -893,7 +1245,7 @@ const createStyles = colors =>
     },
     saveBtn: {
       borderRadius: 10,
-      backgroundColor: colors.brand.primary,
+      backgroundColor: colors.admin.navBg,
       paddingHorizontal: 14,
       paddingVertical: 9,
       minWidth: 68,
@@ -935,7 +1287,7 @@ const createStyles = colors =>
       marginTop: 10,
       alignSelf: 'flex-end',
       borderRadius: 10,
-      backgroundColor: colors.brand.primary,
+      backgroundColor: colors.admin.navBg,
       paddingVertical: 8,
       paddingHorizontal: 14,
     },

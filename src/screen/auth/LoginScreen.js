@@ -14,11 +14,12 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import Ionicons from '@react-native-vector-icons/ionicons';
 import { useLoginMutation, getApiErrorMessage } from '../../hooks/useLoginMutation';
 import { setAuthToken } from '../../api/client';
+import { updateMyFcmToken } from '../../services/authService';
+import { getDeviceFcmToken } from '../../services/fcmService';
 import { useAppTheme } from '../../theme/ThemeContext';
-
-const DEFAULT_FCM_TOKEN = 'student_device_token_1';
 
 export default function LoginScreen({ onLoginSuccess }) {
   const { colors } = useAppTheme();
@@ -160,10 +161,11 @@ export default function LoginScreen({ onLoginSuccess }) {
     }
 
     try {
+      const deviceFcmToken = await getDeviceFcmToken();
       const result = await loginMutation.loginWithIdentifier({
         identifier,
         password,
-        fcmToken: DEFAULT_FCM_TOKEN,
+        fcmToken: deviceFcmToken,
       });
 
       if (!result?.token) {
@@ -176,6 +178,13 @@ export default function LoginScreen({ onLoginSuccess }) {
       }
 
       setAuthToken(result.token);
+      if (deviceFcmToken) {
+        try {
+          await updateMyFcmToken(deviceFcmToken);
+        } catch (fcmError) {
+          console.warn('FCM token sync failed:', getApiErrorMessage(fcmError));
+        }
+      }
       onLoginSuccess?.({
         token: result.token,
         role: result.role,
@@ -226,33 +235,43 @@ export default function LoginScreen({ onLoginSuccess }) {
             ]}
           >
             <Text style={styles.label}>{identifierLabel}</Text>
-            <TextInput
-              value={identifier}
-              onChangeText={setIdentifier}
-              style={styles.input}
-              autoCapitalize="none"
-              keyboardType="default"
-              returnKeyType="next"
-              onSubmitEditing={() => passwordInputRef.current?.focus()}
-              placeholder={identifierPlaceholder}
-              placeholderTextColor={colors.text.muted}
-            />
+            <View style={styles.inputRow}>
+              <Ionicons name="person-outline" size={18} color={colors.auth.icon} style={styles.inputIcon} />
+              <TextInput
+                value={identifier}
+                onChangeText={setIdentifier}
+                style={styles.inputWithIcon}
+                autoCapitalize="none"
+                keyboardType="default"
+                returnKeyType="next"
+                onSubmitEditing={() => passwordInputRef.current?.focus()}
+                placeholder={identifierPlaceholder}
+                placeholderTextColor={colors.text.muted}
+              />
+            </View>
 
             <Text style={styles.label}>Password</Text>
             <View style={styles.passwordRow}>
-              <TextInput
-                ref={passwordInputRef}
-                value={password}
-                onChangeText={setPassword}
-                style={[styles.input, styles.passwordInput]}
-                secureTextEntry={hidePassword}
-                returnKeyType="go"
-                onSubmitEditing={submit}
-                placeholder="Enter your password"
-                placeholderTextColor={colors.text.muted}
-              />
+              <View style={[styles.inputRow, styles.passwordInput]}>
+                <Ionicons name="lock-closed-outline" size={18} color={colors.auth.icon} style={styles.inputIcon} />
+                <TextInput
+                  ref={passwordInputRef}
+                  value={password}
+                  onChangeText={setPassword}
+                  style={styles.inputWithIcon}
+                  secureTextEntry={hidePassword}
+                  returnKeyType="go"
+                  onSubmitEditing={submit}
+                  placeholder="Enter your password"
+                  placeholderTextColor={colors.text.muted}
+                />
+              </View>
               <Pressable style={styles.toggleBtn} onPress={() => setHidePassword(prev => !prev)}>
-                <Text style={styles.toggleBtnText}>{hidePassword ? 'Show' : 'Hide'}</Text>
+                <Ionicons
+                  name={hidePassword ? 'eye-outline' : 'eye-off-outline'}
+                  size={18}
+                  color={colors.text.secondary}
+                />
               </Pressable>
             </View>
 
@@ -380,6 +399,24 @@ const createStyles = colors =>
     fontSize: 15,
     backgroundColor: colors.auth.inputBg,
   },
+  inputRow: {
+    borderWidth: 1,
+    borderColor: colors.auth.inputBorder,
+    borderRadius: 12,
+    backgroundColor: colors.auth.inputBg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+  },
+  inputIcon: {
+    marginRight: 8,
+  },
+  inputWithIcon: {
+    flex: 1,
+    paddingVertical: 12,
+    color: colors.auth.text,
+    fontSize: 15,
+  },
   passwordRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -391,13 +428,10 @@ const createStyles = colors =>
     marginLeft: 8,
     backgroundColor: colors.background.overlay,
     borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-  },
-  toggleBtnText: {
-    color: colors.text.secondary,
-    fontWeight: '700',
-    fontSize: 12,
+    width: 42,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   loginButton: {
     marginTop: 18,

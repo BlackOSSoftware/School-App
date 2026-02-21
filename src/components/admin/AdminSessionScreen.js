@@ -13,6 +13,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import Ionicons from '@react-native-vector-icons/ionicons';
 import {
   useActiveSessionQuery,
   useCreateSessionMutation,
@@ -30,14 +31,20 @@ function formatDate(dateValue) {
   if (Number.isNaN(date.getTime())) {
     return String(dateValue);
   }
-  return date.toISOString().slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function toIsoDate(dateObj) {
   if (!(dateObj instanceof Date) || Number.isNaN(dateObj.getTime())) {
     return '';
   }
-  return dateObj.toISOString().slice(0, 10);
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function toDate(value) {
@@ -97,6 +104,7 @@ function DateField({ label, value, onPress, styles }) {
     <View style={styles.dateFieldWrap}>
       <Text style={styles.inputLabel}>{label}</Text>
       <Pressable style={styles.dateBtn} onPress={onPress}>
+        <Ionicons name="calendar-outline" size={17} style={styles.dateBtnIcon} />
         <Text style={styles.dateBtnText}>{toIsoDate(value)}</Text>
       </Pressable>
     </View>
@@ -143,6 +151,14 @@ export default function AdminSessionScreen() {
   const activeSession = activeSessionQuery.data?.data ?? null;
 
   const closeMessage = () => setMessage({ type: '', text: '' });
+
+  useEffect(() => {
+    if (!message.text) {
+      return undefined;
+    }
+    const timer = setTimeout(() => setMessage({ type: '', text: '' }), 2800);
+    return () => clearTimeout(timer);
+  }, [message.text]);
 
   const onCreate = async () => {
     if (!createName.trim()) {
@@ -286,13 +302,16 @@ export default function AdminSessionScreen() {
       <View style={styles.panel}>
         <Text style={styles.panelTitle}>Create Session</Text>
         <Text style={styles.inputLabel}>Session Name</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Session name (e.g. 2026-27)"
-          placeholderTextColor={colors.text.muted}
-          value={createName}
-          onChangeText={setCreateName}
-        />
+        <View style={styles.inputRow}>
+          <Ionicons name="book-outline" size={17} style={styles.inputIcon} />
+          <TextInput
+            style={styles.inputWithIcon}
+            placeholder="Session name (e.g. 2026-27)"
+            placeholderTextColor={colors.text.muted}
+            value={createName}
+            onChangeText={setCreateName}
+          />
+        </View>
 
         <DateField
           label="Start Date"
@@ -418,13 +437,16 @@ export default function AdminSessionScreen() {
             <Text style={styles.editTitle}>Edit Session</Text>
 
             <Text style={styles.inputLabel}>Session Name</Text>
-            <TextInput
-              style={styles.input}
-              value={editName}
-              onChangeText={setEditName}
-              placeholder="Session name"
-              placeholderTextColor={colors.text.muted}
-            />
+            <View style={styles.inputRow}>
+              <Ionicons name="create-outline" size={17} style={styles.inputIcon} />
+              <TextInput
+                style={styles.inputWithIcon}
+                value={editName}
+                onChangeText={setEditName}
+                placeholder="Session name"
+                placeholderTextColor={colors.text.muted}
+              />
+            </View>
 
             <DateField
               label="Start Date"
@@ -500,20 +522,20 @@ const createStyles = colors =>
     marginBottom: 10,
   },
   heroOverline: {
-    color: '#ddd9ff',
+    color: colors.auth.subtitle,
     fontSize: 10.5,
     letterSpacing: 1.6,
     fontWeight: '800',
   },
   sectionTitle: {
-    color: '#ffffff',
+    color: colors.text.inverse,
     fontSize: 25,
     fontWeight: '900',
     marginTop: 6,
   },
   heroSub: {
     marginTop: 5,
-    color: '#ece9ff',
+    color: colors.auth.subtitle,
     fontSize: 12.5,
     lineHeight: 18,
   },
@@ -571,6 +593,7 @@ const createStyles = colors =>
   inputLabel: {
     color: colors.admin.textSecondary,
     fontSize: 12,
+    fontWeight: '700',
     marginBottom: 6,
   },
   input: {
@@ -582,20 +605,47 @@ const createStyles = colors =>
     color: colors.admin.textPrimary,
     marginBottom: 10,
   },
+  inputRow: {
+    borderWidth: 1,
+    borderColor: colors.admin.borderSoft,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.admin.surfaceStrong,
+  },
+  inputIcon: {
+    color: colors.admin.accent,
+    marginRight: 8,
+  },
+  inputWithIcon: {
+    flex: 1,
+    color: colors.admin.textPrimary,
+    paddingVertical: 11,
+    fontSize: 13.5,
+  },
   dateFieldWrap: {
     marginBottom: 10,
   },
   dateBtn: {
     borderWidth: 1,
-    borderColor: colors.admin.borderStrong,
-    borderRadius: 10,
+    borderColor: colors.admin.borderSoft,
+    borderRadius: 12,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 11,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.admin.surfaceStrong,
+  },
+  dateBtnIcon: {
+    color: colors.admin.accent,
+    marginRight: 8,
   },
   dateBtnText: {
     color: colors.admin.textPrimary,
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13.5,
+    fontWeight: '700',
   },
   switchRow: {
     flexDirection: 'row',

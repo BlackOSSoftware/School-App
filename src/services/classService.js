@@ -1,5 +1,24 @@
 import { apiClient } from '../api/client';
 
+function normalizeEntityId(value) {
+  if (!value) {
+    return '';
+  }
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+  if (typeof value === 'object') {
+    const nested = value?._id ?? value?.id ?? value?.$oid ?? '';
+    if (typeof nested === 'string') {
+      return nested.trim();
+    }
+    if (nested && typeof nested === 'object' && typeof nested.$oid === 'string') {
+      return nested.$oid.trim();
+    }
+  }
+  return '';
+}
+
 export async function createClass(payload) {
   const sectionValue = String(payload?.section ?? '').trim();
   const body = {
@@ -19,11 +38,22 @@ export async function getAllClasses({ page = 1, limit = 5 }) {
 }
 
 export async function updateClass({ id, payload }) {
+  const normalizedId = normalizeEntityId(id);
+  if (!normalizedId) {
+    throw new Error('Invalid class id.');
+  }
+
+  const sectionValue = String(payload?.section ?? '').trim();
+  const body = {
+    name: String(payload?.name ?? '').trim(),
+    section: [sectionValue.toUpperCase()],
+  };
+
   const attempts = [
-    () => apiClient.patch(`/class/${id}`, payload),
-    () => apiClient.put(`/class/${id}`, payload),
-    () => apiClient.patch(`/class/update/${id}`, payload),
-    () => apiClient.put(`/class/update/${id}`, payload),
+    () => apiClient.patch(`/class/${normalizedId}`, body),
+    () => apiClient.put(`/class/${normalizedId}`, body),
+    () => apiClient.patch(`/class/update/${normalizedId}`, body),
+    () => apiClient.put(`/class/update/${normalizedId}`, body),
   ];
 
   let lastError;
@@ -44,9 +74,14 @@ export async function updateClass({ id, payload }) {
 }
 
 export async function deleteClass(id) {
+  const normalizedId = normalizeEntityId(id);
+  if (!normalizedId) {
+    throw new Error('Invalid class id.');
+  }
+
   const attempts = [
-    () => apiClient.delete(`/class/${id}`),
-    () => apiClient.delete(`/class/delete/${id}`),
+    () => apiClient.delete(`/class/${normalizedId}`),
+    () => apiClient.delete(`/class/delete/${normalizedId}`),
   ];
 
   let lastError;

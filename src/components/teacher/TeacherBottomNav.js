@@ -6,12 +6,12 @@ import { useAppTheme } from '../../theme/ThemeContext';
 const TABS = [
   { key: 'dashboard', label: 'Dashboard', icon: 'grid-outline' },
   { key: 'attendance', label: 'Attendance', icon: 'checkmark-done-outline' },
+  { key: 'homework', label: 'Content', icon: 'book-outline' },
   { key: 'announcement', label: 'Announcement', icon: 'megaphone-outline' },
-  { key: 'reports', label: 'Reports', icon: 'bar-chart-outline' },
   { key: 'profile', label: 'Profile', icon: 'person-circle-outline' },
 ];
 
-export default function AdminBottomNav({ activeTab, onTabChange }) {
+export default function TeacherBottomNav({ activeTab, onTabChange }) {
   const { colors } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -59,8 +59,8 @@ const createStyles = colors =>
       shadowOffset: { width: 0, height: 4 },
       elevation: 10,
       borderWidth: 1,
-      borderColor: colors.admin.borderStrong,
-      backgroundColor: colors.admin.navDock,
+      borderColor: colors.teacher.borderStrong,
+      backgroundColor: colors.teacher.navDock,
     },
     navItem: {
       flex: 1,
@@ -70,10 +70,10 @@ const createStyles = colors =>
       borderRadius: 14,
     },
     navItemActive: {
-      backgroundColor: colors.admin.navBg,
+      backgroundColor: colors.teacher.navBg,
     },
     navIcon: {
-      color: colors.admin.mutedIcon,
+      color: colors.teacher.mutedIcon,
       fontSize: 16,
     },
     navIconActive: {
@@ -82,7 +82,7 @@ const createStyles = colors =>
     navLabel: {
       marginTop: 3,
       fontSize: 10.5,
-      color: colors.admin.textSecondary,
+      color: colors.teacher.textSecondary,
       fontWeight: '700',
     },
     navLabelActive: {

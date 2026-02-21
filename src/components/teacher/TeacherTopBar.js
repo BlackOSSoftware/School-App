@@ -4,7 +4,7 @@ import Ionicons from '@react-native-vector-icons/ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppTheme } from '../../theme/ThemeContext';
 
-export default function AdminTopBar({ title, onBack, onNotificationPress }) {
+export default function TeacherTopBar({ title, onBack, onNotificationPress }) {
   const insets = useSafeAreaInsets();
   const { colors, isDark, toggleTheme } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -14,11 +14,11 @@ export default function AdminTopBar({ title, onBack, onNotificationPress }) {
       <View style={styles.leftWrap}>
         {onBack ? (
           <Pressable style={styles.backBtn} onPress={onBack}>
-            <Ionicons name="chevron-back" size={20} color={colors.admin.accent} />
+            <Ionicons name="chevron-back" size={20} color={colors.teacher.accent} />
           </Pressable>
         ) : null}
         <View>
-          <Text style={styles.kicker}>ADMIN PANEL</Text>
+          <Text style={styles.kicker}>TEACHER PANEL</Text>
           <Text style={styles.title}>{title}</Text>
         </View>
       </View>
@@ -27,11 +27,11 @@ export default function AdminTopBar({ title, onBack, onNotificationPress }) {
           <Ionicons
             name={isDark ? 'sunny-outline' : 'moon-outline'}
             size={18}
-            color={colors.admin.accent}
+            color={colors.teacher.accent}
           />
         </Pressable>
         <Pressable style={styles.iconBtn} onPress={onNotificationPress}>
-          <Ionicons name="notifications-outline" size={18} color={colors.admin.accent} />
+          <Ionicons name="notifications-outline" size={18} color={colors.teacher.accent} />
         </Pressable>
       </View>
     </View>
@@ -46,7 +46,7 @@ const createStyles = colors =>
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      backgroundColor: colors.admin.headerBg,
+      backgroundColor: colors.teacher.headerBg,
       borderBottomLeftRadius: 16,
       borderBottomRightRadius: 16,
     },
@@ -62,9 +62,9 @@ const createStyles = colors =>
       borderRadius: 17,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.admin.surface,
+      backgroundColor: colors.teacher.surface,
       borderWidth: 1,
-      borderColor: colors.admin.borderSoft,
+      borderColor: colors.teacher.borderSoft,
     },
     kicker: {
       color: colors.auth.subtitle,
@@ -88,8 +88,8 @@ const createStyles = colors =>
       borderRadius: 19,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.admin.surface,
+      backgroundColor: colors.teacher.surface,
       borderWidth: 1,
-      borderColor: colors.admin.borderSoft,
+      borderColor: colors.teacher.borderSoft,
     },
   });

@@ -11,10 +11,13 @@ function pickString(...values) {
 
 export function buildLoginPayload({ identifier, password, fcmToken, loginType }) {
   const trimmedIdentifier = String(identifier ?? '').trim();
+  const normalizedFcmToken = String(fcmToken ?? '').trim();
   const payload = {
     password: String(password ?? ''),
-    fcmToken: String(fcmToken ?? 'student_device_token_1'),
   };
+  if (normalizedFcmToken) {
+    payload.fcmToken = normalizedFcmToken;
+  }
 
   const useEmail = loginType === 'email' || trimmedIdentifier.includes('@');
 
@@ -60,4 +63,36 @@ export function normalizeAuthResponse(rawResponse) {
 export async function login(payload) {
   const { data } = await apiClient.post('/auth/login', payload);
   return normalizeAuthResponse(data);
+}
+
+export async function updateMyFcmToken(fcmToken) {
+  const token = String(fcmToken ?? '').trim();
+  if (!token) {
+    return null;
+  }
+  const { data } = await apiClient.put('/auth/fcm-token', { fcmToken: token });
+  return data;
+}
+
+export async function changeAdminPassword({ oldPassword, newPassword }) {
+  const payload = {
+    oldPassword: String(oldPassword ?? ''),
+    newPassword: String(newPassword ?? ''),
+  };
+  const { data } = await apiClient.post('/auth/admin/change-password', payload);
+  return data;
+}
+
+export async function getStudentMe() {
+  const { data } = await apiClient.get('/student/me');
+  return data;
+}
+
+export async function changeStudentPassword({ oldPassword, newPassword }) {
+  const payload = {
+    oldPassword: String(oldPassword ?? ''),
+    newPassword: String(newPassword ?? ''),
+  };
+  const { data } = await apiClient.put('/auth/student/change-password', payload);
+  return data;
 }

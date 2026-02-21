@@ -4,6 +4,8 @@ import {
   deleteTeacher,
   getAllTeachers,
   getTeacherById,
+  getTeacherClassesOverview,
+  getTeacherStudentsByClass,
   updateTeacher,
 } from '../services/teacherService';
 
@@ -11,6 +13,8 @@ export const TEACHER_QUERY_KEYS = {
   all: ['teachers'],
   list: (page, limit, search) => ['teachers', 'list', page, limit, search],
   detail: id => ['teachers', 'detail', id],
+  meClasses: ['teachers', 'me-classes'],
+  meClassStudents: (classId, page, limit) => ['teachers', 'me-class-students', classId, page, limit],
 };
 
 export function useTeachersQuery(page = 1, limit = 10, search = '') {
@@ -26,6 +30,22 @@ export function useTeacherDetailQuery(id, enabled = true) {
     queryKey: TEACHER_QUERY_KEYS.detail(id),
     queryFn: () => getTeacherById(id),
     enabled: Boolean(id) && enabled,
+  });
+}
+
+export function useTeacherClassesOverviewQuery() {
+  return useQuery({
+    queryKey: TEACHER_QUERY_KEYS.meClasses,
+    queryFn: getTeacherClassesOverview,
+  });
+}
+
+export function useTeacherStudentsByClassQuery({ classId, page = 1, limit = 10, enabled = true }) {
+  return useQuery({
+    queryKey: TEACHER_QUERY_KEYS.meClassStudents(classId, page, limit),
+    queryFn: () => getTeacherStudentsByClass({ classId, page, limit }),
+    enabled: Boolean(classId) && enabled,
+    placeholderData: previousData => previousData,
   });
 }
 

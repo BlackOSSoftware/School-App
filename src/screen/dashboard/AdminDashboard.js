@@ -3,7 +3,11 @@ import { Animated, Easing, SafeAreaView, StyleSheet, Text, View } from 'react-na
 import AdminBottomNav from '../../components/admin/AdminBottomNav';
 import AdminClassScreen from '../../components/admin/AdminClassScreen';
 import AdminDashboardHome from '../../components/admin/AdminDashboardHome';
+import AdminAnnouncementScreen from '../../components/admin/AdminAnnouncementScreen';
+import AdminAttendanceScreen from '../../components/admin/AdminAttendanceScreen';
+import AdminProfileScreen from '../../components/admin/AdminProfileScreen';
 import AdminSessionScreen from '../../components/admin/AdminSessionScreen';
+import AdminStudentScreen from '../../components/admin/AdminStudentScreen';
 import AdminTeacherScreen from '../../components/admin/AdminTeacherScreen';
 import AdminTopBar from '../../components/admin/AdminTopBar';
 import { useAppTheme } from '../../theme/ThemeContext';
@@ -17,7 +21,7 @@ function PlaceholderSection({ title, subtitle, styles }) {
   );
 }
 
-export default function AdminDashboard({ session }) {
+export default function AdminDashboard({ session, onLogout }) {
   const { colors } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -34,13 +38,13 @@ export default function AdminDashboard({ session }) {
     Animated.parallel([
       Animated.timing(pageOpacity, {
         toValue: 1,
-        duration: 420,
+        duration: 220,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
       Animated.timing(pageTranslate, {
         toValue: 0,
-        duration: 420,
+        duration: 220,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
@@ -114,6 +118,10 @@ export default function AdminDashboard({ session }) {
       setCurrentScreen('manage-class');
       return;
     }
+    if (key === 'manage-student') {
+      setCurrentScreen('manage-student');
+      return;
+    }
     if (key === 'manage-teacher') {
       setCurrentScreen('manage-teacher');
       return;
@@ -126,6 +134,8 @@ export default function AdminDashboard({ session }) {
       ? 'Session Management'
       : currentScreen === 'manage-class'
         ? 'Manage Class'
+        : currentScreen === 'manage-student'
+          ? 'Manage Student'
         : currentScreen === 'manage-teacher'
           ? 'Manage Teacher'
         : 'Admin Dashboard';
@@ -135,22 +145,10 @@ export default function AdminDashboard({ session }) {
       return <AdminDashboardHome onQuickActionPress={onQuickActionPress} />;
     }
     if (activeTab === 'attendance') {
-      return (
-        <PlaceholderSection
-          title="Attendance"
-          subtitle="Attendance module can be connected with dedicated attendance APIs."
-          styles={styles}
-        />
-      );
+      return <AdminAttendanceScreen />;
     }
     if (activeTab === 'announcement') {
-      return (
-        <PlaceholderSection
-          title="Announcement"
-          subtitle="Announcement module can be connected with notice publishing APIs."
-          styles={styles}
-        />
-      );
+      return <AdminAnnouncementScreen />;
     }
     if (activeTab === 'reports') {
       return (
@@ -162,11 +160,7 @@ export default function AdminDashboard({ session }) {
       );
     }
     return (
-      <PlaceholderSection
-        title="Profile"
-        subtitle={`Logged in role: ${session?.role ?? 'admin'}`}
-        styles={styles}
-      />
+      <AdminProfileScreen session={session} onLogout={onLogout} />
     );
   };
 
@@ -197,16 +191,27 @@ export default function AdminDashboard({ session }) {
         ]}
       />
       <View style={styles.gridOverlay} />
-      <AdminTopBar title={title} onBack={currentScreen !== 'root' ? () => setCurrentScreen('root') : undefined} />
+      <AdminTopBar
+        title={title}
+        onBack={currentScreen !== 'root' ? () => setCurrentScreen('root') : undefined}
+        onNotificationPress={() => onTabChange('announcement')}
+      />
 
-      {currentScreen === 'manage-class' || currentScreen === 'manage-teacher' ? (
+      {currentScreen === 'manage-class' ||
+      currentScreen === 'manage-student' ||
+      currentScreen === 'manage-teacher' ||
+      (currentScreen === 'root' && (activeTab === 'announcement' || activeTab === 'attendance')) ? (
         <Animated.View
           style={[
             styles.contentArea,
             { opacity: pageOpacity, transform: [{ translateY: pageTranslate }] },
           ]}
         >
-          {currentScreen === 'manage-class' ? <AdminClassScreen /> : <AdminTeacherScreen />}
+          {currentScreen === 'manage-class' ? <AdminClassScreen /> : null}
+          {currentScreen === 'manage-student' ? <AdminStudentScreen /> : null}
+          {currentScreen === 'manage-teacher' ? <AdminTeacherScreen /> : null}
+          {currentScreen === 'root' && activeTab === 'announcement' ? <AdminAnnouncementScreen /> : null}
+          {currentScreen === 'root' && activeTab === 'attendance' ? <AdminAttendanceScreen /> : null}
         </Animated.View>
       ) : (
         <Animated.ScrollView

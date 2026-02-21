@@ -1,0 +1,67 @@
+
+> SchoolApp@0.0.1 start
+> node -r ./scripts/node-polyfills.js ./node_modules/react-native/cli.js start
+
+
+Welcome to React Native v0.84
+Starting dev server on http://localhost:8081
+
+
+                        ▒▒▓▓▓▓▒▒
+                     ▒▓▓▓▒▒░░▒▒▓▓▓▒
+                  ▒▓▓▓▓░░░▒▒▒▒░░░▓▓▓▓▒
+                 ▓▓▒▒▒▓▓▓▓▓▓▓▓▓▓▓▓▒▒▒▓▓
+                 ▓▓░░░░░▒▓▓▓▓▓▓▒░░░░░▓▓
+                 ▓▓░░▓▓▒░░░▒▒░░░▒▓▒░░▓▓
+                 ▓▓░░▓▓▓▓▓▒▒▒▒▓▓▓▓▒░░▓▓
+                 ▓▓░░▓▓▓▓▓▓▓▓▓▓▓▓▓▒░░▓▓
+                 ▓▓▒░░▒▒▓▓▓▓▓▓▓▓▒░░░▒▓▓
+                  ▒▓▓▓▒░░░▒▓▓▒░░░▒▓▓▓▒
+                     ▒▓▓▓▒░░░░▒▓▓▓▒
+                        ▒▒▓▓▓▓▒▒
+
+
+                Welcome to Metro v0.83.3
+              Fast - Scalable - Integrated
+
+
+ INFO  Dev server ready. Press Ctrl+C to exit.
+ INFO  Key commands available:
+
+   r  - reload app(s)
+   d  - open Dev Menu
+   j  - open DevTools
+
+ BUNDLE  ./index.js ░░░░░░░░░░░░░░░░ 0.0% (0/1)
+ BUNDLE  ./index.js ▓░░░░░░░░░░░░░░░ 9.0% (3/7)
+ BUNDLE  ./index.js ▓▓▓▓▓░░░░░░░░░░░ 36.0% (41/175)
+ BUNDLE  ./index.js ▓▓▓▓▓░░░░░░░░░░░ 36.0% (187/349)
+ BUNDLE  ./index.js ▓▓▓▓▓▓▓▓░░░░░░░░ 52.9% (369/510)
+ BUNDLE  ./index.js ▓▓▓▓▓▓▓▓▓▓▓▓░░░░ 78.5% (522/593)
+ BUNDLE  ./index.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 93.7% (640/661)
+ BUNDLE  ./index.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 96.4% (714/805)
+ BUNDLE  ./index.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 96.4% (808/859)
+ BUNDLE  ./index.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 96.4% (1039/1091)
+ BUNDLE  ./index.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.8% (1105/1106)
+ BUNDLE  ./index.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (1106/1106)
+ BUNDLE  ./index.js 
+ BUNDLE  ./index.js ░░░░░░░░░░░░░░░░ 0.0% (0/1)
+ BUNDLE  ./index.js 
+ INFO  [1m[7m💡 JavaScript logs have moved![22m They can now be viewed in React Native DevTools. Tip: Type [1mj[22m in the terminal to open.[27m
+ BUNDLE  ./index.js ░░░░░░░░░░░░░░░░ 0.0% (0/1)
+ BUNDLE  ./index.js 
+ BUNDLE  ./index.js ░░░░░░░░░░░░░░░░ 0.0% (0/1)
+ BUNDLE  ./index.js 
+ BUNDLE  ./index.js ░░░░░░░░░░░░░░░░ 0.0% (0/1)
+ BUNDLE  ./index.js 
+ BUNDLE  ./index.js ░░░░░░░░░░░░░░░░ 0.0% (0/1)
+ BUNDLE  ./index.js 
+ BUNDLE  ./index.js ░░░░░░░░░░░░░░░░ 0.0% (0/1)
+ BUNDLE  ./index.js 
+ ERROR  [timeout] connection terminated with Device for app='com.schoolapp' on device='sdk_gphone64_x86_64 - 16 - API 36' after not responding for 60 seconds.
+ BUNDLE  ./index.js ░░░░░░░░░░░░░░░░ 0.0% (0/1)
+ BUNDLE  ./index.js 
+ ERROR  [timeout] connection terminated with Device for app='com.schoolapp' on device='sdk_gphone64_x86_64 - 16 - API 36' after not responding for 60 seconds.
+ ERROR  [timeout] connection terminated with Device for app='com.schoolapp' on device='sdk_gphone64_x86_64 - 16 - API 36' after not responding for 60 seconds.
+ ERROR  [timeout] connection terminated with Device for app='com.schoolapp' on device='sdk_gphone64_x86_64 - 16 - API 36' after not responding for 60 seconds.
+^C^C

@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -12,6 +12,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import Ionicons from '@react-native-vector-icons/ionicons';
 import PaginationControls from '../common/PaginationControls';
 import {
   useClassesQuery,
@@ -22,6 +23,25 @@ import {
 import { useAppTheme } from '../../theme/ThemeContext';
 
 const PAGE_LIMIT = 20;
+
+function getEntityId(value) {
+  if (!value) {
+    return '';
+  }
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+  if (typeof value === 'object') {
+    const nested = value?._id ?? value?.id ?? value?.$oid ?? '';
+    if (typeof nested === 'string') {
+      return nested.trim();
+    }
+    if (nested && typeof nested === 'object' && typeof nested.$oid === 'string') {
+      return nested.$oid.trim();
+    }
+  }
+  return '';
+}
 
 function getErrorMessage(error, fallback) {
   const message =
@@ -74,6 +94,14 @@ export default function AdminClassScreen() {
 
   const closeMessage = () => setMessage({ type: '', text: '' });
 
+  useEffect(() => {
+    if (!message.text) {
+      return undefined;
+    }
+    const timer = setTimeout(() => setMessage({ type: '', text: '' }), 2800);
+    return () => clearTimeout(timer);
+  }, [message.text]);
+
   const resetAndReload = () => {
     if (page === 1) {
       classesQuery.refetch();
@@ -98,8 +126,13 @@ export default function AdminClassScreen() {
   };
 
   const openEditModal = (item) => {
+    const itemId = getEntityId(item);
+    if (!itemId) {
+      setMessage({ type: 'error', text: 'Invalid class record selected.' });
+      return;
+    }
     setModalMode('edit');
-    setClassId(item._id);
+    setClassId(itemId);
     setName(String(item.name ?? ''));
     setSection(String(item.section ?? ''));
     setModalVisible(true);
@@ -151,6 +184,10 @@ export default function AdminClassScreen() {
   };
 
   const runDelete = async (id) => {
+    if (!id) {
+      setMessage({ type: 'error', text: 'Invalid class id for delete.' });
+      return;
+    }
     setDeleteId(id);
     try {
       await deleteMutation.mutateAsync(id);
@@ -219,14 +256,16 @@ export default function AdminClassScreen() {
     <View style={styles.container}>
       <FlatList
         data={classList}
-        keyExtractor={item => item._id}
+        keyExtractor={(item, index) => getEntityId(item) || `class-${index}`}
         style={styles.list}
         contentContainerStyle={styles.listContent}
         nestedScrollEnabled
         ListHeaderComponent={header}
         ListFooterComponent={footer}
         showsVerticalScrollIndicator
-        renderItem={({ item }) => (
+        renderItem={({ item }) => {
+          const itemId = getEntityId(item);
+          return (
           <View style={styles.card}>
             <View style={styles.cardLeft}>
               <Text style={[styles.cardTitle, { fontSize: 17 * textScale }]}>Class {item.name}</Text>
@@ -238,10 +277,10 @@ export default function AdminClassScreen() {
               </Pressable>
               <Pressable
                 style={styles.deleteBtn}
-                onPress={() => runDelete(item._id)}
-                disabled={deleteId === item._id}
+                onPress={() => runDelete(itemId)}
+                disabled={!itemId || deleteId === itemId}
               >
-                {deleteId === item._id ? (
+                {deleteId === itemId ? (
                   <ActivityIndicator size="small" color={colors.state.error} />
                 ) : (
                   <Text style={[styles.deleteBtnText, { fontSize: 12 * textScale }]}>Delete</Text>
@@ -249,7 +288,8 @@ export default function AdminClassScreen() {
               </Pressable>
             </View>
           </View>
-        )}
+          );
+        }}
         ListEmptyComponent={
           classesQuery.isLoading ? null : (
             <Text style={[styles.emptyText, { fontSize: 14 * textScale }]}>No classes found.</Text>
@@ -277,23 +317,29 @@ export default function AdminClassScreen() {
             </Text>
 
             <Text style={styles.inputLabel}>Class Name</Text>
-            <TextInput
-              style={styles.input}
-              value={name}
-              onChangeText={setName}
-              placeholder="e.g. 11"
-              placeholderTextColor={colors.text.muted}
-            />
+            <View style={styles.inputRow}>
+              <Ionicons name="school-outline" size={18} color={colors.admin.accent} style={styles.inputIcon} />
+              <TextInput
+                style={styles.inputWithIcon}
+                value={name}
+                onChangeText={setName}
+                placeholder="e.g. 11"
+                placeholderTextColor={colors.text.muted}
+              />
+            </View>
 
             <Text style={styles.inputLabel}>Section</Text>
-            <TextInput
-              style={styles.input}
-              value={section}
-              onChangeText={setSection}
-              autoCapitalize="characters"
-              placeholder="e.g. A or SCIENCE"
-              placeholderTextColor={colors.text.muted}
-            />
+            <View style={styles.inputRow}>
+              <Ionicons name="layers-outline" size={18} color={colors.admin.accent} style={styles.inputIcon} />
+              <TextInput
+                style={styles.inputWithIcon}
+                value={section}
+                onChangeText={setSection}
+                autoCapitalize="characters"
+                placeholder="e.g. A or SCIENCE"
+                placeholderTextColor={colors.text.muted}
+              />
+            </View>
 
             <View style={styles.modalActions}>
               <Pressable style={styles.cancelBtn} onPress={closeModal}>
@@ -333,26 +379,32 @@ const createStyles = colors =>
     marginBottom: 10,
   },
   heroCard: {
-    borderRadius: 18,
-    backgroundColor: colors.admin.heroBg,
-    borderWidth: 0,
+    borderRadius: 22,
+    backgroundColor: colors.admin.heroBgAlt,
+    borderWidth: 1,
+    borderColor: colors.admin.borderSoft,
     padding: 14,
     marginBottom: 12,
+    shadowColor: '#1c4da1',
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 6,
   },
   heroOverline: {
-    color: '#ddd9ff',
+    color: colors.auth.subtitle,
     fontSize: 10.5,
     letterSpacing: 1.6,
     fontWeight: '800',
   },
   heroTitle: {
     marginTop: 6,
-    color: '#ffffff',
+    color: colors.text.inverse,
     fontWeight: '900',
   },
   heroSub: {
     marginTop: 4,
-    color: '#ece9ff',
+    color: colors.auth.subtitle,
     lineHeight: 19,
   },
   titleRow: {
@@ -372,12 +424,17 @@ const createStyles = colors =>
     fontWeight: '500',
   },
   addBtn: {
-    backgroundColor: colors.brand.primary,
+    backgroundColor: colors.admin.navBg,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.admin.borderStrong,
+    shadowColor: '#1e4da0',
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   addBtnText: {
     color: '#ffffff',
@@ -436,6 +493,11 @@ const createStyles = colors =>
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    shadowColor: '#1d447f',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   cardLeft: {
     flex: 1,
@@ -496,12 +558,12 @@ const createStyles = colors =>
   },
   modalCard: {
     backgroundColor: colors.admin.surface,
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
     borderWidth: 1,
     borderColor: colors.admin.borderStrong,
     paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingTop: 18,
     paddingBottom: 22,
   },
   modalTitle: {
@@ -511,11 +573,13 @@ const createStyles = colors =>
   modalSub: {
     marginTop: 4,
     color: colors.admin.textSecondary,
-    marginBottom: 14,
+    marginBottom: 16,
+    lineHeight: 18,
   },
   inputLabel: {
     color: colors.admin.textSecondary,
     fontSize: 12,
+    fontWeight: '700',
     marginBottom: 6,
   },
   input: {
@@ -527,6 +591,26 @@ const createStyles = colors =>
     color: colors.admin.textPrimary,
     marginBottom: 10,
     fontSize: 15,
+  },
+  inputRow: {
+    borderWidth: 1,
+    borderColor: colors.admin.borderSoft,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.admin.surfaceStrong,
+  },
+  inputIcon: {
+    marginRight: 8,
+  },
+  inputWithIcon: {
+    flex: 1,
+    color: colors.admin.textPrimary,
+    paddingVertical: 11,
+    fontSize: 14,
+    fontWeight: '600',
   },
   modalActions: {
     marginTop: 8,
