@@ -18,7 +18,7 @@ export default function AdminTopBar({ title, onBack, onNotificationPress }) {
           </Pressable>
         ) : null}
         <View>
-          <Text style={styles.kicker}>ADMIN PANEL</Text>
+          <Text style={styles.kicker}>MMPS ADMIN PANEL</Text>
           <Text style={styles.title}>{title}</Text>
         </View>
       </View>
@@ -42,13 +42,15 @@ const createStyles = colors =>
   StyleSheet.create({
     topBar: {
       paddingHorizontal: 16,
-      paddingBottom: 12,
+      paddingBottom: 14,
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       backgroundColor: colors.admin.headerBg,
-      borderBottomLeftRadius: 16,
-      borderBottomRightRadius: 16,
+      borderBottomLeftRadius: 24,
+      borderBottomRightRadius: 24,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.admin.borderSoft,
     },
     leftWrap: {
       flexDirection: 'row',
@@ -74,8 +76,9 @@ const createStyles = colors =>
     },
     title: {
       color: colors.text.inverse,
-      fontSize: 20,
-      fontWeight: '800',
+      fontSize: 22,
+      fontWeight: '900',
+      letterSpacing: 0.2,
     },
     rightWrap: {
       flexDirection: 'row',
@@ -83,13 +86,18 @@ const createStyles = colors =>
       gap: 8,
     },
     iconBtn: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
+      width: 40,
+      height: 40,
+      borderRadius: 20,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: colors.admin.surface,
       borderWidth: 1,
       borderColor: colors.admin.borderSoft,
+      shadowColor: '#0a1d33',
+      shadowOpacity: 0.18,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 3,
     },
   });

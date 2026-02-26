@@ -148,6 +148,29 @@ export async function getAdminAttendanceSummaryByDate(date) {
   };
 }
 
+export async function getAdminDashboardSummary() {
+  const { data } = await apiClient.get('/attendance/admin/dashboard-summary');
+  const payload = data?.data ?? {};
+  const todayAttendance = payload?.todayAttendance ?? {};
+
+  return {
+    success: Boolean(data?.success),
+    data: {
+      totalStudents: Number(payload?.totalStudents ?? 0),
+      totalTeachers: Number(payload?.totalTeachers ?? 0),
+      totalClasses: Number(payload?.totalClasses ?? 0),
+      todayAttendance: {
+        date: String(todayAttendance?.date ?? ''),
+        attendanceTaken: Boolean(todayAttendance?.attendanceTaken),
+        presentCount: Number(todayAttendance?.presentCount ?? 0),
+        absentCount: Number(todayAttendance?.absentCount ?? 0),
+        totalStudents: Number(todayAttendance?.totalStudents ?? 0),
+        presentPercentage: Number(todayAttendance?.presentPercentage ?? 0),
+      },
+    },
+  };
+}
+
 export async function getAdminClassAttendanceByDate({ classId, date }) {
   const normalizedClassId = normalizeEntityId(classId);
   if (!normalizedClassId) {
@@ -157,6 +180,32 @@ export async function getAdminClassAttendanceByDate({ classId, date }) {
     params: { date: toIsoDate(date || new Date()) },
   });
   return normalizeClassAttendanceResponse(data);
+}
+
+export async function getAdminStudentAttendanceReport({ classId, studentId, from, to }) {
+  const normalizedClassId = normalizeEntityId(classId);
+  const normalizedStudentId = normalizeEntityId(studentId);
+  if (!normalizedClassId || !normalizedStudentId) {
+    throw new Error('Invalid class or student id.');
+  }
+
+  const params = {};
+  if (from) {
+    params.from = toIsoDate(from);
+  }
+  if (to) {
+    params.to = toIsoDate(to);
+  }
+
+  const { data } = await apiClient.get(
+    `/attendance/admin/class/${normalizedClassId}/student/${normalizedStudentId}/report`,
+    { params },
+  );
+
+  return {
+    success: Boolean(data?.success),
+    data: data?.data ?? {},
+  };
 }
 
 export async function getStudentMyAttendanceReport({ from, to }) {

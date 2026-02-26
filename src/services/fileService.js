@@ -12,6 +12,17 @@ function sanitizeFileName(value) {
   return raw.replace(/[<>:"/\\|?*]/g, '_');
 }
 
+function inferExtensionFromUrl(url = '') {
+  const clean = String(url ?? '').split('?')[0].trim();
+  const lastToken = clean.split('/').pop() || '';
+  if (!lastToken.includes('.')) {
+    return '';
+  }
+  const ext = lastToken.split('.').pop() || '';
+  const normalized = ext.replace(/[^\w]/g, '').toLowerCase();
+  return normalized ? `.${normalized}` : '';
+}
+
 export function resolveServerFileUrl(url) {
   const value = String(url ?? '').trim();
   if (!value) {
@@ -81,10 +92,18 @@ export async function downloadContentFile({ downloadUrl, contentId, url, fileNam
     throw new Error('File URL missing.');
   }
 
-  const folder = `${RNFS.DocumentDirectoryPath}/SchoolApp/Documents/${sanitizeFileName(category)}`;
+  const rootDirectory = Platform.OS === 'android'
+    ? (RNFS.DownloadDirectoryPath || RNFS.ExternalDirectoryPath || RNFS.DocumentDirectoryPath)
+    : RNFS.DocumentDirectoryPath;
+  const folder = `${rootDirectory}/SchoolApp/Documents/${sanitizeFileName(category)}`;
   await RNFS.mkdir(folder);
 
-  const safeName = sanitizeFileName(fileName || absoluteUrl.split('/').pop());
+  const fallbackName = absoluteUrl.split('/').pop();
+  let safeName = sanitizeFileName(fileName || fallbackName);
+  if (!safeName.includes('.')) {
+    const inferredExtension = inferExtensionFromUrl(absoluteUrl) || inferExtensionFromUrl(url) || '.pdf';
+    safeName = `${safeName}${inferredExtension}`;
+  }
   const targetPath = `${folder}/${Date.now()}-${safeName}`;
   const authToken = getAuthToken();
   const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {};
@@ -129,7 +148,6 @@ async function openLocalFile(path) {
   if (Platform.OS === 'android') {
     throw new Error('LOCAL_ANDROID_OPEN_UNSUPPORTED');
   }
-
   const encodedPath = encodeURI(normalizedPath);
   const fileUrl = encodedPath.startsWith('file://')
     ? encodedPath
@@ -160,13 +178,18 @@ async function openRemoteFile(params = {}) {
 
 export async function openContentFile(params = {}) {
   const localPath = String(params.localPath ?? '').trim();
+  const allowRemoteFallback = params.allowRemoteFallback !== false;
   if (localPath) {
     try {
       await openLocalFile(localPath);
       return { opened: 'local' };
     } catch (error) {
-      if (String(error?.message) !== 'LOCAL_ANDROID_OPEN_UNSUPPORTED') {
+      const isAndroidLocalUnsupported = String(error?.message) === 'LOCAL_ANDROID_OPEN_UNSUPPORTED';
+      if (!isAndroidLocalUnsupported) {
         throw error;
+      }
+      if (!allowRemoteFallback) {
+        return { opened: 'downloaded-only' };
       }
     }
   }
@@ -180,7 +203,7 @@ export async function downloadAndOpenContentFile(params = {}) {
   const cachedPath = cacheKey ? downloadedFileCache.get(cacheKey) : '';
 
   if (cachedPath && await RNFS.exists(cachedPath)) {
-    await openContentFile({ ...params, localPath: cachedPath });
+    await openContentFile({ ...params, localPath: cachedPath, allowRemoteFallback: false });
     return { path: cachedPath, fromCache: true };
   }
 
@@ -188,6 +211,6 @@ export async function downloadAndOpenContentFile(params = {}) {
   if (cacheKey && saved?.path) {
     downloadedFileCache.set(cacheKey, saved.path);
   }
-  await openContentFile({ ...params, localPath: saved.path });
+  await openContentFile({ ...params, localPath: saved.path, allowRemoteFallback: false });
   return { path: saved.path, fromCache: false };
 }

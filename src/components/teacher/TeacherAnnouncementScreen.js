@@ -32,9 +32,9 @@ export default function TeacherAnnouncementScreen() {
 
   const [page, setPage] = useState(1);
   const [composeOpen, setComposeOpen] = useState(false);
-  const [showClassPicker, setShowClassPicker] = useState(false);
+  const [classDropdownOpen, setClassDropdownOpen] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
-  const [form, setForm] = useState({ title: '', description: '', classId: '' });
+  const [form, setForm] = useState({ title: '', description: '', classIds: [] });
 
   const createMutation = useCreateTeacherAnnouncementMutation();
   const overviewQuery = useTeacherClassesOverviewQuery();
@@ -54,8 +54,8 @@ export default function TeacherAnnouncementScreen() {
       setMessage({ type: 'error', text: 'Title and description are required.' });
       return;
     }
-    if (!form.classId) {
-      setMessage({ type: 'error', text: 'Please select class.' });
+    if (!form.classIds.length) {
+      setMessage({ type: 'error', text: 'Please select at least one class.' });
       return;
     }
 
@@ -63,10 +63,11 @@ export default function TeacherAnnouncementScreen() {
       await createMutation.mutateAsync({
         title: form.title,
         description: form.description,
-        classIds: [form.classId],
+        classIds: form.classIds,
       });
       setMessage({ type: 'success', text: 'Announcement published successfully.' });
-      setForm({ title: '', description: '', classId: '' });
+      setForm({ title: '', description: '', classIds: [] });
+      setClassDropdownOpen(false);
       setComposeOpen(false);
       setPage(1);
     } catch (error) {
@@ -116,13 +117,43 @@ export default function TeacherAnnouncementScreen() {
             </View>
 
             <Text style={styles.inputLabel}>Target Class</Text>
-            <Pressable style={styles.selectBtn} onPress={() => setShowClassPicker(true)}>
+            <Pressable style={styles.selectBtn} onPress={() => setClassDropdownOpen(prev => !prev)}>
               <Ionicons name="library-outline" size={16} color={colors.teacher.accent} />
               <Text style={styles.selectText}>
-                {form.classId ? classes.find(item => item.id === form.classId)?.label ?? form.classId : 'Select class'}
+                {form.classIds.length
+                  ? `${form.classIds.length} class${form.classIds.length > 1 ? 'es' : ''} selected`
+                  : 'Select class(es)'}
               </Text>
-              <Ionicons name="chevron-down" size={16} color={colors.teacher.textSecondary} />
+              <Ionicons name={classDropdownOpen ? 'chevron-up' : 'chevron-down'} size={16} color={colors.teacher.textSecondary} />
             </Pressable>
+            {classDropdownOpen ? (
+              <View style={styles.dropdownBox}>
+                <ScrollView nestedScrollEnabled style={styles.modalList}>
+                  {classes.map(item => (
+                    <Pressable
+                      key={item.id}
+                      style={styles.modalItem}
+                      onPress={() => {
+                        setForm(prev => {
+                          const exists = prev.classIds.includes(item.id);
+                          return {
+                            ...prev,
+                            classIds: exists
+                              ? prev.classIds.filter(id => id !== item.id)
+                              : [...prev.classIds, item.id],
+                          };
+                        });
+                      }}
+                    >
+                      <Text style={styles.modalItemText}>{item.label}</Text>
+                      {form.classIds.includes(item.id) ? (
+                        <Ionicons name="checkmark-circle" size={16} color={colors.brand.primary} />
+                      ) : null}
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </View>
+            ) : null}
 
             <Text style={styles.inputLabel}>Title</Text>
             <View style={styles.inputRow}>
@@ -165,30 +196,6 @@ export default function TeacherAnnouncementScreen() {
         </View>
       </Modal>
 
-      <Modal visible={showClassPicker} transparent animationType="fade">
-        <View style={styles.modalOverlayCenter}>
-          <View style={styles.pickerCard}>
-            <Text style={styles.modalTitle}>Select Class</Text>
-            <ScrollView style={styles.modalList}>
-              {classes.map(item => (
-                <Pressable
-                  key={item.id}
-                  style={styles.modalItem}
-                  onPress={() => {
-                    setForm(prev => ({ ...prev, classId: item.id }));
-                    setShowClassPicker(false);
-                  }}
-                >
-                  <Text style={styles.modalItemText}>{item.label}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-            <Pressable style={styles.closeBtn} onPress={() => setShowClassPicker(false)}>
-              <Text style={styles.closeText}>Done</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -318,12 +325,6 @@ const createStyles = colors =>
       justifyContent: 'flex-end',
       paddingHorizontal: 0,
     },
-    modalOverlayCenter: {
-      flex: 1,
-      backgroundColor: colors.teacher.modalBackdrop,
-      justifyContent: 'center',
-      paddingHorizontal: 16,
-    },
     modalCard: {
       borderTopLeftRadius: 22,
       borderTopRightRadius: 22,
@@ -332,15 +333,6 @@ const createStyles = colors =>
       backgroundColor: colors.teacher.surface,
       padding: 16,
       minHeight: '66%',
-    },
-    pickerCard: {
-      width: '100%',
-      maxHeight: '68%',
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: colors.teacher.borderStrong,
-      backgroundColor: colors.teacher.surface,
-      padding: 12,
     },
     modalHeadRow: {
       flexDirection: 'row',
@@ -387,6 +379,14 @@ const createStyles = colors =>
       color: colors.teacher.textPrimary,
       fontSize: 12.5,
       fontWeight: '600',
+    },
+    dropdownBox: {
+      borderWidth: 1,
+      borderColor: colors.teacher.borderSoft,
+      borderRadius: 10,
+      backgroundColor: colors.teacher.surfaceStrong,
+      marginBottom: 10,
+      overflow: 'hidden',
     },
     inputRow: {
       borderWidth: 1,
@@ -451,6 +451,10 @@ const createStyles = colors =>
       maxHeight: 260,
     },
     modalItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
       paddingVertical: 10,
       borderBottomWidth: 1,
       borderBottomColor: colors.teacher.borderSubtle,
@@ -459,18 +463,5 @@ const createStyles = colors =>
       color: colors.teacher.textPrimary,
       fontSize: 12.5,
       fontWeight: '600',
-    },
-    closeBtn: {
-      alignSelf: 'flex-end',
-      marginTop: 10,
-      borderRadius: 10,
-      backgroundColor: colors.brand.primary,
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-    },
-    closeText: {
-      color: colors.text.inverse,
-      fontSize: 12,
-      fontWeight: '700',
     },
   });

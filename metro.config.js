@@ -7,6 +7,7 @@ const defaultConfig = getDefaultConfig(__dirname);
 
 module.exports = mergeConfig(defaultConfig, {
   resolver: {
+    blockList: /node_modules[\/\\].+[\/\\](android|ios)[\/\\]build[\/\\].*/,
     resolveRequest(context, moduleName, platform) {
       if (moduleName === 'axios') {
         return {

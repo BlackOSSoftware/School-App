@@ -2,9 +2,14 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@react-native-vector-icons/ionicons';
-import { useAdminAttendanceSummaryByDateQuery, useAdminClassAttendanceByDateQuery } from '../../hooks/useAttendanceQueries';
+import {
+  useAdminAttendanceSummaryByDateQuery,
+  useAdminClassAttendanceByDateQuery,
+  useAdminStudentAttendanceReportQuery,
+} from '../../hooks/useAttendanceQueries';
 import { getTodayIsoDate } from '../../services/attendanceService';
 import { useAppTheme } from '../../theme/ThemeContext';
+import AttendanceReportModal from '../common/AttendanceReportModal';
 
 function toIsoDate(value) {
   const date = value instanceof Date ? value : new Date(value);
@@ -22,6 +27,12 @@ export default function AdminAttendanceScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showPicker, setShowPicker] = useState(false);
   const [classModal, setClassModal] = useState({ open: false, classId: '' });
+  const [studentReportState, setStudentReportState] = useState({
+    open: false,
+    classId: '',
+    studentId: '',
+    studentName: '',
+  });
 
   const dateIso = toIsoDate(selectedDate);
   const summaryQuery = useAdminAttendanceSummaryByDateQuery({ date: dateIso });
@@ -29,6 +40,11 @@ export default function AdminAttendanceScreen() {
     classId: classModal.classId,
     date: dateIso,
     enabled: classModal.open && Boolean(classModal.classId),
+  });
+  const studentReportQuery = useAdminStudentAttendanceReportQuery({
+    classId: studentReportState.classId,
+    studentId: studentReportState.studentId,
+    enabled: studentReportState.open && Boolean(studentReportState.classId) && Boolean(studentReportState.studentId),
   });
 
   const summaryData = summaryQuery.data?.data?.data || [];
@@ -89,7 +105,18 @@ export default function AdminAttendanceScreen() {
                 </View>
                 <ScrollView style={styles.modalList}>
                   {[...(detail.presentStudents || []), ...(detail.absentStudents || [])].map(student => (
-                    <View key={student.studentId} style={styles.studentRow}>
+                    <Pressable
+                      key={student.studentId}
+                      style={styles.studentRow}
+                      onPress={() =>
+                        setStudentReportState({
+                          open: true,
+                          classId: detail?.class?.id || classModal.classId,
+                          studentId: student.studentId,
+                          studentName: student.studentName || 'Student',
+                        })
+                      }
+                    >
                       <View>
                         <Text style={styles.studentName}>{student.studentName}</Text>
                         <Text style={styles.studentMeta}>Scholar #{student.scholarNumber || '-'}</Text>
@@ -97,7 +124,7 @@ export default function AdminAttendanceScreen() {
                       <Text style={[styles.studentStatus, student.status === 'present' ? styles.presentText : styles.absentText]}>
                         {student.status}
                       </Text>
-                    </View>
+                    </Pressable>
                   ))}
                 </ScrollView>
               </>
@@ -123,6 +150,16 @@ export default function AdminAttendanceScreen() {
           }}
         />
       ) : null}
+
+      <AttendanceReportModal
+        visible={studentReportState.open}
+        onClose={() =>
+          setStudentReportState({ open: false, classId: '', studentId: '', studentName: '' })
+        }
+        loading={studentReportQuery.isLoading}
+        report={studentReportQuery.data?.data}
+        studentName={studentReportState.studentName}
+      />
     </View>
   );
 }

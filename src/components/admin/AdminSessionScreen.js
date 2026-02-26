@@ -130,6 +130,7 @@ export default function AdminSessionScreen() {
   const [createEndDate, setCreateEndDate] = useState(new Date());
   const [createIsActive, setCreateIsActive] = useState(true);
   const [createPickerField, setCreatePickerField] = useState('');
+  const [createModalVisible, setCreateModalVisible] = useState(false);
 
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editSessionId, setEditSessionId] = useState('');
@@ -175,6 +176,9 @@ export default function AdminSessionScreen() {
       });
       setCreateName('');
       setCreateIsActive(true);
+      setCreateStartDate(new Date());
+      setCreateEndDate(new Date());
+      setCreateModalVisible(false);
       setMessage({ type: 'success', text: 'Session created successfully.' });
     } catch (error) {
       setMessage({
@@ -300,63 +304,14 @@ export default function AdminSessionScreen() {
       <MessageBanner type={message.type} text={message.text} onClose={closeMessage} styles={styles} />
 
       <View style={styles.panel}>
-        <Text style={styles.panelTitle}>Create Session</Text>
-        <Text style={styles.inputLabel}>Session Name</Text>
-        <View style={styles.inputRow}>
-          <Ionicons name="book-outline" size={17} style={styles.inputIcon} />
-          <TextInput
-            style={styles.inputWithIcon}
-            placeholder="Session name (e.g. 2026-27)"
-            placeholderTextColor={colors.text.muted}
-            value={createName}
-            onChangeText={setCreateName}
-          />
+        <View style={styles.panelHeaderRow}>
+          <Text style={styles.panelTitle}>Create Session</Text>
+          <Pressable style={styles.smallBtnActiveSolid} onPress={() => setCreateModalVisible(true)}>
+            <Ionicons name="add" size={13} color={colors.text.inverse} />
+            <Text style={styles.smallBtnTextActive}>Add New</Text>
+          </Pressable>
         </View>
-
-        <DateField
-          label="Start Date"
-          value={createStartDate}
-          styles={styles}
-          onPress={() => setCreatePickerField('start')}
-        />
-        <DateField
-          label="End Date"
-          value={createEndDate}
-          styles={styles}
-          onPress={() => setCreatePickerField('end')}
-        />
-
-        {createPickerField ? (
-          <DateTimePicker
-            value={createPickerField === 'start' ? createStartDate : createEndDate}
-            mode="date"
-            display="calendar"
-            onChange={(_, selectedDate) => {
-              setCreatePickerField('');
-              if (!selectedDate) {
-                return;
-              }
-              if (createPickerField === 'start') {
-                setCreateStartDate(selectedDate);
-              } else {
-                setCreateEndDate(selectedDate);
-              }
-            }}
-          />
-        ) : null}
-
-        <View style={styles.switchRow}>
-          <Text style={styles.switchText}>Active Session</Text>
-          <Switch value={createIsActive} onValueChange={setCreateIsActive} />
-        </View>
-
-        <Pressable
-          style={[styles.primaryBtn, createSessionMutation.isPending ? styles.disabledBtn : null]}
-          onPress={onCreate}
-          disabled={createSessionMutation.isPending}
-        >
-          <Text style={styles.primaryBtnText}>Create Session</Text>
-        </Pressable>
+        <Text style={styles.placeholderText}>Use modal form to add a new academic session.</Text>
       </View>
 
       <View style={styles.panel}>
@@ -424,12 +379,86 @@ export default function AdminSessionScreen() {
         <PaginationControls
           page={page}
           totalPages={totalPages}
+          onFirst={() => setPage(1)}
           onPrev={() => setPage(prev => Math.max(1, prev - 1))}
           onNext={() => setPage(prev => Math.min(totalPages, prev + 1))}
+          onLast={() => setPage(totalPages)}
+          disableFirst={page <= 1}
           disablePrev={page <= 1}
           disableNext={page >= totalPages}
+          disableLast={page >= totalPages}
         />
       </View>
+
+      <Modal visible={createModalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.editCard}>
+            <Text style={styles.editTitle}>Create Session</Text>
+
+            <Text style={styles.inputLabel}>Session Name</Text>
+            <View style={styles.inputRow}>
+              <Ionicons name="book-outline" size={17} style={styles.inputIcon} />
+              <TextInput
+                style={styles.inputWithIcon}
+                placeholder="Session name (e.g. 2026-27)"
+                placeholderTextColor={colors.text.muted}
+                value={createName}
+                onChangeText={setCreateName}
+              />
+            </View>
+
+            <DateField
+              label="Start Date"
+              value={createStartDate}
+              styles={styles}
+              onPress={() => setCreatePickerField('start')}
+            />
+            <DateField
+              label="End Date"
+              value={createEndDate}
+              styles={styles}
+              onPress={() => setCreatePickerField('end')}
+            />
+
+            {createPickerField ? (
+              <DateTimePicker
+                value={createPickerField === 'start' ? createStartDate : createEndDate}
+                mode="date"
+                display="calendar"
+                onChange={(_, selectedDate) => {
+                  setCreatePickerField('');
+                  if (!selectedDate) {
+                    return;
+                  }
+                  if (createPickerField === 'start') {
+                    setCreateStartDate(selectedDate);
+                  } else {
+                    setCreateEndDate(selectedDate);
+                  }
+                }}
+              />
+            ) : null}
+
+            <View style={styles.switchRow}>
+              <Text style={styles.switchText}>Active Session</Text>
+              <Switch value={createIsActive} onValueChange={setCreateIsActive} />
+            </View>
+
+            <View style={styles.confirmRow}>
+              <Pressable style={styles.confirmBtnGhost} onPress={() => setCreateModalVisible(false)}>
+                <Text style={styles.confirmBtnGhostText}>Cancel</Text>
+              </Pressable>
+              <Pressable style={styles.confirmBtnSolid} onPress={onCreate} disabled={createSessionMutation.isPending}>
+                {createSessionMutation.isPending ? (
+                  <ActivityIndicator size="small" color={colors.text.inverse} />
+                ) : (
+                  <Text style={styles.confirmBtnSolidText}>Create</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Modal visible={editModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
@@ -730,6 +759,15 @@ const createStyles = colors =>
   },
   smallBtnActive: {
     backgroundColor: colors.brand.primary,
+  },
+  smallBtnActiveSolid: {
+    borderRadius: 9,
+    backgroundColor: colors.brand.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   smallBtnText: {
     color: colors.brand.primary,

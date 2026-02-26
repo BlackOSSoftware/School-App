@@ -4,6 +4,7 @@ import {
   deleteStudent,
   getAllStudents,
   getStudentById,
+  transitionStudentsToSession,
   updateStudent,
 } from '../services/studentService';
 
@@ -11,12 +12,13 @@ export const STUDENT_QUERY_KEYS = {
   all: ['students'],
   list: (page, limit, search, classId) => ['students', 'list', page, limit, search, classId],
   detail: id => ['students', 'detail', id],
+  sessionTransition: ['students', 'session-transition'],
 };
 
-export function useStudentsQuery({ page = 1, limit = 10, search = '', classId = '' }) {
+export function useStudentsQuery({ page = 1, limit = 10, search = '', classId = '', sessionId = '' }) {
   return useQuery({
-    queryKey: STUDENT_QUERY_KEYS.list(page, limit, search, classId),
-    queryFn: () => getAllStudents({ page, limit, search, classId }),
+    queryKey: STUDENT_QUERY_KEYS.list(page, limit, search, `${classId}:${sessionId}`),
+    queryFn: () => getAllStudents({ page, limit, search, classId, sessionId }),
     placeholderData: previousData => previousData,
   });
 }
@@ -62,3 +64,13 @@ export function useDeleteStudentMutation() {
   });
 }
 
+export function useSessionTransitionMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: transitionStudentsToSession,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: STUDENT_QUERY_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: STUDENT_QUERY_KEYS.sessionTransition });
+    },
+  });
+}

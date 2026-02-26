@@ -11,6 +11,13 @@ import StudentDashboard from './src/screen/dashboard/StudentDashboard';
 import { displayRemoteNotification } from './src/services/notificationService';
 import { ThemeProvider } from './src/theme/ThemeContext';
 import { setAuthToken, setUnauthorizedHandler } from './src/api/client';
+import { getDeviceFcmToken, requestNotificationPermissionPrompt } from './src/services/fcmService';
+import { updateMyFcmToken } from './src/services/authService';
+import {
+  clearLocalSession,
+  readLocalSession,
+  saveLocalSession,
+} from './src/services/localSessionService';
 
 function normalizeRole(role: string | undefined | null) {
   return String(role ?? '').toLowerCase();
@@ -18,6 +25,7 @@ function normalizeRole(role: string | undefined | null) {
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
+  const [restoringSession, setRestoringSession] = useState(true);
   const [session, setSession] = useState<null | {
     token: string;
     role: string;
@@ -49,11 +57,35 @@ export default function App() {
   const role = normalizeRole(session?.role);
 
   useEffect(() => {
+    let alive = true;
+    readLocalSession()
+      .then(savedSession => {
+        if (!alive || !savedSession?.token) {
+          return;
+        }
+        setAuthToken(savedSession.token);
+        setSession(savedSession);
+      })
+      .finally(() => {
+        if (alive) {
+          setRestoringSession(false);
+        }
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      requestNotificationPermissionPrompt().catch(() => {});
+    }, 1800);
+
     const unsubscribeForeground = messaging().onMessage(async remoteMessage => {
       const payload = await displayRemoteNotification(remoteMessage);
       setNotificationModal({
         visible: true,
-        title: payload?.title || 'School App',
+        title: payload?.title || 'MMPS',
         message: payload?.body || 'New notification received',
       });
     });
@@ -65,16 +97,40 @@ export default function App() {
       .catch(() => {});
 
     return () => {
+      clearTimeout(timer);
       unsubscribeForeground();
       unsubscribeOpen();
     };
   }, []);
 
+  useEffect(() => {
+    if (!session?.token || showSplash || restoringSession) {
+      return;
+    }
+    getDeviceFcmToken()
+      .then(token => {
+        if (token) {
+          return updateMyFcmToken(token);
+        }
+        return null;
+      })
+      .catch(() => {});
+  }, [restoringSession, session?.token, showSplash]);
+
   const logout = useCallback(() => {
     setAuthToken('');
     queryClient.clear();
     setSession(null);
+    clearLocalSession();
   }, [queryClient]);
+
+  const handleLoginSuccess = useCallback(
+    (nextSession: { token: string; role: string; user?: Record<string, unknown> | null }) => {
+      setSession(nextSession);
+      saveLocalSession(nextSession);
+    },
+    [],
+  );
 
   useEffect(() => {
     setUnauthorizedHandler(() => {
@@ -101,12 +157,12 @@ export default function App() {
     <SafeAreaProvider>
       <ThemeProvider>
         <QueryClientProvider client={queryClient}>
-          {showSplash ? (
+          {showSplash || restoringSession ? (
             <SplashScreen onFinish={() => setShowSplash(false)} />
           ) : session ? (
             renderDashboard()
           ) : (
-            <LoginScreen onLoginSuccess={setSession} />
+            <LoginScreen onLoginSuccess={handleLoginSuccess} />
           )}
           <Modal visible={notificationModal.visible} transparent animationType="fade">
             <View style={styles.notificationOverlay}>

@@ -21,6 +21,7 @@ import {
 import { useClassesQuery } from '../../hooks/useClassQueries';
 import { useAppTheme } from '../../theme/ThemeContext';
 import PaginationControls from '../common/PaginationControls';
+import SelectorModal from '../common/SelectorModal';
 
 const PAGE_LIMIT = 10;
 
@@ -103,43 +104,6 @@ function MessageBanner({ text, type, onClose, styles }) {
         <Text style={styles.bannerClose}>x</Text>
       </Pressable>
     </View>
-  );
-}
-
-function ClassSelectModal({ visible, onClose, classes, onSelect, styles }) {
-  return (
-    <Modal visible={visible} transparent animationType="fade">
-      <View style={styles.modalOverlay}>
-        <View style={styles.selectorCard}>
-          <Text style={styles.selectorTitle}>Select Class</Text>
-          <ScrollView style={styles.selectorList}>
-            <Pressable style={styles.selectorItem} onPress={() => onSelect('')}>
-              <Text style={styles.selectorItemText}>None</Text>
-            </Pressable>
-            {classes.map(item => {
-              const classId = getEntityId(item);
-              if (!classId) {
-                return null;
-              }
-              return (
-              <Pressable
-                key={classId}
-                style={styles.selectorItem}
-                onPress={() => onSelect(classId)}
-              >
-                <Text style={styles.selectorItemText}>
-                  {item.name} - {item.section}
-                </Text>
-              </Pressable>
-              );
-            })}
-          </ScrollView>
-          <Pressable style={styles.selectorCloseBtn} onPress={onClose}>
-            <Text style={styles.selectorCloseText}>Close</Text>
-          </Pressable>
-        </View>
-      </View>
-    </Modal>
   );
 }
 
@@ -289,7 +253,7 @@ function TeacherFormModal({
                 placeholderTextColor={colors.text.muted}
               />
             </View>
-            {mode === 'edit' ? <Text style={styles.inputNote}>Password empty chhodega to old password same rahega.</Text> : null}
+            {mode === 'edit' ? <Text style={styles.inputNote}>Leave this field blank to keep the current password.</Text> : null}
 
             <View style={styles.sectionCard}>
               <View style={styles.sectionHeader}>
@@ -453,12 +417,24 @@ function TeacherFormModal({
         </ScrollView>
       </View>
 
-      <ClassSelectModal
+      <SelectorModal
         visible={classPicker.open}
         onClose={closePicker}
-        classes={classes}
         onSelect={onSelectClass}
-        styles={styles}
+        title="Select Class"
+        searchPlaceholder="Search class or section"
+        items={classes}
+        selectedValue={
+          classPicker.target === 'classTeacherOf'
+            ? String(form.classTeacherOf || '')
+            : classPicker.target.startsWith('assignment:')
+              ? String(form.assignments?.[Number(classPicker.target.split(':')[1])]?.classId || '')
+              : ''
+        }
+        includeNone
+        noneLabel="None"
+        valueExtractor={item => getEntityId(item)}
+        labelExtractor={item => `${item?.name ?? '-'} - ${item?.section ?? '-'}`}
       />
     </Modal>
   );
@@ -485,15 +461,30 @@ function TeacherDetailModal({ visible, onClose, detail, loading, styles, colors,
             <ActivityIndicator size="small" color={colors.brand.primary} />
           ) : detail ? (
             <ScrollView style={styles.detailScroll}>
-              <Text style={styles.detailLine}>Name: {detail.name}</Text>
-              <Text style={styles.detailLine}>Email: {detail.email}</Text>
-              <Text style={styles.detailLine}>Status: {detail.status ?? '-'}</Text>
-              <Text style={styles.detailLine}>
+              <View style={styles.detailLineRow}>
+                <Ionicons name="person-outline" size={15} color={colors.admin.accent} />
+                <Text style={styles.detailLine}>Name: {detail.name}</Text>
+              </View>
+              <View style={styles.detailLineRow}>
+                <Ionicons name="mail-outline" size={15} color={colors.admin.accent} />
+                <Text style={styles.detailLine}>Email: {detail.email}</Text>
+              </View>
+              <View style={styles.detailLineRow}>
+                <Ionicons name="checkmark-circle-outline" size={15} color={colors.admin.accent} />
+                <Text style={styles.detailLine}>Status: {detail.status ?? '-'}</Text>
+              </View>
+              <View style={styles.detailLineRow}>
+                <Ionicons name="book-outline" size={15} color={colors.admin.accent} />
+                <Text style={styles.detailLine}>
                 Subjects: {Array.isArray(detail.subjects) ? detail.subjects.join(', ') : '-'}
-              </Text>
-              <Text style={styles.detailLine}>
+                </Text>
+              </View>
+              <View style={styles.detailLineRow}>
+                <Ionicons name="business-outline" size={15} color={colors.admin.accent} />
+                <Text style={styles.detailLine}>
                 Class Teacher Of: {getClassDisplay(detail.classTeacherOf, classLabelById)}
-              </Text>
+                </Text>
+              </View>
               <Text style={styles.detailLine}>Assignments:</Text>
               {(detail.lectureAssignments ?? []).map((item, idx) => (
                 <Text key={`la-${idx}`} style={styles.detailSubLine}>
@@ -743,10 +734,14 @@ export default function AdminTeacherScreen() {
           <PaginationControls
             page={page}
             totalPages={totalPages}
+            onFirst={() => setPage(1)}
             onPrev={() => setPage(prev => Math.max(1, prev - 1))}
             onNext={() => setPage(prev => Math.min(totalPages, prev + 1))}
+            onLast={() => setPage(totalPages)}
+            disableFirst={page <= 1}
             disablePrev={page <= 1}
             disableNext={page >= totalPages}
+            disableLast={page >= totalPages}
           />
         }
       />
@@ -1312,6 +1307,12 @@ const createStyles = colors =>
       color: colors.admin.textPrimary,
       fontSize: 13,
       marginBottom: 6,
+    },
+    detailLineRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 2,
     },
     detailSubLine: {
       color: colors.admin.textSecondary,

@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import AnnouncementFeed from '../../components/common/AnnouncementFeed';
+import { BackHandler, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import StudentAttendanceScreen from '../../components/student/StudentAttendanceScreen';
 import StudentBottomNav from '../../components/student/StudentBottomNav';
 import StudentHomeScreen from '../../components/student/StudentHomeScreen';
@@ -8,20 +7,31 @@ import StudentHomeworkScreen from '../../components/student/StudentHomeworkScree
 import StudentNotesScreen from '../../components/student/StudentNotesScreen';
 import StudentProfileScreen from '../../components/student/StudentProfileScreen';
 import StudentTopBar from '../../components/student/StudentTopBar';
-import { useMyAnnouncementsQuery } from '../../hooks/useAnnouncementQueries';
 import { useAppTheme } from '../../theme/ThemeContext';
 
 export default function StudentDashboard({ session, onLogout }) {
   const { colors } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [announcementPage, setAnnouncementPage] = useState(1);
+  const [prefillHomework, setPrefillHomework] = useState(null);
+  const [prefillNotes, setPrefillNotes] = useState(null);
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
 
-  const announcementsQuery = useMyAnnouncementsQuery({
-    page: announcementPage,
-    limit: 10,
-    enabled: activeTab === 'dashboard',
-  });
+  React.useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (exitConfirmOpen) {
+        setExitConfirmOpen(false);
+        return true;
+      }
+      if (activeTab !== 'dashboard') {
+        setActiveTab('dashboard');
+        return true;
+      }
+      setExitConfirmOpen(true);
+      return true;
+    });
+    return () => subscription.remove();
+  }, [activeTab, exitConfirmOpen]);
 
   const title =
     activeTab === 'attendance'
@@ -41,14 +51,14 @@ export default function StudentDashboard({ session, onLogout }) {
     if (activeTab === 'notes') {
       return (
         <View style={styles.blockWrap}>
-          <StudentNotesScreen />
+          <StudentNotesScreen prefillSelectedItem={prefillNotes} />
         </View>
       );
     }
     if (activeTab === 'homework') {
       return (
         <View style={styles.blockWrap}>
-          <StudentHomeworkScreen />
+          <StudentHomeworkScreen prefillSelectedItem={prefillHomework} />
         </View>
       );
     }
@@ -62,16 +72,18 @@ export default function StudentDashboard({ session, onLogout }) {
 
     return (
       <View style={styles.dashboardWrap}>
-        <StudentHomeScreen session={session} />
-        <Text style={styles.sectionTitle}>Announcements</Text>
-        <View style={styles.announcementArea}>
-          <AnnouncementFeed
-            query={announcementsQuery}
-            page={announcementPage}
-            onPageChange={setAnnouncementPage}
-            variant="student"
-          />
-        </View>
+        <StudentHomeScreen
+          session={session}
+          onOpenTab={setActiveTab}
+          onOpenHomework={item => {
+            setPrefillHomework(item);
+            setActiveTab('homework');
+          }}
+          onOpenNotes={item => {
+            setPrefillNotes(item);
+            setActiveTab('notes');
+          }}
+        />
       </View>
     );
   };
@@ -84,6 +96,28 @@ export default function StudentDashboard({ session, onLogout }) {
       <StudentTopBar title={title} />
       <View style={styles.contentArea}>{renderContent()}</View>
       <StudentBottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+
+      <Modal
+        visible={exitConfirmOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setExitConfirmOpen(false)}
+      >
+        <View style={styles.exitOverlay}>
+          <View style={styles.exitCard}>
+            <Text style={styles.exitTitle}>Exit App?</Text>
+            <Text style={styles.exitText}>Are you sure you want to close the app?</Text>
+            <View style={styles.exitActions}>
+              <Pressable style={styles.exitCancelBtn} onPress={() => setExitConfirmOpen(false)}>
+                <Text style={styles.exitCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable style={styles.exitConfirmBtn} onPress={() => BackHandler.exitApp()}>
+                <Text style={styles.exitConfirmText}>Exit</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -121,18 +155,43 @@ const createStyles = colors =>
       flex: 1,
     },
     dashboardWrap: { flex: 1 },
-    announcementArea: { flex: 1, paddingHorizontal: 14 },
-    sectionTitle: {
-      marginTop: 12,
-      marginBottom: 8,
-      marginHorizontal: 14,
-      color: colors.student.textPrimary,
-      fontSize: 14,
-      fontWeight: '800',
-    },
     blockWrap: {
       flex: 1,
       paddingHorizontal: 14,
       paddingTop: 10,
     },
+    exitOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(12, 24, 42, 0.42)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 18,
+    },
+    exitCard: {
+      width: '100%',
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.student.borderStrong,
+      backgroundColor: colors.student.surface,
+      padding: 14,
+    },
+    exitTitle: { color: colors.student.textPrimary, fontSize: 16, fontWeight: '900' },
+    exitText: { marginTop: 6, color: colors.student.textSecondary, fontSize: 12.5, fontWeight: '600' },
+    exitActions: { marginTop: 12, flexDirection: 'row', gap: 8, justifyContent: 'flex-end' },
+    exitCancelBtn: {
+      borderWidth: 1,
+      borderColor: colors.student.borderSoft,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      backgroundColor: colors.student.surfaceStrong,
+    },
+    exitCancelText: { color: colors.student.textPrimary, fontSize: 12, fontWeight: '700' },
+    exitConfirmBtn: {
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      backgroundColor: colors.state.error,
+    },
+    exitConfirmText: { color: colors.text.inverse, fontSize: 12, fontWeight: '800' },
   });

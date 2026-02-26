@@ -4,6 +4,7 @@ import Ionicons from '@react-native-vector-icons/ionicons';
 import { useStudentMyAttendanceReportQuery } from '../../hooks/useAttendanceQueries';
 import { useActiveSessionQuery } from '../../hooks/useSessionQueries';
 import { getTodayIsoDate } from '../../services/attendanceService';
+import StudentAttendanceOverviewCard from './StudentAttendanceOverviewCard';
 import { useAppTheme } from '../../theme/ThemeContext';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -126,11 +127,10 @@ export default function StudentAttendanceScreen() {
 
       {reportQuery.isLoading ? <ActivityIndicator size="small" color={colors.brand.primary} /> : null}
 
-      <View style={styles.statsRow}>
-        <View style={styles.statCard}><Text style={styles.statValue}>{report.presentDays ?? 0}</Text><Text style={styles.statLabel}>Present</Text></View>
-        <View style={styles.statCard}><Text style={styles.statValue}>{report.absentDays ?? 0}</Text><Text style={styles.statLabel}>Absent</Text></View>
-        <View style={styles.statCard}><Text style={styles.statValue}>{report.presentPercentage ?? 0}%</Text><Text style={styles.statLabel}>Rate</Text></View>
-      </View>
+      <StudentAttendanceOverviewCard
+        report={report}
+        subtitle={`${monthLabel(monthCursor)} Snapshot`}
+      />
 
       <View style={styles.calendarCard}>
         <View style={styles.weekHeaderRow}>
@@ -193,19 +193,8 @@ const createStyles = colors =>
       justifyContent: 'center',
     },
     monthNavBtnDisabled: { opacity: 0.5 },
-    statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10, gap: 8 },
-    statCard: {
-      flex: 1,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.student.borderStrong,
-      backgroundColor: colors.student.surface,
-      alignItems: 'center',
-      paddingVertical: 10,
-    },
-    statValue: { color: colors.student.textPrimary, fontSize: 16, fontWeight: '900' },
-    statLabel: { marginTop: 3, color: colors.student.textSecondary, fontSize: 11, fontWeight: '700' },
     calendarCard: {
+      marginTop: 10,
       borderRadius: 14,
       borderWidth: 1,
       borderColor: colors.student.borderStrong,

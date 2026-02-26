@@ -93,7 +93,7 @@ export default function SplashScreen({ onFinish }) {
           },
         ]}
       >
-        <Text style={styles.logoText}>SA</Text>
+        <Text style={styles.logoText}>MMPS</Text>
       </Animated.View>
 
       <Animated.View
@@ -102,8 +102,8 @@ export default function SplashScreen({ onFinish }) {
           transform: [{ translateY: titleTranslate }],
         }}
       >
-        <Text style={styles.title}>SchoolApp</Text>
-        <Text style={styles.subtitle}>Learn. Grow. Lead.</Text>
+        <Text style={styles.title}>MMPS</Text>
+        <Text style={styles.subtitle}>Mahesh Memorial Public School</Text>
       </Animated.View>
     </View>
   );
@@ -135,7 +135,7 @@ const createStyles = colors =>
     },
     logoText: {
       color: colors.text.inverse,
-      fontSize: 34,
+      fontSize: 30,
       fontWeight: '900',
       letterSpacing: 1,
     },

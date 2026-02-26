@@ -75,10 +75,14 @@ export default function TeacherClassStudentsScreen({
             <PaginationControls
               page={page}
               totalPages={totalPages}
+              onFirst={() => onPageChange(1)}
               onPrev={() => onPageChange(Math.max(1, page - 1))}
               onNext={() => onPageChange(Math.min(totalPages, page + 1))}
+              onLast={() => onPageChange(totalPages)}
+              disableFirst={page <= 1}
               disablePrev={page <= 1}
               disableNext={page >= totalPages}
+              disableLast={page >= totalPages}
             />
           }
         />

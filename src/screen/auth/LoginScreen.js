@@ -218,10 +218,10 @@ export default function LoginScreen({ onLoginSuccess }) {
               },
             ]}
           >
-            <Text style={styles.overline}>SCHOOL MANAGEMENT</Text>
+            <Text style={styles.overline}>MMPS</Text>
             <Text style={styles.heroTitle}>Welcome Back</Text>
             <Text style={styles.heroSubtitle}>
-              Login and continue to your dashboard.
+              Mahesh Memorial Public School
             </Text>
           </Animated.View>
 

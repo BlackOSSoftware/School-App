@@ -57,13 +57,13 @@ export default function AdminAnnouncementScreen() {
 
   const [page, setPage] = useState(1);
   const [composeOpen, setComposeOpen] = useState(false);
-  const [showClassPicker, setShowClassPicker] = useState(false);
+  const [classDropdownOpen, setClassDropdownOpen] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [form, setForm] = useState({
     title: '',
     description: '',
     announcementType: 'school_wide',
-    classId: '',
+    classIds: [],
   });
 
   const classesQuery = useClassesQuery(1, 200);
@@ -74,17 +74,6 @@ export default function AdminAnnouncementScreen() {
     () => (Array.isArray(classesQuery.data?.data) ? classesQuery.data.data : []),
     [classesQuery.data?.data],
   );
-
-  const classLabelById = useMemo(() => {
-    const map = new Map();
-    classList.forEach(item => {
-      const id = getEntityId(item);
-      if (id) {
-        map.set(id, `${item.name} - ${item.section}`);
-      }
-    });
-    return map;
-  }, [classList]);
 
   const total = Number(announcementQuery.data?.total ?? 0);
 
@@ -102,8 +91,8 @@ export default function AdminAnnouncementScreen() {
       return;
     }
 
-    if (form.announcementType === 'class_wise' && !form.classId) {
-      setMessage({ type: 'error', text: 'Please select class for class-wise announcement.' });
+    if (form.announcementType === 'class_wise' && !form.classIds.length) {
+      setMessage({ type: 'error', text: 'Please select at least one class for class-wise announcement.' });
       return;
     }
 
@@ -112,10 +101,11 @@ export default function AdminAnnouncementScreen() {
         title: form.title,
         description: form.description,
         announcementType: form.announcementType,
-        classId: form.classId,
+        classIds: form.classIds,
       });
       setMessage({ type: 'success', text: 'Announcement published successfully.' });
-      setForm({ title: '', description: '', announcementType: 'school_wide', classId: '' });
+      setForm({ title: '', description: '', announcementType: 'school_wide', classIds: [] });
+      setClassDropdownOpen(false);
       setComposeOpen(false);
       setPage(1);
     } catch (error) {
@@ -168,7 +158,10 @@ export default function AdminAnnouncementScreen() {
             <View style={styles.segmentWrap}>
               <Pressable
                 style={[styles.segmentBtn, form.announcementType === 'school_wide' ? styles.segmentBtnActive : null]}
-                onPress={() => setForm(prev => ({ ...prev, announcementType: 'school_wide', classId: '' }))}
+                onPress={() => {
+                  setForm(prev => ({ ...prev, announcementType: 'school_wide', classIds: [] }));
+                  setClassDropdownOpen(false);
+                }}
               >
                 <Text style={[styles.segmentText, form.announcementType === 'school_wide' ? styles.segmentTextActive : null]}>
                   School Wide
@@ -187,13 +180,53 @@ export default function AdminAnnouncementScreen() {
             {form.announcementType === 'class_wise' ? (
               <>
                 <Text style={styles.inputLabel}>Target Class</Text>
-                <Pressable style={styles.selectBtn} onPress={() => setShowClassPicker(true)}>
+                <Pressable style={styles.selectBtn} onPress={() => setClassDropdownOpen(prev => !prev)}>
                   <Ionicons name="library-outline" size={16} color={colors.admin.accent} />
                   <Text style={styles.selectText}>
-                    {form.classId ? classLabelById.get(form.classId) ?? form.classId : 'Select class'}
+                    {form.classIds.length
+                      ? `${form.classIds.length} class${form.classIds.length > 1 ? 'es' : ''} selected`
+                      : 'Select class(es)'}
                   </Text>
-                  <Ionicons name="chevron-down" size={16} color={colors.admin.textSecondary} />
+                  <Ionicons
+                    name={classDropdownOpen ? 'chevron-up' : 'chevron-down'}
+                    size={16}
+                    color={colors.admin.textSecondary}
+                  />
                 </Pressable>
+                {classDropdownOpen ? (
+                  <View style={styles.dropdownBox}>
+                    <ScrollView nestedScrollEnabled style={styles.modalList}>
+                      {classList.map(item => {
+                        const classId = getEntityId(item);
+                        if (!classId) {
+                          return null;
+                        }
+                        return (
+                          <Pressable
+                            key={classId}
+                            style={styles.modalItem}
+                            onPress={() => {
+                              setForm(prev => {
+                                const exists = prev.classIds.includes(classId);
+                                return {
+                                  ...prev,
+                                  classIds: exists
+                                    ? prev.classIds.filter(id => id !== classId)
+                                    : [...prev.classIds, classId],
+                                };
+                              });
+                            }}
+                          >
+                            <Text style={styles.modalItemText}>{item.name} - {item.section}</Text>
+                            {form.classIds.includes(classId) ? (
+                              <Ionicons name="checkmark-circle" size={16} color={colors.brand.primary} />
+                            ) : null}
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+                ) : null}
               </>
             ) : null}
 
@@ -238,36 +271,6 @@ export default function AdminAnnouncementScreen() {
         </View>
       </Modal>
 
-      <Modal visible={showClassPicker} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.pickerCard}>
-            <Text style={styles.modalTitle}>Select Class</Text>
-            <ScrollView style={styles.modalList}>
-              {classList.map(item => {
-                const classId = getEntityId(item);
-                if (!classId) {
-                  return null;
-                }
-                return (
-                  <Pressable
-                    key={classId}
-                    style={styles.modalItem}
-                    onPress={() => {
-                      setForm(prev => ({ ...prev, classId }));
-                      setShowClassPicker(false);
-                    }}
-                  >
-                    <Text style={styles.modalItemText}>{item.name} - {item.section}</Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-            <Pressable style={styles.closeBtn} onPress={() => setShowClassPicker(false)}>
-              <Text style={styles.closeText}>Done</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -404,20 +407,7 @@ const createStyles = colors =>
       borderColor: colors.admin.borderStrong,
       backgroundColor: colors.admin.surface,
       padding: 16,
-      minHeight: '70%',
-    },
-    pickerCard: {
-      width: '100%',
-      maxHeight: '70%',
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: colors.admin.borderStrong,
-      backgroundColor: colors.admin.surface,
-      padding: 12,
-      marginHorizontal: 16,
-      marginTop: 'auto',
-      marginBottom: 'auto',
-      alignSelf: 'center',
+      maxHeight: '88%',
     },
     modalHeadRow: {
       flexDirection: 'row',
@@ -490,6 +480,14 @@ const createStyles = colors =>
       fontSize: 12.5,
       fontWeight: '600',
     },
+    dropdownBox: {
+      borderWidth: 1,
+      borderColor: colors.admin.borderSoft,
+      borderRadius: 10,
+      backgroundColor: colors.admin.surfaceStrong,
+      marginBottom: 10,
+      overflow: 'hidden',
+    },
     inputRow: {
       borderWidth: 1,
       borderColor: colors.admin.borderStrong,
@@ -553,6 +551,10 @@ const createStyles = colors =>
       maxHeight: 260,
     },
     modalItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
       paddingVertical: 10,
       borderBottomWidth: 1,
       borderBottomColor: colors.admin.borderSubtle,
@@ -561,18 +563,5 @@ const createStyles = colors =>
       color: colors.admin.textPrimary,
       fontSize: 12.5,
       fontWeight: '600',
-    },
-    closeBtn: {
-      alignSelf: 'flex-end',
-      marginTop: 10,
-      borderRadius: 10,
-      backgroundColor: colors.brand.primary,
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-    },
-    closeText: {
-      color: colors.text.inverse,
-      fontSize: 12,
-      fontWeight: '700',
     },
   });

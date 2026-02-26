@@ -10,19 +10,9 @@ function hasPermission(authStatus) {
 
 export async function getDeviceFcmToken() {
   try {
-    if (Platform.OS === 'android' && Platform.Version >= 33) {
-      await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
-    }
-
-    await messaging().registerDeviceForRemoteMessages();
-
-    if (Platform.OS === 'ios') {
-      const status = await messaging().requestPermission();
-      if (!hasPermission(status)) {
-        return '';
-      }
-    } else if (Platform.OS === 'android') {
-      await messaging().requestPermission();
+    const allowed = await requestNotificationPermissionPrompt();
+    if (!allowed) {
+      return '';
     }
 
     const token = await messaging().getToken();
@@ -30,5 +20,20 @@ export async function getDeviceFcmToken() {
   } catch (error) {
     console.warn('FCM token generation failed:', error?.message ?? error);
     return '';
+  }
+}
+
+export async function requestNotificationPermissionPrompt() {
+  try {
+    if (Platform.OS === 'android' && Platform.Version >= 33) {
+      await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+    }
+
+    await messaging().registerDeviceForRemoteMessages();
+    const status = await messaging().requestPermission();
+    return hasPermission(status);
+  } catch (error) {
+    console.warn('Notification permission request failed:', error?.message ?? error);
+    return false;
   }
 }

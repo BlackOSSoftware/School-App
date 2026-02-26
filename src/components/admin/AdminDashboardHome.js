@@ -1,17 +1,12 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import { useAppTheme } from '../../theme/ThemeContext';
-
-const KPI_DATA = [
-  { key: 'students', label: 'Students', value: '1200+' },
-  { key: 'teachers', label: 'Teachers', value: '95' },
-  { key: 'classes', label: 'Classes', value: '42' },
-  { key: 'attendance', label: 'Today', value: '91%' },
-];
+import { useAdminDashboardSummaryQuery } from '../../hooks/useAttendanceQueries';
 
 const ACTIONS = [
   { key: 'session', title: 'Session', desc: 'Academic year controls', icon: 'calendar-outline' },
+  { key: 'session-upgrade', title: 'Upgrade', desc: 'Promote class students', icon: 'trending-up-outline' },
   { key: 'manage-student', title: 'Students', desc: 'Manage student records', icon: 'people-outline' },
   { key: 'manage-teacher', title: 'Teachers', desc: 'Manage teacher records', icon: 'school-outline' },
   { key: 'manage-class', title: 'Classes', desc: 'Class and section setup', icon: 'library-outline' },
@@ -19,10 +14,18 @@ const ACTIONS = [
   { key: 'announcement', title: 'Announcements', desc: 'Post school updates', icon: 'megaphone-outline' },
 ];
 
-function KpiStrip({ reveal, styles }) {
+function KpiStrip({ reveal, styles, kpiData, loading, colors }) {
+  if (loading) {
+    return (
+      <View style={styles.loaderWrap}>
+        <ActivityIndicator size="small" color={colors.brand.primary} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.kpiRow}>
-      {KPI_DATA.map((item, index) => (
+      {kpiData.map((item, index) => (
         <Animated.View
           key={item.key}
           style={[
@@ -43,6 +46,7 @@ function KpiStrip({ reveal, styles }) {
             },
           ]}
         >
+          <Ionicons name={item.icon} size={17} style={styles.kpiIcon} />
           <Text style={styles.kpiValue}>{item.value}</Text>
           <Text style={styles.kpiLabel}>{item.label}</Text>
         </Animated.View>
@@ -93,6 +97,7 @@ export default function AdminDashboardHome({ onQuickActionPress }) {
   const { colors } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const reveal = useRef(new Animated.Value(0)).current;
+  const summaryQuery = useAdminDashboardSummaryQuery();
 
   useEffect(() => {
     reveal.setValue(0);
@@ -103,6 +108,38 @@ export default function AdminDashboardHome({ onQuickActionPress }) {
       useNativeDriver: true,
     }).start();
   }, [reveal]);
+
+  const summary = summaryQuery.data?.data ?? {};
+  const todayAttendance = summary.todayAttendance ?? {};
+  const kpiData = useMemo(
+    () => [
+      {
+        key: 'students',
+        label: 'Students',
+        value: String(Number(summary.totalStudents ?? 0)),
+        icon: 'people-outline',
+      },
+      {
+        key: 'teachers',
+        label: 'Teachers',
+        value: String(Number(summary.totalTeachers ?? 0)),
+        icon: 'school-outline',
+      },
+      {
+        key: 'classes',
+        label: 'Classes',
+        value: String(Number(summary.totalClasses ?? 0)),
+        icon: 'library-outline',
+      },
+      {
+        key: 'attendance',
+        label: 'Today',
+        value: `${Number(todayAttendance.presentPercentage ?? 0).toFixed(2).replace(/\.00$/, '')}%`,
+        icon: 'pulse-outline',
+      },
+    ],
+    [summary.totalClasses, summary.totalStudents, summary.totalTeachers, todayAttendance.presentPercentage],
+  );
 
   return (
     <>
@@ -125,11 +162,17 @@ export default function AdminDashboardHome({ onQuickActionPress }) {
         <Text style={styles.heroKicker}>OPERATIONS OVERVIEW</Text>
         <Text style={styles.heroTitle}>Good to see you, Admin</Text>
         <Text style={styles.heroSubtitle}>
-          Today is a good day to keep academics, attendance, and communication in sync.
+          MMPS control center: students {summary.totalStudents ?? 0}, teachers {summary.totalTeachers ?? 0}, classes {summary.totalClasses ?? 0}.
         </Text>
       </Animated.View>
 
-      <KpiStrip reveal={reveal} styles={styles} />
+      <KpiStrip
+        reveal={reveal}
+        styles={styles}
+        kpiData={kpiData}
+        loading={summaryQuery.isLoading}
+        colors={colors}
+      />
       <QuickActions onQuickActionPress={onQuickActionPress} reveal={reveal} styles={styles} />
     </>
   );
@@ -188,6 +231,10 @@ const createStyles = colors =>
       shadowRadius: 8,
       shadowOffset: { width: 0, height: 3 },
       elevation: 2,
+    },
+    kpiIcon: {
+      color: colors.admin.accent,
+      marginBottom: 8,
     },
     kpiValue: {
       color: colors.admin.textPrimary,
@@ -248,5 +295,10 @@ const createStyles = colors =>
       color: colors.admin.textSecondary,
       fontSize: 11.5,
       lineHeight: 16,
+    },
+    loaderWrap: {
+      marginTop: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
   });

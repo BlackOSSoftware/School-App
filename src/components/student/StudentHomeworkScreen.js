@@ -14,17 +14,23 @@ function MessageBanner({ message, type, styles }) {
   );
 }
 
-export default function StudentHomeworkScreen() {
+export default function StudentHomeworkScreen({ prefillSelectedItem = null }) {
   const { colors } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [page, setPage] = useState(1);
   const [subjectFilter, setSubjectFilter] = useState('ALL');
-  const [busyId, setBusyId] = useState('');
-  const [selectedItem, setSelectedItem] = useState(null);
+  const [busyAction, setBusyAction] = useState({ id: '', type: '' });
+  const [selectedItem, setSelectedItem] = useState(prefillSelectedItem);
   const [message, setMessage] = useState({ type: '', text: '' });
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const translateAnim = useRef(new Animated.Value(14)).current;
+
+  useEffect(() => {
+    if (prefillSelectedItem?.id) {
+      setSelectedItem(prefillSelectedItem);
+    }
+  }, [prefillSelectedItem]);
 
   useEffect(() => {
     fadeAnim.setValue(0);
@@ -75,7 +81,7 @@ export default function StudentHomeworkScreen() {
 
   const openAttachment = async item => {
     try {
-      setBusyId(item?.id || '');
+      setBusyAction({ id: item?.id || '', type: 'open' });
       await openContentFile({
         openUrl: item?.file?.openUrl,
         downloadUrl: item?.file?.downloadUrl,
@@ -86,13 +92,13 @@ export default function StudentHomeworkScreen() {
     } catch (error) {
       setMessage({ type: 'error', text: error?.message || 'Unable to open attachment.' });
     } finally {
-      setBusyId('');
+      setBusyAction({ id: '', type: '' });
     }
   };
 
   const handleDownloadAndOpen = async item => {
     if (!item?.file?.downloadUrl && !item?.file?.url && !item?.id) return;
-    setBusyId(item.id);
+    setBusyAction({ id: item.id, type: 'download' });
     try {
       await downloadAndOpenContentFile({
         openUrl: item.file.openUrl,
@@ -103,11 +109,11 @@ export default function StudentHomeworkScreen() {
         category: 'Homework',
         mode: 'download',
       });
-      setMessage({ type: 'success', text: 'File downloaded and opened successfully.' });
+      setMessage({ type: 'success', text: 'File downloaded successfully.' });
     } catch (error) {
       setMessage({ type: 'error', text: error?.message || 'Unable to download and open file.' });
     } finally {
-      setBusyId('');
+      setBusyAction({ id: '', type: '' });
     }
   };
 
@@ -142,13 +148,13 @@ export default function StudentHomeworkScreen() {
 
           {selectedItem.file ? (
             <View style={styles.actionRow}>
-              <Pressable style={styles.actionBtn} onPress={() => openAttachment(selectedItem)} disabled={busyId === selectedItem.id}>
-                {busyId === selectedItem.id
+              <Pressable style={styles.actionBtn} onPress={() => openAttachment(selectedItem)} disabled={busyAction.id === selectedItem.id && busyAction.type === 'open'}>
+                {busyAction.id === selectedItem.id && busyAction.type === 'open'
                   ? <ActivityIndicator size="small" color={colors.text.inverse} />
                   : <><Ionicons name="open-outline" size={15} color={colors.text.inverse} /><Text style={styles.actionBtnText}>Open Direct</Text></>}
               </Pressable>
-              <Pressable style={styles.actionBtn} onPress={() => handleDownloadAndOpen(selectedItem)} disabled={busyId === selectedItem.id}>
-                {busyId === selectedItem.id
+              <Pressable style={styles.actionBtn} onPress={() => handleDownloadAndOpen(selectedItem)} disabled={busyAction.id === selectedItem.id && busyAction.type === 'download'}>
+                {busyAction.id === selectedItem.id && busyAction.type === 'download'
                   ? <ActivityIndicator size="small" color={colors.text.inverse} />
                   : <><Ionicons name="download-outline" size={15} color={colors.text.inverse} /><Text style={styles.actionBtnText}>Download</Text></>}
               </Pressable>
@@ -169,7 +175,12 @@ export default function StudentHomeworkScreen() {
 
       <MessageBanner message={message.text} type={message.type} styles={styles} />
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+      <ScrollView
+        horizontal
+        style={styles.filterScroller}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filterRow}
+      >
         {subjectOptions.map(item => (
           <Pressable
             key={item}
@@ -179,7 +190,10 @@ export default function StudentHomeworkScreen() {
               setSubjectFilter(item);
             }}
           >
-            <Text style={[styles.filterChipText, subjectFilter === item ? styles.filterChipTextActive : null]}>
+            <Text
+              numberOfLines={1}
+              style={[styles.filterChipText, subjectFilter === item ? styles.filterChipTextActive : null]}
+            >
               {item === 'ALL' ? 'All Subjects' : item}
             </Text>
           </Pressable>
@@ -191,8 +205,11 @@ export default function StudentHomeworkScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {rows.map(item => (
           <Pressable key={item.id} style={styles.card} onPress={() => setSelectedItem(item)}>
+            <View style={styles.cardShine} />
             <View style={styles.cardTop}>
-              <Ionicons name="document-outline" size={14} color={colors.brand.primary} />
+              <View style={styles.cardIconWrap}>
+                <Ionicons name="document-outline" size={14} color={colors.brand.primary} />
+              </View>
               <Text style={styles.cardTitle}>{item.title}</Text>
             </View>
             <Text style={styles.cardMeta}>{item.subject || '-'} | {item.classInfo?.name || '-'}-{item.classInfo?.section || '-'}</Text>
@@ -230,56 +247,108 @@ const createStyles = colors =>
     topBarTitle: { color: colors.student.textPrimary, fontSize: 16, fontWeight: '900' },
     title: { color: colors.student.textPrimary, fontSize: 17, fontWeight: '900' },
     sub: { marginTop: 6, marginBottom: 10, color: colors.student.textSecondary, fontSize: 12.5 },
-    filterRow: { paddingBottom: 10, gap: 8 },
+    filterScroller: { height: 44, maxHeight: 44, marginBottom: 10, flexGrow: 0 },
+    filterRow: { gap: 8, alignItems: 'flex-start', paddingRight: 6, paddingVertical: 2, flexGrow: 0 },
     filterChip: {
       borderRadius: 999,
       borderWidth: 1,
       borderColor: colors.student.borderSoft,
       backgroundColor: colors.student.surface,
-      paddingHorizontal: 11,
-      paddingVertical: 7,
+      height: 40,
+      maxHeight: 40,
+      minHeight: 38,
+      justifyContent: 'center',
+      alignSelf: 'flex-start',
+      paddingHorizontal: 14,
+      paddingVertical: 8,
     },
-    filterChipActive: { backgroundColor: colors.brand.primary, borderColor: colors.brand.primary },
-    filterChipText: { color: colors.student.textPrimary, fontSize: 11.5, fontWeight: '700' },
+    filterChipActive: {
+      backgroundColor: colors.brand.primary,
+      borderColor: colors.brand.primary,
+      shadowColor: colors.brand.primary,
+      shadowOpacity: 0.25,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 3,
+    },
+    filterChipText: { color: colors.student.textPrimary, fontSize: 12, fontWeight: '800' },
     filterChipTextActive: { color: colors.text.inverse },
     banner: { borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, marginBottom: 10 },
     bannerError: { backgroundColor: colors.student.dangerBg, borderWidth: 1, borderColor: colors.student.dangerBorder },
     bannerSuccess: { backgroundColor: colors.student.successBg, borderWidth: 1, borderColor: colors.student.successBorder },
     bannerText: { color: colors.student.textPrimary, fontSize: 12, fontWeight: '700' },
     card: {
-      borderRadius: 12,
+      borderRadius: 16,
       borderWidth: 1,
       borderColor: colors.student.borderStrong,
-      backgroundColor: colors.student.surface,
-      padding: 11,
-      marginBottom: 8,
-      shadowColor: '#251454',
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 3 },
-      elevation: 2,
+      backgroundColor: colors.student.surfaceRaised,
+      padding: 12,
+      marginBottom: 10,
+      overflow: 'hidden',
+      shadowColor: colors.brand.primary,
+      shadowOpacity: 0.16,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 5 },
+      elevation: 4,
     },
-    cardTop: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-    cardTitle: { color: colors.student.textPrimary, fontSize: 13, fontWeight: '800' },
-    cardMeta: { marginTop: 3, color: colors.student.textSecondary, fontSize: 11.5, fontWeight: '700' },
-    cardDesc: { marginTop: 6, color: colors.student.textPrimary, fontSize: 12, lineHeight: 18 },
-    cardLinkRow: { marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 4 },
-    fileLink: { color: colors.brand.primary, fontSize: 12, fontWeight: '700' },
-    detailTitle: { color: colors.student.textPrimary, fontSize: 20, fontWeight: '900' },
-    detailMeta: { marginTop: 8, color: colors.student.textSecondary, fontSize: 12, fontWeight: '700' },
-    detailDesc: { marginTop: 12, color: colors.student.textPrimary, fontSize: 13.5, lineHeight: 21 },
+    cardShine: {
+      position: 'absolute',
+      top: -24,
+      right: -6,
+      width: 110,
+      height: 50,
+      borderRadius: 26,
+      backgroundColor: 'rgba(255,255,255,0.20)',
+      transform: [{ rotate: '-14deg' }],
+    },
+    cardTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    cardIconWrap: {
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.student.surfaceStrong,
+      borderWidth: 1,
+      borderColor: colors.student.borderSoft,
+    },
+    cardTitle: { color: colors.student.textPrimary, fontSize: 16, fontWeight: '900' },
+    cardMeta: { marginTop: 4, color: colors.student.textSecondary, fontSize: 12, fontWeight: '700' },
+    cardDesc: { marginTop: 8, color: colors.student.textPrimary, fontSize: 13, lineHeight: 19 },
+    cardLinkRow: {
+      marginTop: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      alignSelf: 'flex-start',
+      borderRadius: 999,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      backgroundColor: colors.student.surfaceStrong,
+      borderWidth: 1,
+      borderColor: colors.student.borderSoft,
+    },
+    fileLink: { color: colors.brand.primary, fontSize: 12.5, fontWeight: '800' },
+    detailTitle: { color: colors.student.textPrimary, fontSize: 25, fontWeight: '900', lineHeight: 31 },
+    detailMeta: { marginTop: 9, color: colors.student.textSecondary, fontSize: 12, fontWeight: '700' },
+    detailDesc: { marginTop: 12, color: colors.student.textPrimary, fontSize: 13, lineHeight: 20 },
     fileNameRow: { marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 6 },
     fileName: { color: colors.student.textSecondary, fontSize: 12, fontWeight: '600', flex: 1 },
     actionRow: { marginTop: 14, flexDirection: 'row', gap: 8 },
     actionBtn: {
       flex: 1,
-      borderRadius: 10,
+      borderRadius: 12,
       backgroundColor: colors.brand.primary,
-      paddingVertical: 10,
+      paddingVertical: 11,
       alignItems: 'center',
       flexDirection: 'row',
       justifyContent: 'center',
       gap: 6,
+      shadowColor: colors.brand.primary,
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 3,
     },
     actionBtnText: { color: colors.text.inverse, fontSize: 12, fontWeight: '800' },
     emptyText: { textAlign: 'center', color: colors.student.textSecondary, marginTop: 20 },

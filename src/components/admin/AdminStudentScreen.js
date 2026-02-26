@@ -19,8 +19,11 @@ import {
   useStudentsQuery,
   useUpdateStudentMutation,
 } from '../../hooks/useStudentQueries';
+import { useAdminStudentAttendanceReportQuery } from '../../hooks/useAttendanceQueries';
 import { useAppTheme } from '../../theme/ThemeContext';
 import PaginationControls from '../common/PaginationControls';
+import AttendanceReportModal from '../common/AttendanceReportModal';
+import SelectorModal from '../common/SelectorModal';
 
 const PAGE_LIMIT = 10;
 
@@ -70,6 +73,16 @@ function getClassLabel(value, classLabelById) {
   return 'Not assigned';
 }
 
+function getClassIdForReport(value) {
+  if (!value) {
+    return '';
+  }
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+  return getEntityId(value);
+}
+
 function MessageBanner({ text, type, onClose, styles }) {
   if (!text) {
     return null;
@@ -84,46 +97,9 @@ function MessageBanner({ text, type, onClose, styles }) {
   );
 }
 
-function ClassPickerModal({ visible, onClose, classes, onSelect, styles, withAll }) {
-  return (
-    <Modal visible={visible} transparent animationType="fade">
-      <View style={styles.modalOverlay}>
-        <View style={styles.selectorCard}>
-          <Text style={styles.selectorTitle}>Select Class</Text>
-          <ScrollView style={styles.selectorList}>
-            {withAll ? (
-              <Pressable style={styles.selectorItem} onPress={() => onSelect('')}>
-                <Text style={styles.selectorItemText}>All Classes</Text>
-              </Pressable>
-            ) : (
-              <Pressable style={styles.selectorItem} onPress={() => onSelect('')}>
-                <Text style={styles.selectorItemText}>None</Text>
-              </Pressable>
-            )}
-            {classes.map(item => {
-              const classId = getEntityId(item);
-              if (!classId) {
-                return null;
-              }
-              return (
-                <Pressable key={classId} style={styles.selectorItem} onPress={() => onSelect(classId)}>
-                  <Text style={styles.selectorItemText}>{item.name} - {item.section}</Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-          <Pressable style={styles.selectorCloseBtn} onPress={onClose}>
-            <Text style={styles.selectorCloseText}>Close</Text>
-          </Pressable>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
 function buildInitialForm(student) {
   return {
-    firstName: String(student?.name ?? student?.firstName ?? ''),
+    name: String(student?.name ?? student?.firstName ?? ''),
     scholarNumber: String(student?.scholarNumber ?? ''),
     parentName: String(student?.parentName ?? ''),
     number: String(student?.phoneNumber ?? student?.number ?? ''),
@@ -145,6 +121,10 @@ function StudentFormModal({
   setForm,
   classLabelById,
   openClassPicker,
+  classPickerOpen,
+  onCloseClassPicker,
+  onSelectClass,
+  classList,
 }) {
   return (
     <Modal visible={visible} transparent animationType="slide">
@@ -166,8 +146,8 @@ function StudentFormModal({
               <Ionicons name="person-outline" size={17} style={styles.inputIcon} />
               <TextInput
                 style={styles.inputWithIcon}
-                value={form.firstName}
-                onChangeText={value => setForm(prev => ({ ...prev, firstName: value }))}
+                value={form.name}
+                onChangeText={value => setForm(prev => ({ ...prev, name: value }))}
                 placeholder="Student name"
                 placeholderTextColor={colors.text.muted}
               />
@@ -276,39 +256,22 @@ function StudentFormModal({
                 )}
               </Pressable>
             </View>
+
+            <SelectorModal
+              visible={classPickerOpen}
+              onClose={onCloseClassPicker}
+              onSelect={onSelectClass}
+              title="Select Class"
+              searchPlaceholder="Search class or section"
+              items={classList}
+              selectedValue={form.classId}
+              includeNone
+              noneLabel="None"
+              valueExtractor={item => getEntityId(item)}
+              labelExtractor={item => `${item?.name ?? '-'} - ${item?.section ?? '-'}`}
+            />
           </View>
         </ScrollView>
-      </View>
-    </Modal>
-  );
-}
-
-function StudentDetailModal({ visible, onClose, detail, loading, styles, classLabelById, colors }) {
-  const student = detail?.data ?? null;
-  return (
-    <Modal visible={visible} transparent animationType="fade">
-      <View style={styles.modalOverlay}>
-        <View style={styles.detailCard}>
-          <Text style={styles.formTitle}>Student Details</Text>
-          {loading ? (
-            <ActivityIndicator size="small" color={colors.brand.primary} />
-          ) : student ? (
-            <ScrollView style={styles.detailScroll}>
-              <Text style={styles.detailLine}>Name: {student.name ?? '-'}</Text>
-              <Text style={styles.detailLine}>Scholar Number: {student.scholarNumber ?? '-'}</Text>
-              <Text style={styles.detailLine}>Parent Name: {student.parentName ?? '-'}</Text>
-              <Text style={styles.detailLine}>Phone: {student.phoneNumber ?? '-'}</Text>
-              <Text style={styles.detailLine}>Class: {getClassLabel(student.classId, classLabelById)}</Text>
-              <Text style={styles.detailLine}>Status: {student.status ?? '-'}</Text>
-              <Text style={styles.detailLine}>Session: {student?.sessionId?.name ?? '-'}</Text>
-            </ScrollView>
-          ) : (
-            <Text style={styles.placeholderText}>No details available.</Text>
-          )}
-          <Pressable style={styles.selectorCloseBtn} onPress={onClose}>
-            <Text style={styles.selectorCloseText}>Close</Text>
-          </Pressable>
-        </View>
       </View>
     </Modal>
   );
@@ -385,6 +348,7 @@ export default function AdminStudentScreen() {
   const [form, setForm] = useState(buildInitialForm());
   const [detailVisible, setDetailVisible] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState('');
+  const [reportOpen, setReportOpen] = useState(false);
   const [deletingId, setDeletingId] = useState('');
 
   const classesQuery = useClassesQuery(1, 200);
@@ -398,6 +362,13 @@ export default function AdminStudentScreen() {
   const updateMutation = useUpdateStudentMutation();
   const deleteMutation = useDeleteStudentMutation();
   const detailQuery = useStudentDetailQuery(selectedStudentId, detailVisible);
+  const selectedStudentDetail = detailQuery.data?.data ?? null;
+  const reportClassId = getClassIdForReport(selectedStudentDetail?.classId);
+  const reportQuery = useAdminStudentAttendanceReportQuery({
+    classId: reportClassId,
+    studentId: selectedStudentId,
+    enabled: reportOpen && Boolean(reportClassId) && Boolean(selectedStudentId),
+  });
 
   const classList = useMemo(
     () => (Array.isArray(classesQuery.data?.data) ? classesQuery.data.data : []),
@@ -464,7 +435,7 @@ export default function AdminStudentScreen() {
   };
 
   const saveStudent = async () => {
-    if (!form.firstName.trim() || !form.scholarNumber.trim() || !form.parentName.trim() || !form.number.trim()) {
+    if (!form.name.trim() || !form.scholarNumber.trim() || !form.parentName.trim() || !form.number.trim()) {
       setMessage({ type: 'error', text: 'Name, scholar number, parent name and phone are required.' });
       return;
     }
@@ -472,7 +443,7 @@ export default function AdminStudentScreen() {
     try {
       if (modalState.mode === 'create') {
         const result = await createMutation.mutateAsync({
-          firstName: form.firstName,
+          name: form.name,
           scholarNumber: form.scholarNumber,
           parentName: form.parentName,
           number: form.number,
@@ -494,7 +465,7 @@ export default function AdminStudentScreen() {
         await updateMutation.mutateAsync({
           id: modalState.studentId,
           payload: {
-            firstName: form.firstName,
+            name: form.name,
             scholarNumber: form.scholarNumber,
             parentName: form.parentName,
             number: form.number,
@@ -537,7 +508,83 @@ export default function AdminStudentScreen() {
     }
     setSelectedStudentId(id);
     setDetailVisible(true);
+    setReportOpen(false);
   };
+
+  if (detailVisible) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.detailHero}>
+          <Pressable style={styles.detailBackBtn} onPress={() => setDetailVisible(false)}>
+            <Ionicons name="chevron-back" size={18} color={colors.admin.textPrimary} />
+            <Text style={styles.detailBackText}>Back</Text>
+          </Pressable>
+          <Text style={styles.detailTitle}>Student Profile</Text>
+          <Text style={styles.detailSubTitle}>MMPS detailed student information</Text>
+        </View>
+
+        {detailQuery.isLoading ? (
+          <View style={styles.detailLoaderWrap}>
+            <ActivityIndicator size="small" color={colors.brand.primary} />
+          </View>
+        ) : selectedStudentDetail ? (
+          <ScrollView style={styles.detailScrollScreen} showsVerticalScrollIndicator={false}>
+            <View style={styles.detailInfoCard}>
+              <View style={styles.detailRow}>
+                <Ionicons name="person-outline" size={16} color={colors.admin.accent} />
+                <Text style={styles.detailLine}>Name: {selectedStudentDetail.name ?? '-'}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Ionicons name="id-card-outline" size={16} color={colors.admin.accent} />
+                <Text style={styles.detailLine}>Scholar Number: {selectedStudentDetail.scholarNumber ?? '-'}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Ionicons name="people-outline" size={16} color={colors.admin.accent} />
+                <Text style={styles.detailLine}>Parent Name: {selectedStudentDetail.parentName ?? '-'}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Ionicons name="call-outline" size={16} color={colors.admin.accent} />
+                <Text style={styles.detailLine}>Phone: {selectedStudentDetail.phoneNumber ?? '-'}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Ionicons name="business-outline" size={16} color={colors.admin.accent} />
+                <Text style={styles.detailLine}>
+                  Class: {getClassLabel(selectedStudentDetail.classId, classLabelById)}
+                </Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Ionicons name="calendar-outline" size={16} color={colors.admin.accent} />
+                <Text style={styles.detailLine}>Session: {selectedStudentDetail?.sessionId?.name ?? '-'}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Ionicons name="checkmark-circle-outline" size={16} color={colors.admin.accent} />
+                <Text style={styles.detailLine}>Status: {selectedStudentDetail.status ?? '-'}</Text>
+              </View>
+            </View>
+
+            <Pressable
+              style={styles.attendanceReportBtn}
+              onPress={() => setReportOpen(true)}
+              disabled={!reportClassId}
+            >
+              <Ionicons name="bar-chart-outline" size={16} color={colors.text.inverse} />
+              <Text style={styles.attendanceReportText}>View Attendance Report</Text>
+            </Pressable>
+          </ScrollView>
+        ) : (
+          <Text style={styles.placeholderText}>No details available.</Text>
+        )}
+
+        <AttendanceReportModal
+          visible={reportOpen}
+          onClose={() => setReportOpen(false)}
+          loading={reportQuery.isLoading}
+          report={reportQuery.data?.data}
+          studentName={selectedStudentDetail?.name || 'Student'}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -607,10 +654,14 @@ export default function AdminStudentScreen() {
           <PaginationControls
             page={page}
             totalPages={totalPages}
+            onFirst={() => setPage(1)}
             onPrev={() => setPage(prev => Math.max(1, prev - 1))}
             onNext={() => setPage(prev => Math.min(totalPages, prev + 1))}
+            onLast={() => setPage(totalPages)}
+            disableFirst={page <= 1}
             disablePrev={page <= 1}
             disableNext={page >= totalPages}
+            disableLast={page >= totalPages}
           />
         }
       />
@@ -627,25 +678,24 @@ export default function AdminStudentScreen() {
         setForm={setForm}
         classLabelById={classLabelById}
         openClassPicker={() => setClassPickerState({ open: true, target: 'form' })}
+        classPickerOpen={classPickerState.open && classPickerState.target === 'form'}
+        onCloseClassPicker={() => setClassPickerState({ open: false, target: 'form' })}
+        onSelectClass={classId => onSelectClass(classId)}
+        classList={classList}
       />
 
-      <StudentDetailModal
-        visible={detailVisible}
-        onClose={() => setDetailVisible(false)}
-        detail={detailQuery.data}
-        loading={detailQuery.isLoading}
-        styles={styles}
-        classLabelById={classLabelById}
-        colors={colors}
-      />
-
-      <ClassPickerModal
-        visible={classPickerState.open}
+      <SelectorModal
+        visible={classPickerState.open && classPickerState.target === 'filter'}
         onClose={() => setClassPickerState({ open: false, target: 'filter' })}
-        classes={classList}
         onSelect={onSelectClass}
-        styles={styles}
-        withAll={classPickerState.target === 'filter'}
+        title="Select Class"
+        searchPlaceholder="Search class or section"
+        items={classList}
+        selectedValue={classPickerState.target === 'filter' ? selectedClassId : form.classId}
+        includeNone
+        noneLabel={classPickerState.target === 'filter' ? 'All Classes' : 'None'}
+        valueExtractor={item => getEntityId(item)}
+        labelExtractor={item => `${item?.name ?? '-'} - ${item?.section ?? '-'}`}
       />
     </View>
   );
@@ -776,6 +826,66 @@ const createStyles = colors =>
     },
     listContent: {
       paddingBottom: 20,
+    },
+    detailHero: {
+      borderRadius: 18,
+      backgroundColor: colors.admin.heroBgAlt,
+      borderWidth: 1,
+      borderColor: colors.admin.borderSoft,
+      padding: 14,
+      marginBottom: 12,
+    },
+    detailBackBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      gap: 2,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.admin.borderStrong,
+      backgroundColor: colors.admin.surface,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+    },
+    detailBackText: {
+      color: colors.admin.textPrimary,
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    detailTitle: {
+      marginTop: 10,
+      color: colors.text.inverse,
+      fontSize: 24,
+      fontWeight: '900',
+    },
+    detailSubTitle: {
+      marginTop: 3,
+      color: colors.auth.subtitle,
+      fontSize: 12.5,
+      fontWeight: '600',
+    },
+    detailLoaderWrap: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    detailScrollScreen: {
+      flex: 1,
+    },
+    detailInfoCard: {
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.admin.borderStrong,
+      backgroundColor: colors.admin.surface,
+      padding: 12,
+    },
+    detailRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.admin.borderSubtle,
     },
     studentCard: {
       borderRadius: 16,
@@ -1146,5 +1256,22 @@ const createStyles = colors =>
       color: colors.admin.textPrimary,
       fontSize: 13,
       marginBottom: 6,
+    },
+    attendanceReportBtn: {
+      marginTop: 12,
+      borderRadius: 12,
+      backgroundColor: colors.brand.primary,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+      gap: 7,
+      marginBottom: 20,
+    },
+    attendanceReportText: {
+      color: colors.text.inverse,
+      fontSize: 13,
+      fontWeight: '800',
     },
   });

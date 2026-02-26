@@ -41,11 +41,17 @@ export async function createAdminAnnouncement(payload) {
   };
 
   if (body.announcementType === 'class_wise') {
-    const classId = normalizeEntityId(payload?.classId);
-    if (!classId) {
-      throw new Error('Class is required for class wise announcement.');
+    const classIds = Array.isArray(payload?.classIds)
+      ? payload.classIds.map(normalizeEntityId).filter(Boolean)
+      : [];
+    const fallbackClassId = normalizeEntityId(payload?.classId);
+    const normalizedClassIds = classIds.length
+      ? classIds
+      : (fallbackClassId ? [fallbackClassId] : []);
+    if (!normalizedClassIds.length) {
+      throw new Error('At least one class is required for class wise announcement.');
     }
-    body.classIds = [classId];
+    body.classIds = normalizedClassIds;
   }
 
   const { data } = await apiClient.post('/announcement/admin/create', body);

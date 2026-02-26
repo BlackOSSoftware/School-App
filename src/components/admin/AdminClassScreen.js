@@ -205,10 +205,14 @@ export default function AdminClassScreen() {
       <PaginationControls
         page={page}
         totalPages={totalPages}
+        onFirst={() => setPage(1)}
         onPrev={() => setPage(prev => Math.max(1, prev - 1))}
         onNext={() => setPage(prev => Math.min(totalPages, prev + 1))}
+        onLast={() => setPage(totalPages)}
+        disableFirst={page <= 1 || classesQuery.isFetching}
         disablePrev={page <= 1 || classesQuery.isFetching}
         disableNext={page >= totalPages || classesQuery.isFetching}
+        disableLast={page >= totalPages || classesQuery.isFetching}
       />
     ),
     [classesQuery.isFetching, page, totalPages],
