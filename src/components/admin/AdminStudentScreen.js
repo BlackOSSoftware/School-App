@@ -1,6 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
+  Easing,
   FlatList,
   Modal,
   Pressable,
@@ -138,7 +140,7 @@ function StudentFormModal({
               </Pressable>
             </View>
             <Text style={styles.formHint}>
-              Use clean student details for admission records and parent communication.
+              Capture verified student records for premium-grade admissions and guardian outreach.
             </Text>
 
             <Text style={styles.inputLabel}>Student Name</Text>
@@ -223,7 +225,7 @@ function StudentFormModal({
               </>
             ) : (
               <View style={styles.statusHint}>
-                <Text style={styles.statusHintText}>Status for new student: Active</Text>
+                <Text style={styles.statusHintText}>Default status: Active</Text>
               </View>
             )}
 
@@ -350,6 +352,7 @@ export default function AdminStudentScreen() {
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [reportOpen, setReportOpen] = useState(false);
   const [deletingId, setDeletingId] = useState('');
+  const reveal = useRef(new Animated.Value(0)).current;
 
   const classesQuery = useClassesQuery(1, 200);
   const studentsQuery = useStudentsQuery({
@@ -396,6 +399,16 @@ export default function AdminStudentScreen() {
     }, 350);
     return () => clearTimeout(timer);
   }, [search]);
+
+  useEffect(() => {
+    reveal.setValue(0);
+    Animated.timing(reveal, {
+      toValue: 1,
+      duration: 700,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [debouncedSearch, page, reveal]);
 
   useEffect(() => {
     if (!message.text) {
@@ -520,7 +533,7 @@ export default function AdminStudentScreen() {
             <Text style={styles.detailBackText}>Back</Text>
           </Pressable>
           <Text style={styles.detailTitle}>Student Profile</Text>
-          <Text style={styles.detailSubTitle}>MMPS detailed student information</Text>
+          <Text style={styles.detailSubTitle}>Verified record view with guardian details.</Text>
         </View>
 
         {detailQuery.isLoading ? (
@@ -588,15 +601,45 @@ export default function AdminStudentScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.heroCard}>
-        <Text style={styles.heroOverline}>STUDENT MANAGEMENT</Text>
-        <Text style={styles.heroTitle}>Manage Students</Text>
+      <Animated.View
+        style={[
+          styles.heroCard,
+          {
+            opacity: reveal,
+            transform: [
+              {
+                translateY: reveal.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [18, 0],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        <Text style={styles.heroOverline}>STUDENT EXPERIENCE SUITE</Text>
+        <Text style={styles.heroTitle}>Student Command Center</Text>
         <Text style={styles.heroSub}>
-          Create, search, filter by class, edit and delete students.
+          Curate flawless admissions data, guardian reach, and class-ready profiles at scale.
         </Text>
-      </View>
+      </Animated.View>
 
-      <View style={styles.filterRow}>
+      <Animated.View
+        style={[
+          styles.filterRow,
+          {
+            opacity: reveal.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 0, 1] }),
+            transform: [
+              {
+                translateY: reveal.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [12, 0],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
         <Pressable style={styles.filterBtn} onPress={() => setClassPickerState({ open: true, target: 'filter' })}>
           <Ionicons name="funnel-outline" size={16} color={colors.admin.accent} />
           <Text style={styles.filterText}>
@@ -604,16 +647,31 @@ export default function AdminStudentScreen() {
           </Text>
           <Ionicons name="chevron-down" size={16} color={colors.admin.textSecondary} />
         </Pressable>
-      </View>
+      </Animated.View>
 
-      <View style={styles.searchRow}>
+      <Animated.View
+        style={[
+          styles.searchRow,
+          {
+            opacity: reveal.interpolate({ inputRange: [0, 0.6, 1], outputRange: [0, 0, 1] }),
+            transform: [
+              {
+                translateY: reveal.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [12, 0],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
         <View style={styles.searchInputRow}>
           <Ionicons name="search-outline" size={17} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             value={search}
             onChangeText={setSearch}
-            placeholder="Search by name or scholar number"
+            placeholder="Search by name, scholar number, or guardian"
             placeholderTextColor={colors.text.muted}
           />
         </View>
@@ -623,7 +681,7 @@ export default function AdminStudentScreen() {
             <Text style={styles.addBtnText}>Add</Text>
           </View>
         </Pressable>
-      </View>
+      </Animated.View>
 
       <MessageBanner text={message.text} type={message.type} onClose={closeMessage} styles={styles} />
 
@@ -631,23 +689,41 @@ export default function AdminStudentScreen() {
         data={studentList}
         keyExtractor={(item, index) => getEntityId(item) || `student-${index}`}
         contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <StudentListCard
-            item={item}
-            styles={styles}
-            colors={colors}
-            classLabelById={classLabelById}
-            onOpenDetail={openDetail}
-            onEdit={openEditModal}
-            onDelete={deleteStudent}
-            deletingId={deletingId}
-          />
-        )}
+        renderItem={({ item, index }) => {
+          const itemStyle = {
+            opacity: reveal.interpolate({
+              inputRange: [0, 0.3 + index * 0.06, 1],
+              outputRange: [0, 0, 1],
+            }),
+            transform: [
+              {
+                translateY: reveal.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [16 + index * 2, 0],
+                }),
+              },
+            ],
+          };
+          return (
+            <Animated.View style={itemStyle}>
+              <StudentListCard
+                item={item}
+                styles={styles}
+                colors={colors}
+                classLabelById={classLabelById}
+                onOpenDetail={openDetail}
+                onEdit={openEditModal}
+                onDelete={deleteStudent}
+                deletingId={deletingId}
+              />
+            </Animated.View>
+          );
+        }}
         ListEmptyComponent={
           studentsQuery.isLoading ? (
             <ActivityIndicator size="small" color={colors.brand.primary} />
           ) : (
-            <Text style={styles.placeholderText}>No students found.</Text>
+            <Text style={styles.placeholderText}>No student profiles yet.</Text>
           )
         }
         ListFooterComponent={

@@ -1,6 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
+  Easing,
   FlatList,
   Modal,
   Pressable,
@@ -210,7 +212,7 @@ function TeacherFormModal({
               </Pressable>
             </View>
             <Text style={styles.formHint}>
-              Fill teacher profile, subjects and lecture assignment mapping.
+              Build a premium-grade faculty profile with subject mastery and lecture mapping.
             </Text>
 
             <Text style={styles.inputLabel}>Name</Text>
@@ -259,7 +261,7 @@ function TeacherFormModal({
               <View style={styles.sectionHeader}>
                 <View>
                   <Text style={styles.sectionTitle}>Subjects</Text>
-                  <Text style={styles.sectionSubtitle}>Type subject and tap add.</Text>
+                  <Text style={styles.sectionSubtitle}>Type a subject and press add.</Text>
                 </View>
               </View>
 
@@ -313,7 +315,7 @@ function TeacherFormModal({
               <View style={styles.assignmentHeader}>
                 <View>
                   <Text style={styles.sectionTitle}>Lecture Assignments</Text>
-                  <Text style={styles.sectionSubtitle}>Map class and subject for each lecture.</Text>
+                  <Text style={styles.sectionSubtitle}>Map class and subject to each lecture slot.</Text>
                 </View>
                 <Pressable
                   style={styles.smallAddBtn}
@@ -456,7 +458,7 @@ function TeacherDetailModal({ visible, onClose, detail, loading, styles, colors,
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.modalOverlay}>
         <View style={styles.detailCard}>
-          <Text style={styles.formTitle}>Teacher Details</Text>
+          <Text style={styles.formTitle}>Faculty Profile</Text>
           {loading ? (
             <ActivityIndicator size="small" color={colors.brand.primary} />
           ) : detail ? (
@@ -534,6 +536,7 @@ export default function AdminTeacherScreen() {
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [detailVisible, setDetailVisible] = useState(false);
   const [deletingId, setDeletingId] = useState('');
+  const reveal = useRef(new Animated.Value(0)).current;
 
   const classesQuery = useClassesQuery(1, 200);
   const teachersQuery = useTeachersQuery(page, PAGE_LIMIT, debouncedSearch);
@@ -553,6 +556,16 @@ export default function AdminTeacherScreen() {
     }, 350);
     return () => clearTimeout(timer);
   }, [search]);
+
+  useEffect(() => {
+    reveal.setValue(0);
+    Animated.timing(reveal, {
+      toValue: 1,
+      duration: 700,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [debouncedSearch, page, reveal]);
 
   useEffect(() => {
     if (!message.text) {
@@ -660,22 +673,52 @@ export default function AdminTeacherScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.heroCard}>
-        <Text style={styles.heroOverline}>FACULTY MANAGEMENT</Text>
-        <Text style={styles.heroTitle}>Manage Teachers</Text>
+      <Animated.View
+        style={[
+          styles.heroCard,
+          {
+            opacity: reveal,
+            transform: [
+              {
+                translateY: reveal.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [18, 0],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        <Text style={styles.heroOverline}>FACULTY OPERATIONS</Text>
+        <Text style={styles.heroTitle}>Faculty Command Center</Text>
         <Text style={styles.heroSub}>
-          Create, search, edit and assign teachers with subjects and class lectures.
+          Orchestrate staffing, subjects, and lecture mappings with precision and speed.
         </Text>
-      </View>
+      </Animated.View>
 
-      <View style={styles.searchRow}>
+      <Animated.View
+        style={[
+          styles.searchRow,
+          {
+            opacity: reveal.interpolate({ inputRange: [0, 0.6, 1], outputRange: [0, 0, 1] }),
+            transform: [
+              {
+                translateY: reveal.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [12, 0],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
         <View style={styles.searchInputRow}>
           <Ionicons name="search-outline" size={17} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             value={search}
             onChangeText={setSearch}
-            placeholder="Search by name or email"
+            placeholder="Search by name, email, or subject"
             placeholderTextColor={colors.text.muted}
           />
         </View>
@@ -685,7 +728,7 @@ export default function AdminTeacherScreen() {
             <Text style={styles.addBtnText}>Add</Text>
           </View>
         </Pressable>
-      </View>
+      </Animated.View>
 
       <MessageBanner text={message.text} type={message.type} onClose={closeMessage} styles={styles} />
 
@@ -693,41 +736,57 @@ export default function AdminTeacherScreen() {
         data={teacherList}
         keyExtractor={(item, index) => getEntityId(item) || `teacher-${index}`}
         contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => {
+        renderItem={({ item, index }) => {
           const teacherId = getEntityId(item);
+          const itemStyle = {
+            opacity: reveal.interpolate({
+              inputRange: [0, 0.3 + index * 0.06, 1],
+              outputRange: [0, 0, 1],
+            }),
+            transform: [
+              {
+                translateY: reveal.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [16 + index * 2, 0],
+                }),
+              },
+            ],
+          };
           return (
-            <Pressable style={styles.teacherCard} onPress={() => openDetail(teacherId)}>
-            <View style={styles.teacherMain}>
-              <Text style={styles.teacherName}>{item.name}</Text>
-              <Text style={styles.teacherEmail}>{item.email}</Text>
-              <Text style={styles.teacherMeta}>
-                Subjects: {Array.isArray(item.subjects) ? item.subjects.join(', ') : '-'}
-              </Text>
-            </View>
-            <View style={styles.actionRow}>
-              <Pressable style={styles.editBtn} onPress={() => openEditModal(item)}>
-                <Text style={styles.editBtnText}>Edit</Text>
-              </Pressable>
-              <Pressable
-                style={styles.deleteBtn}
-                onPress={() => handleDelete(teacherId)}
-                disabled={deletingId === teacherId}
-              >
-                {deletingId === teacherId ? (
-                  <ActivityIndicator size="small" color={colors.state.error} />
-                ) : (
-                  <Text style={styles.deleteBtnText}>Delete</Text>
-                )}
-              </Pressable>
-            </View>
-          </Pressable>
+            <Animated.View style={itemStyle}>
+              <Pressable style={styles.teacherCard} onPress={() => openDetail(teacherId)}>
+              <View style={styles.teacherMain}>
+                <Text style={styles.teacherName}>{item.name}</Text>
+                <Text style={styles.teacherEmail}>{item.email}</Text>
+                <Text style={styles.teacherMeta}>
+                  Subjects: {Array.isArray(item.subjects) ? item.subjects.join(', ') : '-'}
+                </Text>
+              </View>
+              <View style={styles.actionRow}>
+                <Pressable style={styles.editBtn} onPress={() => openEditModal(item)}>
+                  <Text style={styles.editBtnText}>Edit</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.deleteBtn}
+                  onPress={() => handleDelete(teacherId)}
+                  disabled={deletingId === teacherId}
+                >
+                  {deletingId === teacherId ? (
+                    <ActivityIndicator size="small" color={colors.state.error} />
+                  ) : (
+                    <Text style={styles.deleteBtnText}>Delete</Text>
+                  )}
+                </Pressable>
+              </View>
+            </Pressable>
+            </Animated.View>
           );
         }}
         ListEmptyComponent={
           teachersQuery.isLoading ? (
             <ActivityIndicator size="small" color={colors.brand.primary} />
           ) : (
-            <Text style={styles.placeholderText}>No teachers found.</Text>
+            <Text style={styles.placeholderText}>No faculty profiles yet.</Text>
           )
         }
         ListFooterComponent={

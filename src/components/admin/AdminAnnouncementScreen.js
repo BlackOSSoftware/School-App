@@ -74,6 +74,16 @@ export default function AdminAnnouncementScreen() {
     () => (Array.isArray(classesQuery.data?.data) ? classesQuery.data.data : []),
     [classesQuery.data?.data],
   );
+  const availableClassIds = useMemo(
+    () => classList.map(getEntityId).filter(Boolean),
+    [classList],
+  );
+  const allClassesSelected = useMemo(() => {
+    if (!availableClassIds.length) {
+      return false;
+    }
+    return availableClassIds.every(id => form.classIds.includes(id));
+  }, [availableClassIds, form.classIds]);
 
   const total = Number(announcementQuery.data?.total ?? 0);
 
@@ -179,7 +189,7 @@ export default function AdminAnnouncementScreen() {
 
             {form.announcementType === 'class_wise' ? (
               <>
-                <Text style={styles.inputLabel}>Target Class</Text>
+                <Text style={styles.inputLabel}>Target Classes</Text>
                 <Pressable style={styles.selectBtn} onPress={() => setClassDropdownOpen(prev => !prev)}>
                   <Ionicons name="library-outline" size={16} color={colors.admin.accent} />
                   <Text style={styles.selectText}>
@@ -196,6 +206,27 @@ export default function AdminAnnouncementScreen() {
                 {classDropdownOpen ? (
                   <View style={styles.dropdownBox}>
                     <ScrollView nestedScrollEnabled style={styles.modalList}>
+                      <Pressable
+                        style={styles.modalItem}
+                        onPress={() => {
+                          if (!availableClassIds.length) {
+                            return;
+                          }
+                          setForm(prev => ({
+                            ...prev,
+                            classIds: allClassesSelected ? [] : availableClassIds,
+                          }));
+                        }}
+                      >
+                        <Text style={styles.modalItemText}>
+                          {allClassesSelected ? 'Clear All' : 'Select All'}
+                        </Text>
+                        {allClassesSelected ? (
+                          <Ionicons name="checkmark-circle" size={16} color={colors.brand.primary} />
+                        ) : (
+                          <Ionicons name="ellipse-outline" size={16} color={colors.admin.textSecondary} />
+                        )}
+                      </Pressable>
                       {classList.map(item => {
                         const classId = getEntityId(item);
                         if (!classId) {

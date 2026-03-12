@@ -5,6 +5,7 @@ import AdminClassScreen from '../../components/admin/AdminClassScreen';
 import AdminDashboardHome from '../../components/admin/AdminDashboardHome';
 import AdminAnnouncementScreen from '../../components/admin/AdminAnnouncementScreen';
 import AdminAttendanceScreen from '../../components/admin/AdminAttendanceScreen';
+import AdminBusScreen from '../../components/admin/AdminBusScreen';
 import AdminProfileScreen from '../../components/admin/AdminProfileScreen';
 import AdminSessionScreen from '../../components/admin/AdminSessionScreen';
 import AdminSessionUpgradeScreen from '../../components/admin/AdminSessionUpgradeScreen';
@@ -143,6 +144,10 @@ export default function AdminDashboard({ session, onLogout }) {
       setCurrentScreen('manage-teacher');
       return;
     }
+    if (key === 'manage-bus') {
+      setCurrentScreen('manage-bus');
+      return;
+    }
     setNote(`${key} module ready for next integration.`);
   };
 
@@ -157,6 +162,8 @@ export default function AdminDashboard({ session, onLogout }) {
           ? 'Manage Student'
         : currentScreen === 'manage-teacher'
           ? 'Manage Teacher'
+          : currentScreen === 'manage-bus'
+            ? 'Manage Bus'
         : 'Admin Dashboard';
 
   const renderRootScreen = () => {
@@ -210,6 +217,7 @@ export default function AdminDashboard({ session, onLogout }) {
       {currentScreen === 'manage-class' ||
       currentScreen === 'manage-student' ||
       currentScreen === 'manage-teacher' ||
+      currentScreen === 'manage-bus' ||
       currentScreen === 'session-upgrade' ||
       (currentScreen === 'root' && (activeTab === 'announcement' || activeTab === 'attendance')) ? (
         <Animated.View
@@ -221,6 +229,7 @@ export default function AdminDashboard({ session, onLogout }) {
           {currentScreen === 'manage-class' ? <AdminClassScreen /> : null}
           {currentScreen === 'manage-student' ? <AdminStudentScreen /> : null}
           {currentScreen === 'manage-teacher' ? <AdminTeacherScreen /> : null}
+          {currentScreen === 'manage-bus' ? <AdminBusScreen /> : null}
           {currentScreen === 'session-upgrade' ? <AdminSessionUpgradeScreen /> : null}
           {currentScreen === 'root' && activeTab === 'announcement' ? <AdminAnnouncementScreen /> : null}
           {currentScreen === 'root' && activeTab === 'attendance' ? <AdminAttendanceScreen /> : null}
