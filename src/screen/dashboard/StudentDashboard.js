@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { BackHandler, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import StudentAttendanceScreen from '../../components/student/StudentAttendanceScreen';
+import StudentAnnouncementScreen from '../../components/student/StudentAnnouncementScreen';
 import StudentBottomNav from '../../components/student/StudentBottomNav';
 import StudentHomeScreen from '../../components/student/StudentHomeScreen';
 import StudentHomeworkScreen from '../../components/student/StudentHomeworkScreen';
@@ -38,6 +39,8 @@ export default function StudentDashboard({ session, onLogout }) {
       ? 'Attendance'
       : activeTab === 'notes'
         ? 'Notes'
+        : activeTab === 'announcements'
+          ? 'Announcements'
         : activeTab === 'homework'
           ? 'Homework'
           : activeTab === 'profile'
@@ -52,6 +55,13 @@ export default function StudentDashboard({ session, onLogout }) {
       return (
         <View style={styles.blockWrap}>
           <StudentNotesScreen prefillSelectedItem={prefillNotes} />
+        </View>
+      );
+    }
+    if (activeTab === 'announcements') {
+      return (
+        <View style={styles.blockWrap}>
+          <StudentAnnouncementScreen />
         </View>
       );
     }
@@ -83,6 +93,7 @@ export default function StudentDashboard({ session, onLogout }) {
             setPrefillNotes(item);
             setActiveTab('notes');
           }}
+          onOpenAnnouncements={() => setActiveTab('announcements')}
         />
       </View>
     );

@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import { useClassesQuery } from '../../hooks/useClassQueries';
+import { useBusesQuery } from '../../hooks/useBusQueries';
 import {
   useCreateStudentMutation,
   useDeleteStudentMutation,
@@ -25,6 +26,7 @@ import { useAdminStudentAttendanceReportQuery } from '../../hooks/useAttendanceQ
 import { useAppTheme } from '../../theme/ThemeContext';
 import PaginationControls from '../common/PaginationControls';
 import AttendanceReportModal from '../common/AttendanceReportModal';
+import KeyboardAwareModal from '../common/KeyboardAwareModal';
 import SelectorModal from '../common/SelectorModal';
 
 const PAGE_LIMIT = 10;
@@ -85,6 +87,25 @@ function getClassIdForReport(value) {
   return getEntityId(value);
 }
 
+function getBusLabel(value, busLabelById) {
+  if (!value) {
+    return 'Not assigned';
+  }
+  if (typeof value === 'string') {
+    return busLabelById.get(value) ?? value;
+  }
+  if (typeof value === 'object') {
+    const id = getEntityId(value);
+    if (id && busLabelById.has(id)) {
+      return busLabelById.get(id);
+    }
+    const busNumber = String(value?.busNumber ?? '').trim();
+    const routeName = String(value?.routeName ?? '').trim();
+    return busNumber && routeName ? `${busNumber} - ${routeName}` : busNumber || routeName || 'Not assigned';
+  }
+  return 'Not assigned';
+}
+
 function MessageBanner({ text, type, onClose, styles }) {
   if (!text) {
     return null;
@@ -106,6 +127,7 @@ function buildInitialForm(student) {
     parentName: String(student?.parentName ?? ''),
     number: String(student?.phoneNumber ?? student?.number ?? ''),
     classId: getEntityId(student?.classId),
+    busId: getEntityId(student?.busId),
     status: String(student?.status ?? 'active').toLowerCase() === 'inactive' ? 'inactive' : 'active',
     password: '',
   };
@@ -122,17 +144,26 @@ function StudentFormModal({
   form,
   setForm,
   classLabelById,
+  busLabelById,
   openClassPicker,
+  openBusPicker,
   classPickerOpen,
+  busPickerOpen,
   onCloseClassPicker,
+  onCloseBusPicker,
   onSelectClass,
+  onSelectBus,
   classList,
+  busList,
 }) {
   return (
     <Modal visible={visible} transparent animationType="slide">
-      <View style={styles.formModalOverlay}>
-        <ScrollView contentContainerStyle={styles.formModalScroll} keyboardShouldPersistTaps="handled">
-          <View style={styles.formCard}>
+      <KeyboardAwareModal
+        overlayStyle={styles.formModalOverlay}
+        scrollContentStyle={styles.formModalScroll}
+        contentContainerStyle={styles.formCard}
+        dismissKeyboardOnBackdrop
+      >
             <View style={styles.formHeaderRow}>
               <Text style={styles.formTitle}>{mode === 'create' ? 'Create Student' : 'Edit Student'}</Text>
               <Pressable style={styles.headerCloseBtn} onPress={onClose}>
@@ -197,6 +228,15 @@ function StudentFormModal({
               <Ionicons name="business-outline" size={16} color={colors.admin.accent} />
               <Text style={styles.selectBtnText}>
                 {form.classId ? classLabelById.get(form.classId) ?? form.classId : 'Select class'}
+              </Text>
+              <Ionicons name="chevron-down" size={16} color={colors.admin.textSecondary} />
+            </Pressable>
+
+            <Text style={styles.inputLabel}>Bus (optional)</Text>
+            <Pressable style={styles.selectBtn} onPress={() => openBusPicker('form')}>
+              <Ionicons name="bus-outline" size={16} color={colors.admin.accent} />
+              <Text style={styles.selectBtnText}>
+                {form.busId ? busLabelById.get(form.busId) ?? form.busId : 'Select bus'}
               </Text>
               <Ionicons name="chevron-down" size={16} color={colors.admin.textSecondary} />
             </Pressable>
@@ -272,14 +312,40 @@ function StudentFormModal({
               valueExtractor={item => getEntityId(item)}
               labelExtractor={item => `${item?.name ?? '-'} - ${item?.section ?? '-'}`}
             />
-          </View>
-        </ScrollView>
-      </View>
+
+            <SelectorModal
+              visible={busPickerOpen}
+              onClose={onCloseBusPicker}
+              onSelect={onSelectBus}
+              title="Select Bus"
+              searchPlaceholder="Search bus number or route"
+              items={busList}
+              selectedValue={form.busId}
+              includeNone
+              noneLabel="No Bus"
+              valueExtractor={item => getEntityId(item)}
+              labelExtractor={item => {
+                const busNumber = String(item?.busNumber ?? '').trim();
+                const routeName = String(item?.routeName ?? '').trim();
+                return busNumber && routeName ? `${busNumber} - ${routeName}` : busNumber || routeName || '-';
+              }}
+            />
+      </KeyboardAwareModal>
     </Modal>
   );
 }
 
-function StudentListCard({ item, styles, colors, classLabelById, onOpenDetail, onEdit, onDelete, deletingId }) {
+function StudentListCard({
+  item,
+  styles,
+  colors,
+  classLabelById,
+  busLabelById,
+  onOpenDetail,
+  onEdit,
+  onDelete,
+  deletingId,
+}) {
   const studentId = getEntityId(item);
   const status = String(item?.status ?? 'active').toLowerCase();
   const inactive = status === 'inactive';
@@ -314,6 +380,10 @@ function StudentListCard({ item, styles, colors, classLabelById, onOpenDetail, o
           <Ionicons name="business-outline" size={14} color={colors.admin.accent} />
           <Text style={styles.metaBoxText}>Class: {getClassLabel(item.classId, classLabelById)}</Text>
         </View>
+        <View style={[styles.metaBox, styles.metaBoxWide]}>
+          <Ionicons name="bus-outline" size={14} color={colors.admin.accent} />
+          <Text style={styles.metaBoxText}>Bus: {getBusLabel(item.busId, busLabelById)}</Text>
+        </View>
       </View>
 
       <View style={styles.actionRow}>
@@ -346,6 +416,7 @@ export default function AdminStudentScreen() {
   const [selectedClassId, setSelectedClassId] = useState('');
   const [message, setMessage] = useState({ type: '', text: '' });
   const [classPickerState, setClassPickerState] = useState({ open: false, target: 'filter' });
+  const [busPickerState, setBusPickerState] = useState({ open: false, target: 'form' });
   const [modalState, setModalState] = useState({ visible: false, mode: 'create', studentId: '' });
   const [form, setForm] = useState(buildInitialForm());
   const [detailVisible, setDetailVisible] = useState(false);
@@ -355,6 +426,7 @@ export default function AdminStudentScreen() {
   const reveal = useRef(new Animated.Value(0)).current;
 
   const classesQuery = useClassesQuery(1, 200);
+  const busesQuery = useBusesQuery({ page: 1, limit: 200, search: '' });
   const studentsQuery = useStudentsQuery({
     page,
     limit: PAGE_LIMIT,
@@ -387,6 +459,22 @@ export default function AdminStudentScreen() {
     });
     return map;
   }, [classList]);
+  const busList = useMemo(
+    () => (Array.isArray(busesQuery.data?.data) ? busesQuery.data.data : []),
+    [busesQuery.data?.data],
+  );
+  const busLabelById = useMemo(() => {
+    const map = new Map();
+    busList.forEach(item => {
+      const busId = getEntityId(item);
+      if (busId) {
+        const busNumber = String(item?.busNumber ?? '').trim();
+        const routeName = String(item?.routeName ?? '').trim();
+        map.set(busId, busNumber && routeName ? `${busNumber} - ${routeName}` : busNumber || routeName || busId);
+      }
+    });
+    return map;
+  }, [busList]);
 
   const listResponse = studentsQuery.data ?? {};
   const studentList = Array.isArray(listResponse.data) ? listResponse.data : [];
@@ -447,6 +535,11 @@ export default function AdminStudentScreen() {
     setClassPickerState({ open: false, target: 'filter' });
   };
 
+  const onSelectBus = busId => {
+    setForm(prev => ({ ...prev, busId: busId || '' }));
+    setBusPickerState({ open: false, target: 'form' });
+  };
+
   const saveStudent = async () => {
     if (!form.name.trim() || !form.scholarNumber.trim() || !form.parentName.trim() || !form.number.trim()) {
       setMessage({ type: 'error', text: 'Name, scholar number, parent name and phone are required.' });
@@ -461,6 +554,7 @@ export default function AdminStudentScreen() {
           parentName: form.parentName,
           number: form.number,
           classId: form.classId,
+          busId: form.busId || null,
           status: 'active',
         });
         const generatedPassword =
@@ -483,6 +577,7 @@ export default function AdminStudentScreen() {
             parentName: form.parentName,
             number: form.number,
             classId: form.classId,
+            busId: form.busId || null,
             status: form.status,
             password: form.password || undefined,
           },
@@ -563,6 +658,12 @@ export default function AdminStudentScreen() {
                 <Ionicons name="business-outline" size={16} color={colors.admin.accent} />
                 <Text style={styles.detailLine}>
                   Class: {getClassLabel(selectedStudentDetail.classId, classLabelById)}
+                </Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Ionicons name="bus-outline" size={16} color={colors.admin.accent} />
+                <Text style={styles.detailLine}>
+                  Bus: {getBusLabel(selectedStudentDetail.busId, busLabelById)}
                 </Text>
               </View>
               <View style={styles.detailRow}>
@@ -689,6 +790,13 @@ export default function AdminStudentScreen() {
         data={studentList}
         keyExtractor={(item, index) => getEntityId(item) || `student-${index}`}
         contentContainerStyle={styles.listContent}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        removeClippedSubviews
+        initialNumToRender={6}
+        maxToRenderPerBatch={8}
+        windowSize={7}
+        updateCellsBatchingPeriod={40}
         renderItem={({ item, index }) => {
           const itemStyle = {
             opacity: reveal.interpolate({
@@ -711,6 +819,7 @@ export default function AdminStudentScreen() {
                 styles={styles}
                 colors={colors}
                 classLabelById={classLabelById}
+                busLabelById={busLabelById}
                 onOpenDetail={openDetail}
                 onEdit={openEditModal}
                 onDelete={deleteStudent}
@@ -753,11 +862,17 @@ export default function AdminStudentScreen() {
         form={form}
         setForm={setForm}
         classLabelById={classLabelById}
+        busLabelById={busLabelById}
         openClassPicker={() => setClassPickerState({ open: true, target: 'form' })}
+        openBusPicker={() => setBusPickerState({ open: true, target: 'form' })}
         classPickerOpen={classPickerState.open && classPickerState.target === 'form'}
+        busPickerOpen={busPickerState.open && busPickerState.target === 'form'}
         onCloseClassPicker={() => setClassPickerState({ open: false, target: 'form' })}
+        onCloseBusPicker={() => setBusPickerState({ open: false, target: 'form' })}
         onSelectClass={classId => onSelectClass(classId)}
+        onSelectBus={onSelectBus}
         classList={classList}
+        busList={busList}
       />
 
       <SelectorModal

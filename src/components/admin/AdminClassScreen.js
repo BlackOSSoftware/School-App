@@ -21,6 +21,7 @@ import {
   useUpdateClassMutation,
 } from '../../hooks/useClassQueries';
 import { useAppTheme } from '../../theme/ThemeContext';
+import KeyboardAwareModal from '../common/KeyboardAwareModal';
 
 const PAGE_LIMIT = 20;
 
@@ -263,6 +264,13 @@ export default function AdminClassScreen() {
         keyExtractor={(item, index) => getEntityId(item) || `class-${index}`}
         style={styles.list}
         contentContainerStyle={styles.listContent}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        removeClippedSubviews
+        initialNumToRender={8}
+        maxToRenderPerBatch={10}
+        windowSize={8}
+        updateCellsBatchingPeriod={40}
         nestedScrollEnabled
         ListHeaderComponent={header}
         ListFooterComponent={footer}
@@ -302,7 +310,11 @@ export default function AdminClassScreen() {
       />
 
       <Modal visible={modalVisible} transparent animationType="none">
-        <View style={styles.modalOverlay}>
+        <KeyboardAwareModal
+          overlayStyle={styles.modalOverlay}
+          scrollContentStyle={styles.modalScrollContent}
+          dismissKeyboardOnBackdrop
+        >
           <Pressable style={StyleSheet.absoluteFill} onPress={closeModal} />
           <Animated.View
             style={[
@@ -360,7 +372,7 @@ export default function AdminClassScreen() {
               </Pressable>
             </View>
           </Animated.View>
-        </View>
+        </KeyboardAwareModal>
       </Modal>
     </View>
   );
@@ -559,6 +571,9 @@ const createStyles = colors =>
     flex: 1,
     justifyContent: 'flex-end',
     backgroundColor: colors.admin.modalBackdrop,
+  },
+  modalScrollContent: {
+    justifyContent: 'flex-end',
   },
   modalCard: {
     backgroundColor: colors.admin.surface,

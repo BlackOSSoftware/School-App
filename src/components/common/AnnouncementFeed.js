@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import React, { memo, useMemo } from 'react';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import PaginationControls from './PaginationControls';
 import { useAppTheme } from '../../theme/ThemeContext';
@@ -69,7 +69,7 @@ function getPalette(colors, variant) {
   };
 }
 
-function AnnouncementItem({ item, styles }) {
+const AnnouncementItem = memo(function AnnouncementItem({ item, styles, onPress }) {
   const classNames = Array.isArray(item?.classIds)
     ? item.classIds.map(formatClassLabel).filter(Boolean)
     : [];
@@ -80,8 +80,10 @@ function AnnouncementItem({ item, styles }) {
       ? `${classNames[0]} +${classNames.length - 1}`
       : classNames[0] || 'Class';
 
+  const Wrapper = onPress ? Pressable : View;
+
   return (
-    <View style={styles.card}>
+    <Wrapper style={styles.card} onPress={onPress}>
       <View style={styles.leftIconWrap}>
         <Ionicons name="notifications-outline" size={15} style={styles.leftIcon} />
       </View>
@@ -108,9 +110,9 @@ function AnnouncementItem({ item, styles }) {
           <Text style={styles.metaText}>{formatTimeLabel(item?.createdAt)}</Text>
         </View>
       </View>
-    </View>
+    </Wrapper>
   );
-}
+});
 
 export default function AnnouncementFeed({
   query,
@@ -118,6 +120,7 @@ export default function AnnouncementFeed({
   onPageChange,
   variant = 'admin',
   emptyText = 'No announcements found.',
+  onPressItem,
 }) {
   const { colors } = useAppTheme();
   const palette = useMemo(() => getPalette(colors, variant), [colors, variant]);
@@ -139,12 +142,16 @@ export default function AnnouncementFeed({
       keyExtractor={(item, index) => String(item?._id ?? `announcement-${index}`)}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
       removeClippedSubviews
       initialNumToRender={8}
       maxToRenderPerBatch={10}
       windowSize={8}
       updateCellsBatchingPeriod={35}
-      renderItem={({ item }) => <AnnouncementItem item={item} styles={styles} />}
+      renderItem={({ item }) => (
+        <AnnouncementItem item={item} styles={styles} onPress={onPressItem ? () => onPressItem(item) : undefined} />
+      )}
       ListEmptyComponent={<Text style={styles.emptyText}>{emptyText}</Text>}
       ListFooterComponent={
         <PaginationControls

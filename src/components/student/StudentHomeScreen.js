@@ -68,10 +68,15 @@ function ContentPreviewSection({
   );
 }
 
-export default function StudentHomeScreen({ session, onOpenTab, onOpenHomework, onOpenNotes }) {
+export default function StudentHomeScreen({
+  session,
+  onOpenTab,
+  onOpenHomework,
+  onOpenNotes,
+  onOpenAnnouncements,
+}) {
   const { colors } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const [showAllAnnouncements, setShowAllAnnouncements] = useState(false);
   const [showBusModal, setShowBusModal] = useState(false);
 
   const activeSessionQuery = useActiveSessionQuery();
@@ -90,7 +95,7 @@ export default function StudentHomeScreen({ session, onOpenTab, onOpenHomework, 
   const attendanceQuery = useStudentMyAttendanceReportQuery({ from: fromDate, to: toDate });
   const homeworkQuery = useStudentMyContentQuery({ type: 'homework', page: 1, limit: 3 });
   const notesQuery = useStudentMyContentQuery({ type: 'notes', page: 1, limit: 3 });
-  const announcementsQuery = useMyAnnouncementsQuery({ page: 1, limit: showAllAnnouncements ? 20 : 4 });
+  const announcementsQuery = useMyAnnouncementsQuery({ page: 1, limit: 4 });
 
   const profile = studentMeQuery.data?.data ?? {};
   const classInfo = profile?.class ?? session?.user?.class ?? {};
@@ -172,8 +177,8 @@ export default function StudentHomeScreen({ session, onOpenTab, onOpenHomework, 
             <Ionicons name="megaphone-outline" size={16} color={colors.student.textPrimary} />
             <Text style={styles.panelTitle}>Recent Announcements</Text>
           </View>
-          <Pressable style={styles.linkBtn} onPress={() => setShowAllAnnouncements(prev => !prev)}>
-            <Text style={styles.linkBtnText}>{showAllAnnouncements ? 'Show Less' : 'View All'}</Text>
+          <Pressable style={styles.linkBtn} onPress={() => onOpenAnnouncements?.()}>
+            <Text style={styles.linkBtnText}>View All</Text>
           </Pressable>
         </View>
         {announcementsQuery.isLoading ? <ActivityIndicator size="small" color={colors.brand.primary} /> : null}

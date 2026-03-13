@@ -22,6 +22,7 @@ import {
 } from '../../hooks/useTeacherQueries';
 import { useClassesQuery } from '../../hooks/useClassQueries';
 import { useAppTheme } from '../../theme/ThemeContext';
+import KeyboardAwareModal from '../common/KeyboardAwareModal';
 import PaginationControls from '../common/PaginationControls';
 import SelectorModal from '../common/SelectorModal';
 
@@ -202,9 +203,12 @@ function TeacherFormModal({
 
   return (
     <Modal visible={visible} transparent animationType="slide">
-      <View style={styles.formModalOverlay}>
-        <ScrollView contentContainerStyle={styles.formModalScroll} keyboardShouldPersistTaps="handled">
-          <View style={styles.formCard}>
+      <KeyboardAwareModal
+        overlayStyle={styles.formModalOverlay}
+        scrollContentStyle={styles.formModalScroll}
+        contentContainerStyle={styles.formCard}
+        dismissKeyboardOnBackdrop
+      >
             <View style={styles.formHeaderRow}>
               <Text style={styles.formTitle}>{title}</Text>
               <Pressable style={styles.headerCloseBtn} onPress={onClose}>
@@ -415,9 +419,7 @@ function TeacherFormModal({
                 )}
               </Pressable>
             </View>
-          </View>
-        </ScrollView>
-      </View>
+      </KeyboardAwareModal>
 
       <SelectorModal
         visible={classPicker.open}
@@ -736,6 +738,13 @@ export default function AdminTeacherScreen() {
         data={teacherList}
         keyExtractor={(item, index) => getEntityId(item) || `teacher-${index}`}
         contentContainerStyle={styles.listContent}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        removeClippedSubviews
+        initialNumToRender={6}
+        maxToRenderPerBatch={8}
+        windowSize={7}
+        updateCellsBatchingPeriod={40}
         renderItem={({ item, index }) => {
           const teacherId = getEntityId(item);
           const itemStyle = {

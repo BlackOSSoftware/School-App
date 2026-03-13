@@ -11,7 +11,7 @@ const TABS = [
   { key: 'profile', label: 'Profile', icon: 'person-circle-outline' },
 ];
 
-export default function TeacherBottomNav({ activeTab, onTabChange }) {
+function TeacherBottomNav({ activeTab, onTabChange }) {
   const { colors } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -39,6 +39,8 @@ export default function TeacherBottomNav({ activeTab, onTabChange }) {
     </View>
   );
 }
+
+export default TeacherBottomNav;
 
 const createStyles = colors =>
   StyleSheet.create({

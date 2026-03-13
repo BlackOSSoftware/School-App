@@ -554,6 +554,13 @@ export default function AdminBusScreen() {
         data={busList}
         keyExtractor={(item, index) => getEntityId(item) || `bus-${index}`}
         contentContainerStyle={styles.listContent}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        removeClippedSubviews
+        initialNumToRender={6}
+        maxToRenderPerBatch={8}
+        windowSize={7}
+        updateCellsBatchingPeriod={40}
         renderItem={({ item }) => (
           <BusListCard
             item={item}

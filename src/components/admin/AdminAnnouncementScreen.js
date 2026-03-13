@@ -14,6 +14,7 @@ import { useCreateAdminAnnouncementMutation, useMyAnnouncementsQuery } from '../
 import { useClassesQuery } from '../../hooks/useClassQueries';
 import { useAppTheme } from '../../theme/ThemeContext';
 import AnnouncementFeed from '../common/AnnouncementFeed';
+import KeyboardAwareModal from '../common/KeyboardAwareModal';
 
 function getErrorMessage(error, fallback) {
   const message = error?.response?.data?.message || error?.response?.data?.error || error?.message;
@@ -155,8 +156,12 @@ export default function AdminAnnouncementScreen() {
       <AnnouncementFeed query={announcementQuery} page={page} onPageChange={setPage} variant="admin" />
 
       <Modal visible={composeOpen} transparent animationType="slide" onRequestClose={() => setComposeOpen(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+        <KeyboardAwareModal
+          overlayStyle={styles.modalOverlay}
+          scrollContentStyle={styles.modalScrollContent}
+          contentContainerStyle={styles.modalCard}
+          dismissKeyboardOnBackdrop
+        >
             <View style={styles.modalHeadRow}>
               <Text style={styles.modalTitle}>New Announcement</Text>
               <Pressable style={styles.circleClose} onPress={() => setComposeOpen(false)}>
@@ -298,8 +303,7 @@ export default function AdminAnnouncementScreen() {
                 )}
               </Pressable>
             </View>
-          </View>
-        </View>
+        </KeyboardAwareModal>
       </Modal>
 
     </View>
@@ -430,6 +434,9 @@ const createStyles = colors =>
       backgroundColor: colors.admin.modalBackdrop,
       justifyContent: 'flex-end',
       paddingHorizontal: 0,
+    },
+    modalScrollContent: {
+      justifyContent: 'flex-end',
     },
     modalCard: {
       borderTopLeftRadius: 22,

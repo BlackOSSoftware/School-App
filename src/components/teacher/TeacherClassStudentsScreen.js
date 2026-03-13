@@ -1,10 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { memo, useCallback, useMemo } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import PaginationControls from '../common/PaginationControls';
 import { useAppTheme } from '../../theme/ThemeContext';
 
-function StudentCard({ item, styles }) {
+const StudentCard = memo(function StudentCard({ item, styles }) {
   return (
     <View style={styles.studentCard}>
       <View style={styles.cardHeader}>
@@ -34,7 +34,7 @@ function StudentCard({ item, styles }) {
       </View>
     </View>
   );
-}
+});
 
 export default function TeacherClassStudentsScreen({
   classInfo,
@@ -48,6 +48,8 @@ export default function TeacherClassStudentsScreen({
 
   const students = query?.data?.students ?? [];
   const totalPages = query?.data?.totalPages ?? 1;
+  const keyExtractor = useCallback((item, index) => item.id || `teacher-student-${index}`, []);
+  const renderItem = useCallback(({ item }) => <StudentCard item={item} styles={styles} />, [styles]);
 
   return (
     <View style={styles.container}>
@@ -67,9 +69,15 @@ export default function TeacherClassStudentsScreen({
       ) : (
         <FlatList
           data={students}
-          keyExtractor={(item, index) => item.id || `teacher-student-${index}`}
+          keyExtractor={keyExtractor}
           contentContainerStyle={styles.listContent}
-          renderItem={({ item }) => <StudentCard item={item} styles={styles} />}
+          renderItem={renderItem}
+          keyboardShouldPersistTaps="handled"
+          removeClippedSubviews
+          initialNumToRender={8}
+          maxToRenderPerBatch={10}
+          windowSize={8}
+          updateCellsBatchingPeriod={40}
           ListEmptyComponent={<Text style={styles.emptyText}>No students found for this class.</Text>}
           ListFooterComponent={
             <PaginationControls
