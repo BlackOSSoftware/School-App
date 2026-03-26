@@ -74,6 +74,28 @@ tasks.matching { it.name == "preBuild" }.configureEach {
     dependsOn("removeStaleSourceBundles")
 }
 
+// Ensure codegen artifacts exist even after a Clean Project before native clean runs.
+// Only wire tasks that actually exist to avoid stale/manual references.
+def codegenTaskSpecs = [
+    [projectPath: ":react-native-community_datetimepicker", taskName: "generateCodegenArtifactsFromSchema"],
+    [projectPath: ":react-native-documents_picker", taskName: "generateCodegenArtifactsFromSchema"],
+    [projectPath: ":react-native-vector-icons_ionicons", taskName: "generateCodegenArtifactsFromSchema"],
+]
+def resolvedCodegenTasks = codegenTaskSpecs.collectMany { spec ->
+    def proj = findProject(spec.projectPath)
+    if (proj == null) {
+        return []
+    }
+    def matching = proj.tasks.matching { it.name == spec.taskName }
+    return matching.isEmpty() ? [] : ["${spec.projectPath}:${spec.taskName}"]
+}
+tasks.matching { it.name == "externalNativeBuildCleanDebug" || it.name == "externalNativeBuildCleanRelease" }
+    .configureEach {
+        if (!resolvedCodegenTasks.isEmpty()) {
+            dependsOn(resolvedCodegenTasks)
+        }
+    }
+
 /**
  * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
  */
@@ -131,8 +153,9 @@ android {
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
             signingConfig signingConfigs.debug
-            minifyEnabled enableProguardInReleaseBuilds
-            shrinkResources enableProguardInReleaseBuilds
+            // Temporarily disable minify/shrink to avoid release crash on startup.
+            minifyEnabled false
+            shrinkResources false
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }
