@@ -5,6 +5,7 @@ import { useCreateTeacherAnnouncementMutation, useMyAnnouncementsQuery } from '.
 import { useTeacherClassesOverviewQuery } from '../../hooks/useTeacherQueries';
 import { useAppTheme } from '../../theme/ThemeContext';
 import AnnouncementFeed from '../common/AnnouncementFeed';
+import KeyboardAwareModal from '../common/KeyboardAwareModal';
 
 function getErrorMessage(error, fallback) {
   const message = error?.response?.data?.message || error?.response?.data?.error || error?.message;
@@ -39,7 +40,17 @@ export default function TeacherAnnouncementScreen() {
   const createMutation = useCreateTeacherAnnouncementMutation();
   const overviewQuery = useTeacherClassesOverviewQuery();
   const announcementQuery = useMyAnnouncementsQuery({ page, limit: 10 });
-  const classes = Array.isArray(overviewQuery.data?.assignedClasses) ? overviewQuery.data.assignedClasses : [];
+  const classes = useMemo(
+    () => (Array.isArray(overviewQuery.data?.assignedClasses) ? overviewQuery.data.assignedClasses : []),
+    [overviewQuery.data?.assignedClasses],
+  );
+  const availableClassIds = useMemo(() => classes.map(item => item.id).filter(Boolean), [classes]);
+  const allClassesSelected = useMemo(() => {
+    if (!availableClassIds.length) {
+      return false;
+    }
+    return availableClassIds.every(id => form.classIds.includes(id));
+  }, [availableClassIds, form.classIds]);
 
   useEffect(() => {
     if (!message.text) {
@@ -107,8 +118,12 @@ export default function TeacherAnnouncementScreen() {
       <AnnouncementFeed query={announcementQuery} page={page} onPageChange={setPage} variant="teacher" />
 
       <Modal visible={composeOpen} transparent animationType="slide" onRequestClose={() => setComposeOpen(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+        <KeyboardAwareModal
+          overlayStyle={styles.modalOverlay}
+          scrollContentStyle={styles.modalScrollContent}
+          contentContainerStyle={styles.modalCard}
+          dismissKeyboardOnBackdrop
+        >
             <View style={styles.modalHeadRow}>
               <Text style={styles.modalTitle}>Post Announcement</Text>
               <Pressable style={styles.circleClose} onPress={() => setComposeOpen(false)}>
@@ -116,7 +131,7 @@ export default function TeacherAnnouncementScreen() {
               </Pressable>
             </View>
 
-            <Text style={styles.inputLabel}>Target Class</Text>
+            <Text style={styles.inputLabel}>Target Classes</Text>
             <Pressable style={styles.selectBtn} onPress={() => setClassDropdownOpen(prev => !prev)}>
               <Ionicons name="library-outline" size={16} color={colors.teacher.accent} />
               <Text style={styles.selectText}>
@@ -129,6 +144,27 @@ export default function TeacherAnnouncementScreen() {
             {classDropdownOpen ? (
               <View style={styles.dropdownBox}>
                 <ScrollView nestedScrollEnabled style={styles.modalList}>
+                  <Pressable
+                    style={styles.modalItem}
+                    onPress={() => {
+                      if (!availableClassIds.length) {
+                        return;
+                      }
+                      setForm(prev => ({
+                        ...prev,
+                        classIds: allClassesSelected ? [] : availableClassIds,
+                      }));
+                    }}
+                  >
+                    <Text style={styles.modalItemText}>
+                      {allClassesSelected ? 'Clear All' : 'Select All'}
+                    </Text>
+                    {allClassesSelected ? (
+                      <Ionicons name="checkmark-circle" size={16} color={colors.brand.primary} />
+                    ) : (
+                      <Ionicons name="ellipse-outline" size={16} color={colors.teacher.textSecondary} />
+                    )}
+                  </Pressable>
                   {classes.map(item => (
                     <Pressable
                       key={item.id}
@@ -192,8 +228,7 @@ export default function TeacherAnnouncementScreen() {
                 )}
               </Pressable>
             </View>
-          </View>
-        </View>
+        </KeyboardAwareModal>
       </Modal>
 
     </View>
@@ -324,6 +359,9 @@ const createStyles = colors =>
       backgroundColor: colors.teacher.modalBackdrop,
       justifyContent: 'flex-end',
       paddingHorizontal: 0,
+    },
+    modalScrollContent: {
+      justifyContent: 'flex-end',
     },
     modalCard: {
       borderTopLeftRadius: 22,

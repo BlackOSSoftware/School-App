@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, BackHandler, Easing, Modal, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import AdminBottomNav from '../../components/admin/AdminBottomNav';
 import AdminClassScreen from '../../components/admin/AdminClassScreen';
 import AdminDashboardHome from '../../components/admin/AdminDashboardHome';
 import AdminAnnouncementScreen from '../../components/admin/AdminAnnouncementScreen';
 import AdminAttendanceScreen from '../../components/admin/AdminAttendanceScreen';
+import AdminBusScreen from '../../components/admin/AdminBusScreen';
 import AdminProfileScreen from '../../components/admin/AdminProfileScreen';
 import AdminSessionScreen from '../../components/admin/AdminSessionScreen';
 import AdminSessionUpgradeScreen from '../../components/admin/AdminSessionUpgradeScreen';
@@ -34,12 +35,14 @@ export default function AdminDashboard({ session, onLogout }) {
         duration: 220,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
+        isInteraction: false,
       }),
       Animated.timing(pageTranslate, {
         toValue: 0,
         duration: 220,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
+        isInteraction: false,
       }),
     ]).start();
   }, [activeTab, currentScreen, pageOpacity, pageTranslate]);
@@ -72,12 +75,14 @@ export default function AdminDashboard({ session, onLogout }) {
           duration: 3200,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
+          isInteraction: false,
         }),
         Animated.timing(blobA, {
           toValue: 0,
           duration: 3200,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
+          isInteraction: false,
         }),
       ]),
     );
@@ -89,12 +94,14 @@ export default function AdminDashboard({ session, onLogout }) {
           duration: 2600,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
+          isInteraction: false,
         }),
         Animated.timing(blobB, {
           toValue: 0,
           duration: 2600,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
+          isInteraction: false,
         }),
       ]),
     );
@@ -108,13 +115,13 @@ export default function AdminDashboard({ session, onLogout }) {
     };
   }, [blobA, blobB]);
 
-  const onTabChange = tab => {
+  const onTabChange = useCallback(tab => {
     setActiveTab(tab);
     setCurrentScreen('root');
     setNote('');
-  };
+  }, []);
 
-  const onQuickActionPress = key => {
+  const onQuickActionPress = useCallback(key => {
     if (key === 'session') {
       setCurrentScreen('session');
       return;
@@ -143,8 +150,12 @@ export default function AdminDashboard({ session, onLogout }) {
       setCurrentScreen('manage-teacher');
       return;
     }
+    if (key === 'manage-bus') {
+      setCurrentScreen('manage-bus');
+      return;
+    }
     setNote(`${key} module ready for next integration.`);
-  };
+  }, [onTabChange]);
 
   const title =
     currentScreen === 'session'
@@ -157,7 +168,12 @@ export default function AdminDashboard({ session, onLogout }) {
           ? 'Manage Student'
         : currentScreen === 'manage-teacher'
           ? 'Manage Teacher'
+          : currentScreen === 'manage-bus'
+            ? 'Manage Bus'
         : 'Admin Dashboard';
+
+  const handleGoBack = useCallback(() => setCurrentScreen('root'), []);
+  const handleAnnouncementPress = useCallback(() => onTabChange('announcement'), [onTabChange]);
 
   const renderRootScreen = () => {
     if (activeTab === 'dashboard') {
@@ -203,13 +219,14 @@ export default function AdminDashboard({ session, onLogout }) {
       <View style={styles.gridOverlay} />
       <AdminTopBar
         title={title}
-        onBack={currentScreen !== 'root' ? () => setCurrentScreen('root') : undefined}
-        onNotificationPress={() => onTabChange('announcement')}
+        onBack={currentScreen !== 'root' ? handleGoBack : undefined}
+        onNotificationPress={handleAnnouncementPress}
       />
 
       {currentScreen === 'manage-class' ||
       currentScreen === 'manage-student' ||
       currentScreen === 'manage-teacher' ||
+      currentScreen === 'manage-bus' ||
       currentScreen === 'session-upgrade' ||
       (currentScreen === 'root' && (activeTab === 'announcement' || activeTab === 'attendance')) ? (
         <Animated.View
@@ -221,6 +238,7 @@ export default function AdminDashboard({ session, onLogout }) {
           {currentScreen === 'manage-class' ? <AdminClassScreen /> : null}
           {currentScreen === 'manage-student' ? <AdminStudentScreen /> : null}
           {currentScreen === 'manage-teacher' ? <AdminTeacherScreen /> : null}
+          {currentScreen === 'manage-bus' ? <AdminBusScreen /> : null}
           {currentScreen === 'session-upgrade' ? <AdminSessionUpgradeScreen /> : null}
           {currentScreen === 'root' && activeTab === 'announcement' ? <AdminAnnouncementScreen /> : null}
           {currentScreen === 'root' && activeTab === 'attendance' ? <AdminAttendanceScreen /> : null}

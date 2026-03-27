@@ -22,6 +22,7 @@ import {
 } from '../../hooks/useSessionQueries';
 import PaginationControls from '../common/PaginationControls';
 import { useAppTheme } from '../../theme/ThemeContext';
+import KeyboardAwareModal from '../common/KeyboardAwareModal';
 
 function formatDate(dateValue) {
   if (!dateValue) {
@@ -391,8 +392,12 @@ export default function AdminSessionScreen() {
       </View>
 
       <Modal visible={createModalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.editCard}>
+        <KeyboardAwareModal
+          overlayStyle={styles.modalOverlay}
+          scrollContentStyle={styles.modalScrollContent}
+          contentContainerStyle={styles.editCard}
+          dismissKeyboardOnBackdrop
+        >
             <Text style={styles.editTitle}>Create Session</Text>
 
             <Text style={styles.inputLabel}>Session Name</Text>
@@ -456,13 +461,16 @@ export default function AdminSessionScreen() {
                 )}
               </Pressable>
             </View>
-          </View>
-        </View>
+        </KeyboardAwareModal>
       </Modal>
 
       <Modal visible={editModalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.editCard}>
+        <KeyboardAwareModal
+          overlayStyle={styles.modalOverlay}
+          scrollContentStyle={styles.modalScrollContent}
+          contentContainerStyle={styles.editCard}
+          dismissKeyboardOnBackdrop
+        >
             <Text style={styles.editTitle}>Edit Session</Text>
 
             <Text style={styles.inputLabel}>Session Name</Text>
@@ -522,8 +530,7 @@ export default function AdminSessionScreen() {
                 <Text style={styles.confirmBtnSolidText}>Save</Text>
               </Pressable>
             </View>
-          </View>
-        </View>
+        </KeyboardAwareModal>
       </Modal>
 
       <ConfirmModal
@@ -795,6 +802,10 @@ const createStyles = colors =>
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 18,
+  },
+  modalScrollContent: {
+    justifyContent: 'center',
+    paddingVertical: 18,
   },
   editCard: {
     width: '100%',

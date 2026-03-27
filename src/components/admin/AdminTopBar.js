@@ -4,7 +4,7 @@ import Ionicons from '@react-native-vector-icons/ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppTheme } from '../../theme/ThemeContext';
 
-export default function AdminTopBar({ title, onBack, onNotificationPress }) {
+function AdminTopBar({ title, onBack, onNotificationPress }) {
   const insets = useSafeAreaInsets();
   const { colors, isDark, toggleTheme } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -37,6 +37,8 @@ export default function AdminTopBar({ title, onBack, onNotificationPress }) {
     </View>
   );
 }
+
+export default AdminTopBar;
 
 const createStyles = colors =>
   StyleSheet.create({

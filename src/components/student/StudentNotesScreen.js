@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, Easing, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import { useStudentMyContentQuery } from '../../hooks/useContentQueries';
 import { downloadAndOpenContentFile, openContentFile } from '../../services/fileService';
@@ -13,6 +13,26 @@ function MessageBanner({ message, type, styles }) {
     </View>
   );
 }
+
+const NotesListItem = memo(function NotesListItem({ item, styles, onPress, brandColor }) {
+  return (
+    <Pressable style={styles.card} onPress={() => onPress(item)}>
+      <View style={styles.cardShine} />
+      <View style={styles.cardTop}>
+        <View style={styles.cardIconWrap}>
+          <Ionicons name="document-outline" size={14} color={brandColor} />
+        </View>
+        <Text style={styles.cardTitle}>{item.title}</Text>
+      </View>
+      <Text style={styles.cardMeta}>{item.subject || '-'} | {item.classInfo?.name || '-'}-{item.classInfo?.section || '-'}</Text>
+      <Text style={styles.cardDesc}>{item.description}</Text>
+      <View style={styles.cardLinkRow}>
+        <Ionicons name="chevron-forward" size={14} color={brandColor} />
+        <Text style={styles.fileLink}>{item.file?.url ? 'Open details' : 'No attachment'}</Text>
+      </View>
+    </Pressable>
+  );
+});
 
 export default function StudentNotesScreen({ prefillSelectedItem = null }) {
   const { colors } = useAppTheme();
@@ -41,12 +61,14 @@ export default function StudentNotesScreen({ prefillSelectedItem = null }) {
         duration: 280,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
+        isInteraction: false,
       }),
       Animated.timing(translateAnim, {
         toValue: 0,
         duration: 280,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
+        isInteraction: false,
       }),
     ]).start();
   }, [fadeAnim, translateAnim, selectedItem, page, subjectFilter]);
@@ -117,6 +139,71 @@ export default function StudentNotesScreen({ prefillSelectedItem = null }) {
     }
   };
 
+  const openDetails = useCallback(item => setSelectedItem(item), []);
+  const keyExtractor = useCallback(item => item.id, []);
+  const renderItem = useCallback(
+    ({ item }) => <NotesListItem item={item} styles={styles} onPress={openDetails} brandColor={colors.brand.primary} />,
+    [colors.brand.primary, openDetails, styles],
+  );
+  const listHeader = useMemo(
+    () => (
+      <>
+        <View style={styles.headerRow}>
+          <Ionicons name="document-text-outline" size={18} color={colors.student.textPrimary} />
+          <Text style={styles.title}>Notes</Text>
+        </View>
+        <Text style={styles.sub}>Class notes with optional subject filter.</Text>
+
+        <MessageBanner message={message.text} type={message.type} styles={styles} />
+
+        <ScrollView
+          horizontal
+          style={styles.filterScroller}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterRow}
+        >
+          {subjectOptions.map(item => (
+            <Pressable
+              key={item}
+              style={[styles.filterChip, subjectFilter === item ? styles.filterChipActive : null]}
+              onPress={() => {
+                setPage(1);
+                setSubjectFilter(item);
+              }}
+            >
+              <Text
+                numberOfLines={1}
+                style={[styles.filterChipText, subjectFilter === item ? styles.filterChipTextActive : null]}
+              >
+                {item === 'ALL' ? 'All Subjects' : item}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+
+        {query.isLoading ? <ActivityIndicator size="small" color={colors.brand.primary} /> : null}
+      </>
+    ),
+    [colors.brand.primary, colors.student.textPrimary, message.text, message.type, query.isLoading, styles, subjectFilter, subjectOptions],
+  );
+  const listFooter = useMemo(
+    () => (
+      <>
+        {!rows.length && !query.isLoading ? <Text style={styles.emptyText}>No notes found.</Text> : null}
+        <View style={styles.paginationRow}>
+          <Pressable style={[styles.pageBtn, page <= 1 ? styles.pageBtnDisabled : null]} onPress={() => setPage(prev => Math.max(1, prev - 1))} disabled={page <= 1}>
+            <Text style={styles.pageBtnText}>Prev</Text>
+          </Pressable>
+          <Text style={styles.pageText}>{page} / {totalPages}</Text>
+          <Pressable style={[styles.pageBtn, page >= totalPages ? styles.pageBtnDisabled : null]} onPress={() => setPage(prev => Math.min(totalPages, prev + 1))} disabled={page >= totalPages}>
+            <Text style={styles.pageBtnText}>Next</Text>
+          </Pressable>
+        </View>
+      </>
+    ),
+    [page, query.isLoading, rows.length, styles, totalPages],
+  );
+
   if (selectedItem) {
     return (
       <Animated.View style={[styles.detailContainer, { opacity: fadeAnim, transform: [{ translateY: translateAnim }] }]}>
@@ -167,71 +254,22 @@ export default function StudentNotesScreen({ prefillSelectedItem = null }) {
 
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim, transform: [{ translateY: translateAnim }] }]}>
-      <View style={styles.headerRow}>
-        <Ionicons name="document-text-outline" size={18} color={colors.student.textPrimary} />
-        <Text style={styles.title}>Notes</Text>
-      </View>
-      <Text style={styles.sub}>Class notes with optional subject filter.</Text>
-
-      <MessageBanner message={message.text} type={message.type} styles={styles} />
-
-      <ScrollView
-        horizontal
-        style={styles.filterScroller}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterRow}
-      >
-        {subjectOptions.map(item => (
-          <Pressable
-            key={item}
-            style={[styles.filterChip, subjectFilter === item ? styles.filterChipActive : null]}
-            onPress={() => {
-              setPage(1);
-              setSubjectFilter(item);
-            }}
-          >
-            <Text
-              numberOfLines={1}
-              style={[styles.filterChipText, subjectFilter === item ? styles.filterChipTextActive : null]}
-            >
-              {item === 'ALL' ? 'All Subjects' : item}
-            </Text>
-          </Pressable>
-        ))}
-      </ScrollView>
-
-      {query.isLoading ? <ActivityIndicator size="small" color={colors.brand.primary} /> : null}
-
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {rows.map(item => (
-          <Pressable key={item.id} style={styles.card} onPress={() => setSelectedItem(item)}>
-            <View style={styles.cardShine} />
-            <View style={styles.cardTop}>
-              <View style={styles.cardIconWrap}>
-                <Ionicons name="document-outline" size={14} color={colors.brand.primary} />
-              </View>
-              <Text style={styles.cardTitle}>{item.title}</Text>
-            </View>
-            <Text style={styles.cardMeta}>{item.subject || '-'} | {item.classInfo?.name || '-'}-{item.classInfo?.section || '-'}</Text>
-            <Text style={styles.cardDesc}>{item.description}</Text>
-            <View style={styles.cardLinkRow}>
-              <Ionicons name="chevron-forward" size={14} color={colors.brand.primary} />
-              <Text style={styles.fileLink}>{item.file?.url ? 'Open details' : 'No attachment'}</Text>
-            </View>
-          </Pressable>
-        ))}
-        {!rows.length && !query.isLoading ? <Text style={styles.emptyText}>No notes found.</Text> : null}
-
-        <View style={styles.paginationRow}>
-          <Pressable style={[styles.pageBtn, page <= 1 ? styles.pageBtnDisabled : null]} onPress={() => setPage(prev => Math.max(1, prev - 1))} disabled={page <= 1}>
-            <Text style={styles.pageBtnText}>Prev</Text>
-          </Pressable>
-          <Text style={styles.pageText}>{page} / {totalPages}</Text>
-          <Pressable style={[styles.pageBtn, page >= totalPages ? styles.pageBtnDisabled : null]} onPress={() => setPage(prev => Math.min(totalPages, prev + 1))} disabled={page >= totalPages}>
-            <Text style={styles.pageBtnText}>Next</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
+      <FlatList
+        data={rows}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        ListHeaderComponent={listHeader}
+        ListFooterComponent={listFooter}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        removeClippedSubviews
+        initialNumToRender={6}
+        maxToRenderPerBatch={8}
+        windowSize={7}
+        updateCellsBatchingPeriod={40}
+      />
     </Animated.View>
   );
 }
@@ -353,6 +391,7 @@ const createStyles = colors =>
     actionBtnText: { color: colors.text.inverse, fontSize: 12, fontWeight: '800' },
     emptyText: { textAlign: 'center', color: colors.student.textSecondary, marginTop: 20 },
     paginationRow: { marginTop: 4, marginBottom: 16, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 },
+    listContent: { paddingBottom: 8 },
     pageBtn: {
       borderRadius: 8,
       borderWidth: 1,

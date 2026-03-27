@@ -12,6 +12,7 @@ const ACTIONS = [
   { key: 'manage-class', title: 'Classes', desc: 'Class and section setup', icon: 'library-outline' },
   { key: 'attendance', title: 'Attendance', desc: 'Track daily attendance', icon: 'checkmark-circle-outline' },
   { key: 'announcement', title: 'Announcements', desc: 'Post school updates', icon: 'megaphone-outline' },
+  { key: 'manage-bus', title: 'Bus', desc: 'Routes & tracking access', icon: 'bus-outline' },
 ];
 
 function KpiStrip({ reveal, styles, kpiData, loading, colors }) {

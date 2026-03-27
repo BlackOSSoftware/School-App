@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import { useLoginMutation, getApiErrorMessage } from '../../hooks/useLoginMutation';
-import { setAuthToken } from '../../api/client';
+import { getApiBaseUrl, getApiBaseUrlCandidates, setAuthToken } from '../../api/client';
 import { updateMyFcmToken } from '../../services/authService';
 import { getDeviceFcmToken } from '../../services/fcmService';
 import { useAppTheme } from '../../theme/ThemeContext';
@@ -191,7 +191,15 @@ export default function LoginScreen({ onLoginSuccess }) {
         user: result?.user ?? null,
       });
     } catch (error) {
-      showError('Invalid credentials', getApiErrorMessage(error));
+      const message = getApiErrorMessage(error);
+      const activeUrl = getApiBaseUrl();
+      const availableUrls = getApiBaseUrlCandidates().join('\n');
+      const extra = !error?.response
+        ? `\n\nActive API URL: ${activeUrl}\n\nTried URLs:\n${availableUrls}`
+        : error?.response?.status === 404
+          ? `\n\nActive API URL: ${activeUrl}`
+          : '';
+      showError('Invalid credentials', `${message}${extra}`);
     }
   };
 

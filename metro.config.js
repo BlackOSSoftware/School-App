@@ -7,7 +7,10 @@ const defaultConfig = getDefaultConfig(__dirname);
 
 module.exports = mergeConfig(defaultConfig, {
   resolver: {
-    blockList: /node_modules[\/\\].+[\/\\](android|ios)[\/\\]build[\/\\].*/,
+    blockList: [
+      /node_modules[\/\\].+[\/\\](android|ios)[\/\\]build[\/\\].*/,
+      /node_modules[\/\\]@react-native[\/\\]gradle-plugin[\/\\]react-native-gradle-plugin[\/\\]build[\/\\].*/,
+    ],
     resolveRequest(context, moduleName, platform) {
       if (moduleName === 'axios') {
         return {

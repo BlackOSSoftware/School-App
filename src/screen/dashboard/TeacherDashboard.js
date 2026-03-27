@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, BackHandler, Easing, Modal, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import TeacherBottomNav from '../../components/teacher/TeacherBottomNav';
 import TeacherClassStudentsScreen from '../../components/teacher/TeacherClassStudentsScreen';
@@ -43,12 +43,14 @@ export default function TeacherDashboard({ session, onLogout }) {
         duration: 220,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
+        isInteraction: false,
       }),
       Animated.timing(pageTranslate, {
         toValue: 0,
         duration: 220,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
+        isInteraction: false,
       }),
     ]).start();
   }, [activeTab, currentScreen, pageOpacity, pageTranslate]);
@@ -81,12 +83,14 @@ export default function TeacherDashboard({ session, onLogout }) {
           duration: 3200,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
+          isInteraction: false,
         }),
         Animated.timing(blobA, {
           toValue: 0,
           duration: 3200,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
+          isInteraction: false,
         }),
       ]),
     );
@@ -98,12 +102,14 @@ export default function TeacherDashboard({ session, onLogout }) {
           duration: 2600,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
+          isInteraction: false,
         }),
         Animated.timing(blobB, {
           toValue: 0,
           duration: 2600,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
+          isInteraction: false,
         }),
       ]),
     );
@@ -122,14 +128,14 @@ export default function TeacherDashboard({ session, onLogout }) {
     overviewQuery?.data?.teacher?.name ||
     'Teacher';
 
-  const onTabChange = tab => {
+  const onTabChange = useCallback(tab => {
     setActiveTab(tab);
     setCurrentScreen('root');
     setSelectedClass(null);
     setClassStudentsPage(1);
-  };
+  }, []);
 
-  const onQuickActionPress = key => {
+  const onQuickActionPress = useCallback(key => {
     if (key === 'mark-attendance') {
       onTabChange('attendance');
       return;
@@ -142,16 +148,19 @@ export default function TeacherDashboard({ session, onLogout }) {
       onTabChange('announcement');
       return;
     }
-  };
+  }, [onTabChange]);
 
-  const onClassPress = classInfo => {
+  const onClassPress = useCallback(classInfo => {
     if (!classInfo?.id) {
       return;
     }
     setSelectedClass(classInfo);
     setClassStudentsPage(1);
     setCurrentScreen('class-students');
-  };
+  }, []);
+
+  const handleGoBack = useCallback(() => setCurrentScreen('root'), []);
+  const handleAnnouncementPress = useCallback(() => onTabChange('announcement'), [onTabChange]);
 
   const title =
     currentScreen === 'class-students'
@@ -221,8 +230,8 @@ export default function TeacherDashboard({ session, onLogout }) {
 
       <TeacherTopBar
         title={title}
-        onBack={currentScreen !== 'root' ? () => setCurrentScreen('root') : undefined}
-        onNotificationPress={() => onTabChange('announcement')}
+        onBack={currentScreen !== 'root' ? handleGoBack : undefined}
+        onNotificationPress={handleAnnouncementPress}
       />
 
       <Animated.View
@@ -237,7 +246,7 @@ export default function TeacherDashboard({ session, onLogout }) {
             query={classStudentsQuery}
             page={classStudentsPage}
             onPageChange={setClassStudentsPage}
-            onBackToDashboard={() => setCurrentScreen('root')}
+            onBackToDashboard={handleGoBack}
           />
         ) : activeTab === 'announcement' || activeTab === 'attendance' ? (
           renderRootScreen()

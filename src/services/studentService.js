@@ -26,12 +26,14 @@ function normalizePhone(value) {
 }
 
 function normalizeCreatePayload(payload) {
+  const busId = normalizeEntityId(payload?.busId);
   return {
     name: String(payload?.name ?? payload?.firstName ?? '').trim(),
     scholarNumber: String(payload?.scholarNumber ?? '').trim(),
     parentName: String(payload?.parentName ?? '').trim(),
     number: normalizePhone(payload?.number),
     classId: normalizeEntityId(payload?.classId) || null,
+    busId: busId || null,
     status: 'active',
   };
 }
@@ -52,6 +54,9 @@ function normalizeUpdatePayload(payload) {
   }
   if (payload?.classId !== undefined) {
     body.classId = normalizeEntityId(payload.classId) || null;
+  }
+  if (payload?.busId !== undefined) {
+    body.busId = normalizeEntityId(payload.busId) || null;
   }
   if (payload?.status !== undefined) {
     body.status = String(payload.status ?? '').trim().toLowerCase() === 'inactive' ? 'inactive' : 'active';

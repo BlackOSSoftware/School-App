@@ -10,7 +10,7 @@ const TABS = [
   { key: 'profile', label: 'Profile', icon: 'person-circle-outline' },
 ];
 
-export default function AdminBottomNav({ activeTab, onTabChange }) {
+function AdminBottomNav({ activeTab, onTabChange }) {
   const { colors } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -38,6 +38,8 @@ export default function AdminBottomNav({ activeTab, onTabChange }) {
     </View>
   );
 }
+
+export default AdminBottomNav;
 
 const createStyles = colors =>
   StyleSheet.create({

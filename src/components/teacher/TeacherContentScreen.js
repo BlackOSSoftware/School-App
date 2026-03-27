@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   ActivityIndicator,
+  FlatList,
   Linking,
   Modal,
   NativeModules,
@@ -18,6 +19,7 @@ import { useTeacherClassesOverviewQuery } from '../../hooks/useTeacherQueries';
 import { useCreateTeacherContentMutation, useTeacherMyContentQuery } from '../../hooks/useContentQueries';
 import { downloadAndOpenContentFile, resolveContentFileUrl } from '../../services/fileService';
 import { useAppTheme } from '../../theme/ThemeContext';
+import KeyboardAwareModal from '../common/KeyboardAwareModal';
 
 const PAGE_LIMIT = 10;
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -65,6 +67,23 @@ function MessageBanner({ text, type, onClose, styles }) {
     </View>
   );
 }
+
+const ContentListItem = memo(function ContentListItem({ item, styles, onPress }) {
+  return (
+    <Pressable style={styles.card} onPress={() => onPress(item)}>
+      <View style={styles.cardHead}>
+        <Text style={styles.cardType}>{item.type.toUpperCase()}</Text>
+        <Text style={styles.cardDate}>{formatDate(item.createdAt)}</Text>
+      </View>
+      <Text style={styles.cardTitle}>{item.title}</Text>
+      <Text style={styles.cardMeta}>
+        {item.classInfo?.name || '-'}-{item.classInfo?.section || '-'} | {item.subject || '-'}
+      </Text>
+      <Text style={styles.cardDesc}>{item.description}</Text>
+      <Text style={styles.fileLink}>{item.file?.url ? 'Tap to view details' : 'No attachment'}</Text>
+    </Pressable>
+  );
+});
 
 export default function TeacherContentScreen() {
   const { colors } = useAppTheme();
@@ -273,6 +292,30 @@ export default function TeacherContentScreen() {
     }
   };
 
+  const openDetails = useCallback(item => setSelectedItem(item), []);
+  const keyExtractor = useCallback(item => item.id, []);
+  const renderItem = useCallback(
+    ({ item }) => <ContentListItem item={item} styles={styles} onPress={openDetails} />,
+    [openDetails, styles],
+  );
+  const listFooter = useMemo(
+    () => (
+      <>
+        {!rows.length ? <Text style={styles.emptyText}>No content found.</Text> : null}
+        <View style={styles.paginationRow}>
+          <Pressable style={[styles.pageBtn, page <= 1 ? styles.pageBtnDisabled : null]} onPress={() => setPage(prev => Math.max(1, prev - 1))} disabled={page <= 1}>
+            <Text style={styles.pageBtnText}>Prev</Text>
+          </Pressable>
+          <Text style={styles.pageText}>{page} / {totalPages}</Text>
+          <Pressable style={[styles.pageBtn, page >= totalPages ? styles.pageBtnDisabled : null]} onPress={() => setPage(prev => Math.min(totalPages, prev + 1))} disabled={page >= totalPages}>
+            <Text style={styles.pageBtnText}>Next</Text>
+          </Pressable>
+        </View>
+      </>
+    ),
+    [page, rows.length, styles, totalPages],
+  );
+
   return (
     <View style={styles.container}>
       <View style={styles.heroCard}>
@@ -315,37 +358,31 @@ export default function TeacherContentScreen() {
       {listQuery.isLoading ? (
         <ActivityIndicator size="small" color={colors.brand.primary} />
       ) : (
-        <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
-          {rows.map(item => (
-            <Pressable key={item.id} style={styles.card} onPress={() => setSelectedItem(item)}>
-              <View style={styles.cardHead}>
-                <Text style={styles.cardType}>{item.type.toUpperCase()}</Text>
-                <Text style={styles.cardDate}>{formatDate(item.createdAt)}</Text>
-              </View>
-              <Text style={styles.cardTitle}>{item.title}</Text>
-              <Text style={styles.cardMeta}>
-                {item.classInfo?.name || '-'}-{item.classInfo?.section || '-'} | {item.subject || '-'}
-              </Text>
-              <Text style={styles.cardDesc}>{item.description}</Text>
-              <Text style={styles.fileLink}>{item.file?.url ? 'Tap to view details' : 'No attachment'}</Text>
-            </Pressable>
-          ))}
-          {!rows.length ? <Text style={styles.emptyText}>No content found.</Text> : null}
-          <View style={styles.paginationRow}>
-            <Pressable style={[styles.pageBtn, page <= 1 ? styles.pageBtnDisabled : null]} onPress={() => setPage(prev => Math.max(1, prev - 1))} disabled={page <= 1}>
-              <Text style={styles.pageBtnText}>Prev</Text>
-            </Pressable>
-            <Text style={styles.pageText}>{page} / {totalPages}</Text>
-            <Pressable style={[styles.pageBtn, page >= totalPages ? styles.pageBtnDisabled : null]} onPress={() => setPage(prev => Math.min(totalPages, prev + 1))} disabled={page >= totalPages}>
-              <Text style={styles.pageBtnText}>Next</Text>
-            </Pressable>
-          </View>
-        </ScrollView>
+        <FlatList
+          data={rows}
+          keyExtractor={keyExtractor}
+          renderItem={renderItem}
+          ListFooterComponent={listFooter}
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          removeClippedSubviews
+          initialNumToRender={6}
+          maxToRenderPerBatch={8}
+          windowSize={7}
+          updateCellsBatchingPeriod={40}
+        />
       )}
 
       <Modal visible={composeOpen} transparent animationType="slide" onRequestClose={() => setComposeOpen(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+        <KeyboardAwareModal
+          overlayStyle={styles.modalOverlay}
+          scrollContentStyle={styles.modalScrollContent}
+          contentContainerStyle={styles.modalCard}
+          dismissKeyboardOnBackdrop
+        >
             <Text style={styles.modalTitle}>Post Content</Text>
             <View style={styles.segmentWrap}>
               <Pressable style={[styles.segmentBtn, form.type === 'homework' ? styles.segmentBtnActive : null]} onPress={() => setForm(prev => ({ ...prev, type: 'homework' }))}>
@@ -409,8 +446,7 @@ export default function TeacherContentScreen() {
                 {createMutation.isPending ? <ActivityIndicator size="small" color={colors.text.inverse} /> : <Text style={styles.submitText}>Publish</Text>}
               </Pressable>
             </View>
-          </View>
-        </View>
+        </KeyboardAwareModal>
       </Modal>
 
       <Modal visible={Boolean(selectedItem)} transparent animationType="slide" onRequestClose={() => setSelectedItem(null)}>
@@ -572,6 +608,7 @@ const createStyles = colors =>
     bannerText: { flex: 1, color: colors.teacher.textPrimary, fontSize: 12, fontWeight: '700', paddingRight: 8 },
     bannerClose: { color: colors.teacher.textPrimary, fontSize: 13, fontWeight: '700' },
     list: { flex: 1 },
+    listContent: { paddingBottom: 12 },
     card: {
       borderRadius: 14,
       borderWidth: 1,
@@ -606,6 +643,7 @@ const createStyles = colors =>
     pageBtnText: { color: colors.teacher.textPrimary, fontSize: 12, fontWeight: '700' },
     pageText: { color: colors.teacher.textSecondary, fontSize: 12.5, fontWeight: '700' },
     modalOverlay: { flex: 1, backgroundColor: colors.teacher.modalBackdrop, justifyContent: 'flex-end' },
+    modalScrollContent: { justifyContent: 'flex-end' },
     modalCard: {
       borderTopLeftRadius: 22,
       borderTopRightRadius: 22,

@@ -4,7 +4,7 @@ import Ionicons from '@react-native-vector-icons/ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppTheme } from '../../theme/ThemeContext';
 
-export default function TeacherTopBar({ title, onBack, onNotificationPress }) {
+function TeacherTopBar({ title, onBack, onNotificationPress }) {
   const insets = useSafeAreaInsets();
   const { colors, isDark, toggleTheme } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -37,6 +37,8 @@ export default function TeacherTopBar({ title, onBack, onNotificationPress }) {
     </View>
   );
 }
+
+export default TeacherTopBar;
 
 const createStyles = colors =>
   StyleSheet.create({

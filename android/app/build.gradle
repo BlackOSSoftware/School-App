@@ -55,10 +55,61 @@ react {
     autolinkLibrariesWithApp()
 }
 
+def staleSourceAssetFiles = [
+    file("$projectDir/src/main/assets/index.android.bundle"),
+    file("$projectDir/src/main/assets/index.android.bundle.map"),
+]
+
+tasks.register("removeStaleSourceBundles") {
+    doLast {
+        staleSourceAssetFiles.each { staleFile ->
+            if (staleFile.exists()) {
+                staleFile.delete()
+            }
+        }
+    }
+}
+
+tasks.matching { it.name == "preBuild" }.configureEach {
+    dependsOn("removeStaleSourceBundles")
+}
+
+// Ensure codegen artifacts exist even after a Clean Project before native clean runs.
+// Only wire tasks that actually exist to avoid stale/manual references.
+def codegenTaskSpecs = [
+    [projectPath: ":react-native-community_datetimepicker", taskName: "generateCodegenArtifactsFromSchema"],
+    [projectPath: ":react-native-documents_picker", taskName: "generateCodegenArtifactsFromSchema"],
+    [projectPath: ":react-native-vector-icons_ionicons", taskName: "generateCodegenArtifactsFromSchema"],
+]
+def resolvedCodegenTasks = codegenTaskSpecs.collectMany { spec ->
+    def proj = findProject(spec.projectPath)
+    if (proj == null) {
+        return []
+    }
+    def matching = proj.tasks.matching { it.name == spec.taskName }
+    return matching.isEmpty() ? [] : ["${spec.projectPath}:${spec.taskName}"]
+}
+tasks.matching { it.name == "externalNativeBuildCleanDebug" || it.name == "externalNativeBuildCleanRelease" }
+    .configureEach {
+        if (!resolvedCodegenTasks.isEmpty()) {
+            dependsOn(resolvedCodegenTasks)
+        }
+    }
+
 /**
  * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
  */
-def enableProguardInReleaseBuilds = false
+def enableProguardInReleaseBuilds = true
+def enableSeparateBuildPerCPUArchitecture = true
+def requestedTaskNames = gradle.startParameter.taskNames.collect { it.toLowerCase() }
+def defaultArchitectures = requestedTaskNames.any { it.contains("release") }
+    ? "armeabi-v7a,arm64-v8a"
+    : "armeabi-v7a,arm64-v8a,x86,x86_64"
+def configuredArchitectures = (findProperty("reactNativeArchitectures") ?: defaultArchitectures)
+    .toString()
+    .split(",")
+    .collect { it.trim() }
+    .findAll { it }
 
 /**
  * The preferred build flavor of JavaScriptCore (JSC)
@@ -102,8 +153,19 @@ android {
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
             signingConfig signingConfigs.debug
-            minifyEnabled enableProguardInReleaseBuilds
+            // Temporarily disable minify/shrink to avoid release crash on startup.
+            minifyEnabled false
+            shrinkResources false
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+        }
+    }
+
+    splits {
+        abi {
+            enable enableSeparateBuildPerCPUArchitecture
+            reset()
+            include(*configuredArchitectures)
+            universalApk false
         }
     }
 }
