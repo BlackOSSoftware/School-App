@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import Ionicons from '@react-native-vector-icons/ionicons';
+import AppIcon from '../common/AppIcon.js';
 import { useAppTheme } from '../../theme/ThemeContext';
 
 const QUICK_ACTIONS = [
@@ -45,7 +45,7 @@ export default function TeacherDashboardHome({
         <View style={styles.quickGrid}>
           {QUICK_ACTIONS.map(action => (
             <Pressable key={action.key} style={styles.quickCard} onPress={() => onQuickActionPress(action.key)}>
-              <Ionicons name={action.icon} size={19} style={styles.quickIcon} />
+              <AppIcon name={action.icon} size={19} style={styles.quickIcon} />
               <Text style={styles.quickTitle}>{action.title}</Text>
             </Pressable>
           ))}
@@ -61,7 +61,7 @@ export default function TeacherDashboardHome({
               <Text style={styles.classLabel}>{classTeacherOf.label}</Text>
               <Text style={styles.classMeta}>Class Teacher Role</Text>
             </View>
-            <Ionicons name="chevron-forward" size={17} color={colors.teacher.accent} />
+            <AppIcon name="chevron-forward" size={17} color={colors.teacher.accent} />
           </Pressable>
         ) : (
           <Text style={styles.emptyText}>No class teacher assignment found.</Text>
@@ -81,7 +81,7 @@ export default function TeacherDashboardHome({
                 <Text style={styles.classLabel}>{item.classInfo.label}</Text>
                 <Text style={styles.classMeta}>Tap to view students</Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color={colors.teacher.accent} />
+              <AppIcon name="chevron-forward" size={16} color={colors.teacher.accent} />
             </Pressable>
           ))
         ) : (
@@ -99,7 +99,7 @@ export default function TeacherDashboardHome({
                 <Text style={styles.classLabel}>{item.label}</Text>
                 <Text style={styles.classMeta}>View class students</Text>
               </View>
-              <Ionicons name="chevron-forward" size={17} color={colors.teacher.accent} />
+              <AppIcon name="chevron-forward" size={17} color={colors.teacher.accent} />
             </Pressable>
           ))
         ) : (

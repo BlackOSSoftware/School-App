@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { ActivityIndicator, Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
-import Ionicons from '@react-native-vector-icons/ionicons';
+import AppIcon from '../common/AppIcon.js';
 import { useAppTheme } from '../../theme/ThemeContext';
 import { useAdminDashboardSummaryQuery } from '../../hooks/useAttendanceQueries';
 
@@ -47,7 +47,7 @@ function KpiStrip({ reveal, styles, kpiData, loading, colors }) {
             },
           ]}
         >
-          <Ionicons name={item.icon} size={17} style={styles.kpiIcon} />
+          <AppIcon name={item.icon} size={17} style={styles.kpiIcon} />
           <Text style={styles.kpiValue}>{item.value}</Text>
           <Text style={styles.kpiLabel}>{item.label}</Text>
         </Animated.View>
@@ -83,7 +83,7 @@ function QuickActions({ onQuickActionPress, reveal, styles }) {
             ]}
           >
             <Pressable style={styles.actionCard} onPress={() => onQuickActionPress(action.key)}>
-              <Ionicons name={action.icon} size={20} style={styles.actionIcon} />
+              <AppIcon name={action.icon} size={20} style={styles.actionIcon} />
               <Text style={styles.actionTitle}>{action.title}</Text>
               <Text style={styles.actionDesc}>{action.desc}</Text>
             </Pressable>

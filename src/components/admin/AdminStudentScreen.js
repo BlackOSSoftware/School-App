@@ -12,7 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import Ionicons from '@react-native-vector-icons/ionicons';
+import AppIcon from '../common/AppIcon.js';
 import { useClassesQuery } from '../../hooks/useClassQueries';
 import { useBusesQuery } from '../../hooks/useBusQueries';
 import {
@@ -176,7 +176,7 @@ function StudentFormModal({
 
             <Text style={styles.inputLabel}>Student Name</Text>
             <View style={styles.inputRow}>
-              <Ionicons name="person-outline" size={17} style={styles.inputIcon} />
+              <AppIcon name="person-outline" size={17} style={styles.inputIcon} />
               <TextInput
                 style={styles.inputWithIcon}
                 value={form.name}
@@ -188,7 +188,7 @@ function StudentFormModal({
 
             <Text style={styles.inputLabel}>Scholar Number</Text>
             <View style={styles.inputRow}>
-              <Ionicons name="id-card-outline" size={17} style={styles.inputIcon} />
+              <AppIcon name="id-card-outline" size={17} style={styles.inputIcon} />
               <TextInput
                 style={styles.inputWithIcon}
                 value={form.scholarNumber}
@@ -200,7 +200,7 @@ function StudentFormModal({
 
             <Text style={styles.inputLabel}>Parent Name</Text>
             <View style={styles.inputRow}>
-              <Ionicons name="people-outline" size={17} style={styles.inputIcon} />
+              <AppIcon name="people-outline" size={17} style={styles.inputIcon} />
               <TextInput
                 style={styles.inputWithIcon}
                 value={form.parentName}
@@ -212,7 +212,7 @@ function StudentFormModal({
 
             <Text style={styles.inputLabel}>Phone Number</Text>
             <View style={styles.inputRow}>
-              <Ionicons name="call-outline" size={17} style={styles.inputIcon} />
+              <AppIcon name="call-outline" size={17} style={styles.inputIcon} />
               <TextInput
                 style={styles.inputWithIcon}
                 value={form.number}
@@ -225,20 +225,20 @@ function StudentFormModal({
 
             <Text style={styles.inputLabel}>Class</Text>
             <Pressable style={styles.selectBtn} onPress={() => openClassPicker('form')}>
-              <Ionicons name="business-outline" size={16} color={colors.admin.accent} />
+              <AppIcon name="business-outline" size={16} color={colors.admin.accent} />
               <Text style={styles.selectBtnText}>
                 {form.classId ? classLabelById.get(form.classId) ?? form.classId : 'Select class'}
               </Text>
-              <Ionicons name="chevron-down" size={16} color={colors.admin.textSecondary} />
+              <AppIcon name="chevron-down" size={16} color={colors.admin.textSecondary} />
             </Pressable>
 
             <Text style={styles.inputLabel}>Bus (optional)</Text>
             <Pressable style={styles.selectBtn} onPress={() => openBusPicker('form')}>
-              <Ionicons name="bus-outline" size={16} color={colors.admin.accent} />
+              <AppIcon name="bus-outline" size={16} color={colors.admin.accent} />
               <Text style={styles.selectBtnText}>
                 {form.busId ? busLabelById.get(form.busId) ?? form.busId : 'Select bus'}
               </Text>
-              <Ionicons name="chevron-down" size={16} color={colors.admin.textSecondary} />
+              <AppIcon name="chevron-down" size={16} color={colors.admin.textSecondary} />
             </Pressable>
 
             {mode === 'edit' ? (
@@ -273,7 +273,7 @@ function StudentFormModal({
               <>
                 <Text style={styles.inputLabel}>Password (optional)</Text>
                 <View style={styles.inputRow}>
-                  <Ionicons name="lock-closed-outline" size={17} style={styles.inputIcon} />
+                  <AppIcon name="lock-closed-outline" size={17} style={styles.inputIcon} />
                   <TextInput
                     style={styles.inputWithIcon}
                     value={form.password}
@@ -369,26 +369,26 @@ function StudentListCard({
 
       <View style={styles.metaGrid}>
         <View style={styles.metaBox}>
-          <Ionicons name="people-outline" size={14} color={colors.admin.accent} />
+          <AppIcon name="people-outline" size={14} color={colors.admin.accent} />
           <Text style={styles.metaBoxText}>Parent: {item.parentName ?? '-'}</Text>
         </View>
         <View style={styles.metaBox}>
-          <Ionicons name="call-outline" size={14} color={colors.admin.accent} />
+          <AppIcon name="call-outline" size={14} color={colors.admin.accent} />
           <Text style={styles.metaBoxText}>Phone: {item.phoneNumber ?? '-'}</Text>
         </View>
         <View style={[styles.metaBox, styles.metaBoxWide]}>
-          <Ionicons name="business-outline" size={14} color={colors.admin.accent} />
+          <AppIcon name="business-outline" size={14} color={colors.admin.accent} />
           <Text style={styles.metaBoxText}>Class: {getClassLabel(item.classId, classLabelById)}</Text>
         </View>
         <View style={[styles.metaBox, styles.metaBoxWide]}>
-          <Ionicons name="bus-outline" size={14} color={colors.admin.accent} />
+          <AppIcon name="bus-outline" size={14} color={colors.admin.accent} />
           <Text style={styles.metaBoxText}>Bus: {getBusLabel(item.busId, busLabelById)}</Text>
         </View>
       </View>
 
       <View style={styles.actionRow}>
         <Pressable style={styles.editBtn} onPress={() => onEdit(item)}>
-          <Ionicons name="create-outline" size={14} color={colors.admin.textPrimary} />
+          <AppIcon name="create-outline" size={14} color={colors.admin.textPrimary} />
           <Text style={styles.editBtnText}>Edit</Text>
         </Pressable>
         <Pressable style={styles.deleteBtn} onPress={() => onDelete(studentId)} disabled={!studentId || deletingId === studentId}>
@@ -396,7 +396,7 @@ function StudentListCard({
             <ActivityIndicator size="small" color={colors.state.error} />
           ) : (
             <>
-              <Ionicons name="trash-outline" size={14} color={colors.state.error} />
+              <AppIcon name="trash-outline" size={14} color={colors.state.error} />
               <Text style={styles.deleteBtnText}>Delete</Text>
             </>
           )}
@@ -624,7 +624,7 @@ export default function AdminStudentScreen() {
       <View style={styles.container}>
         <View style={styles.detailHero}>
           <Pressable style={styles.detailBackBtn} onPress={() => setDetailVisible(false)}>
-            <Ionicons name="chevron-back" size={18} color={colors.admin.textPrimary} />
+            <AppIcon name="chevron-back" size={18} color={colors.admin.textPrimary} />
             <Text style={styles.detailBackText}>Back</Text>
           </Pressable>
           <Text style={styles.detailTitle}>Student Profile</Text>
@@ -639,39 +639,39 @@ export default function AdminStudentScreen() {
           <ScrollView style={styles.detailScrollScreen} showsVerticalScrollIndicator={false}>
             <View style={styles.detailInfoCard}>
               <View style={styles.detailRow}>
-                <Ionicons name="person-outline" size={16} color={colors.admin.accent} />
+                <AppIcon name="person-outline" size={16} color={colors.admin.accent} />
                 <Text style={styles.detailLine}>Name: {selectedStudentDetail.name ?? '-'}</Text>
               </View>
               <View style={styles.detailRow}>
-                <Ionicons name="id-card-outline" size={16} color={colors.admin.accent} />
+                <AppIcon name="id-card-outline" size={16} color={colors.admin.accent} />
                 <Text style={styles.detailLine}>Scholar Number: {selectedStudentDetail.scholarNumber ?? '-'}</Text>
               </View>
               <View style={styles.detailRow}>
-                <Ionicons name="people-outline" size={16} color={colors.admin.accent} />
+                <AppIcon name="people-outline" size={16} color={colors.admin.accent} />
                 <Text style={styles.detailLine}>Parent Name: {selectedStudentDetail.parentName ?? '-'}</Text>
               </View>
               <View style={styles.detailRow}>
-                <Ionicons name="call-outline" size={16} color={colors.admin.accent} />
+                <AppIcon name="call-outline" size={16} color={colors.admin.accent} />
                 <Text style={styles.detailLine}>Phone: {selectedStudentDetail.phoneNumber ?? '-'}</Text>
               </View>
               <View style={styles.detailRow}>
-                <Ionicons name="business-outline" size={16} color={colors.admin.accent} />
+                <AppIcon name="business-outline" size={16} color={colors.admin.accent} />
                 <Text style={styles.detailLine}>
                   Class: {getClassLabel(selectedStudentDetail.classId, classLabelById)}
                 </Text>
               </View>
               <View style={styles.detailRow}>
-                <Ionicons name="bus-outline" size={16} color={colors.admin.accent} />
+                <AppIcon name="bus-outline" size={16} color={colors.admin.accent} />
                 <Text style={styles.detailLine}>
                   Bus: {getBusLabel(selectedStudentDetail.busId, busLabelById)}
                 </Text>
               </View>
               <View style={styles.detailRow}>
-                <Ionicons name="calendar-outline" size={16} color={colors.admin.accent} />
+                <AppIcon name="calendar-outline" size={16} color={colors.admin.accent} />
                 <Text style={styles.detailLine}>Session: {selectedStudentDetail?.sessionId?.name ?? '-'}</Text>
               </View>
               <View style={styles.detailRow}>
-                <Ionicons name="checkmark-circle-outline" size={16} color={colors.admin.accent} />
+                <AppIcon name="checkmark-circle-outline" size={16} color={colors.admin.accent} />
                 <Text style={styles.detailLine}>Status: {selectedStudentDetail.status ?? '-'}</Text>
               </View>
             </View>
@@ -681,7 +681,7 @@ export default function AdminStudentScreen() {
               onPress={() => setReportOpen(true)}
               disabled={!reportClassId}
             >
-              <Ionicons name="bar-chart-outline" size={16} color={colors.text.inverse} />
+              <AppIcon name="bar-chart-outline" size={16} color={colors.text.inverse} />
               <Text style={styles.attendanceReportText}>View Attendance Report</Text>
             </Pressable>
           </ScrollView>
@@ -742,11 +742,11 @@ export default function AdminStudentScreen() {
         ]}
       >
         <Pressable style={styles.filterBtn} onPress={() => setClassPickerState({ open: true, target: 'filter' })}>
-          <Ionicons name="funnel-outline" size={16} color={colors.admin.accent} />
+          <AppIcon name="funnel-outline" size={16} color={colors.admin.accent} />
           <Text style={styles.filterText}>
             {selectedClassId ? classLabelById.get(selectedClassId) ?? 'Selected class' : 'All Classes'}
           </Text>
-          <Ionicons name="chevron-down" size={16} color={colors.admin.textSecondary} />
+          <AppIcon name="chevron-down" size={16} color={colors.admin.textSecondary} />
         </Pressable>
       </Animated.View>
 
@@ -767,7 +767,7 @@ export default function AdminStudentScreen() {
         ]}
       >
         <View style={styles.searchInputRow}>
-          <Ionicons name="search-outline" size={17} style={styles.searchIcon} />
+          <AppIcon name="search-outline" size={17} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             value={search}
@@ -778,7 +778,7 @@ export default function AdminStudentScreen() {
         </View>
         <Pressable style={styles.addBtn} onPress={openCreateModal}>
           <View style={styles.inlineAction}>
-            <Ionicons name="add" size={14} color={colors.text.inverse} />
+            <AppIcon name="add" size={14} color={colors.text.inverse} />
             <Text style={styles.addBtnText}>Add</Text>
           </View>
         </Pressable>

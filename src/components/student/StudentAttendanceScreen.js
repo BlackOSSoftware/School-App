@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import Ionicons from '@react-native-vector-icons/ionicons';
+import AppIcon from '../common/AppIcon.js';
 import { useStudentMyAttendanceReportQuery } from '../../hooks/useAttendanceQueries';
 import { useActiveSessionQuery } from '../../hooks/useSessionQueries';
 import { getTodayIsoDate } from '../../services/attendanceService';
@@ -113,7 +113,7 @@ export default function StudentAttendanceScreen() {
           onPress={() => canGoPrev && setMonthCursor(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
           disabled={!canGoPrev}
         >
-          <Ionicons name="chevron-back" size={16} color={colors.student.textPrimary} />
+          <AppIcon name="chevron-back" size={16} color={colors.student.textPrimary} />
         </Pressable>
         <Text style={styles.monthTitle}>{monthLabel(monthCursor)}</Text>
         <Pressable
@@ -121,7 +121,7 @@ export default function StudentAttendanceScreen() {
           onPress={() => canGoNext && setMonthCursor(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
           disabled={!canGoNext}
         >
-          <Ionicons name="chevron-forward" size={16} color={colors.student.textPrimary} />
+          <AppIcon name="chevron-forward" size={16} color={colors.student.textPrimary} />
         </Pressable>
       </View>
 

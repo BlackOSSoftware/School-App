@@ -9,7 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import Ionicons from '@react-native-vector-icons/ionicons';
+import AppIcon from '../common/AppIcon.js';
 import {
   useMarkTeacherClassAttendanceMutation,
   useTeacherClassAttendanceByDateQuery,
@@ -179,12 +179,12 @@ export default function TeacherAttendanceScreen() {
 
       <View style={styles.controlRow}>
         <Pressable style={styles.classSelectBtn} onPress={() => setClassPickerVisible(true)}>
-          <Ionicons name="library-outline" size={16} color={colors.teacher.accent} />
+          <AppIcon name="library-outline" size={16} color={colors.teacher.accent} />
           <Text style={styles.classSelectText}>{selectedClass?.label || 'Select class'}</Text>
-          <Ionicons name="chevron-down" size={16} color={colors.teacher.textSecondary} />
+          <AppIcon name="chevron-down" size={16} color={colors.teacher.textSecondary} />
         </Pressable>
         <Pressable style={styles.markBtn} onPress={openMarkModal} disabled={!selectedClassId || markMutation.isPending}>
-          <Ionicons name="create-outline" size={14} color={colors.text.inverse} />
+          <AppIcon name="create-outline" size={14} color={colors.text.inverse} />
           <Text style={styles.markBtnText}>Mark</Text>
         </Pressable>
       </View>
@@ -273,7 +273,7 @@ export default function TeacherAttendanceScreen() {
             <View style={styles.modalHeaderRow}>
               <Text style={styles.modalTitle}>Mark Attendance ({today})</Text>
               <Pressable style={styles.iconCloseBtn} onPress={() => setMarkModalVisible(false)}>
-                <Ionicons name="close" size={16} color={colors.teacher.textPrimary} />
+                <AppIcon name="close" size={16} color={colors.teacher.textPrimary} />
               </Pressable>
             </View>
             <ScrollView style={styles.markScroll}>

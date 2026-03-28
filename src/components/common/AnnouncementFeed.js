@@ -1,6 +1,6 @@
 import React, { memo, useMemo } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import Ionicons from '@react-native-vector-icons/ionicons';
+import AppIcon from './AppIcon.js';
 import PaginationControls from './PaginationControls';
 import { useAppTheme } from '../../theme/ThemeContext';
 
@@ -85,7 +85,7 @@ const AnnouncementItem = memo(function AnnouncementItem({ item, styles, onPress 
   return (
     <Wrapper style={styles.card} onPress={onPress}>
       <View style={styles.leftIconWrap}>
-        <Ionicons name="notifications-outline" size={15} style={styles.leftIcon} />
+        <AppIcon name="notifications-outline" size={15} style={styles.leftIcon} />
       </View>
 
       <View style={styles.cardBody}>

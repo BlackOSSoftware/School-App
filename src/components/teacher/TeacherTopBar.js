@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Ionicons from '@react-native-vector-icons/ionicons';
+import AppIcon from '../common/AppIcon.js';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppTheme } from '../../theme/ThemeContext';
 
@@ -14,7 +14,7 @@ function TeacherTopBar({ title, onBack, onNotificationPress }) {
       <View style={styles.leftWrap}>
         {onBack ? (
           <Pressable style={styles.backBtn} onPress={onBack}>
-            <Ionicons name="chevron-back" size={20} color={colors.teacher.accent} />
+            <AppIcon name="chevron-back" size={20} color={colors.teacher.accent} />
           </Pressable>
         ) : null}
         <View>
@@ -24,14 +24,14 @@ function TeacherTopBar({ title, onBack, onNotificationPress }) {
       </View>
       <View style={styles.rightWrap}>
         <Pressable style={styles.iconBtn} onPress={toggleTheme}>
-          <Ionicons
+          <AppIcon
             name={isDark ? 'sunny-outline' : 'moon-outline'}
             size={18}
             color={colors.teacher.accent}
           />
         </Pressable>
         <Pressable style={styles.iconBtn} onPress={onNotificationPress}>
-          <Ionicons name="notifications-outline" size={18} color={colors.teacher.accent} />
+          <AppIcon name="notifications-outline" size={18} color={colors.teacher.accent} />
         </Pressable>
       </View>
     </View>

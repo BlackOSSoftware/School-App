@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Ionicons from '@react-native-vector-icons/ionicons';
+import AppIcon from '../common/AppIcon.js';
 import { useAppTheme } from '../../theme/ThemeContext';
 
 const TABS = [
@@ -25,7 +25,7 @@ function StudentBottomNav({ activeTab, onTabChange }) {
             style={[styles.navItem, isActive ? styles.navItemActive : null]}
             onPress={() => onTabChange(tab.key)}
           >
-            <Ionicons name={tab.icon} size={16} style={[styles.navIcon, isActive ? styles.navIconActive : null]} />
+            <AppIcon name={tab.icon} size={16} style={[styles.navIcon, isActive ? styles.navIconActive : null]} />
             <Text style={[styles.navLabel, isActive ? styles.navLabelActive : null]}>{tab.label}</Text>
           </Pressable>
         );

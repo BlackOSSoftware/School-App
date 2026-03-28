@@ -10,7 +10,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import Ionicons from '@react-native-vector-icons/ionicons';
+import AppIcon from '../common/AppIcon.js';
 import AnnouncementFeed from '../common/AnnouncementFeed';
 import { useMyAnnouncementsQuery } from '../../hooks/useAnnouncementQueries';
 import { useAppTheme } from '../../theme/ThemeContext';
@@ -135,11 +135,11 @@ export default function StudentAnnouncementScreen() {
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleWrap}>
-                <Ionicons name="megaphone-outline" size={16} color={colors.student.textPrimary} />
+                <AppIcon name="megaphone-outline" size={16} color={colors.student.textPrimary} />
                 <Text style={styles.modalTitle}>{selectedAnnouncement?.title || 'Announcement'}</Text>
               </View>
               <Pressable style={styles.modalCloseBtn} onPress={() => setSelectedAnnouncement(null)}>
-                <Ionicons name="close" size={16} color={colors.student.textPrimary} />
+                <AppIcon name="close" size={16} color={colors.student.textPrimary} />
               </Pressable>
             </View>
 
@@ -156,7 +156,7 @@ export default function StudentAnnouncementScreen() {
               <Text style={styles.modalDesc}>{selectedAnnouncement?.description || '-'}</Text>
 
               <View style={styles.footerInfo}>
-                <Ionicons name="person-outline" size={14} color={colors.student.textSecondary} />
+                <AppIcon name="person-outline" size={14} color={colors.student.textSecondary} />
                 <Text style={styles.footerInfoText}>
                   {selectedAnnouncement?.createdByName || selectedAnnouncement?.createdByRole || 'School Office'}
                 </Text>

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Ionicons from '@react-native-vector-icons/ionicons';
+import AppIcon from '../common/AppIcon.js';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppTheme } from '../../theme/ThemeContext';
 
@@ -16,7 +16,7 @@ function StudentTopBar({ title }) {
         <Text style={styles.title}>{title}</Text>
       </View>
       <Pressable style={styles.iconBtn} onPress={toggleTheme}>
-        <Ionicons name={isDark ? 'sunny-outline' : 'moon-outline'} size={18} color={colors.role.studentAccent} />
+        <AppIcon name={isDark ? 'sunny-outline' : 'moon-outline'} size={18} color={colors.role.studentAccent} />
       </Pressable>
     </View>
   );

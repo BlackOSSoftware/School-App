@@ -10,7 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import Ionicons from '@react-native-vector-icons/ionicons';
+import AppIcon from '../common/AppIcon.js';
 import {
   useBusesQuery,
   useBusDetailQuery,
@@ -115,7 +115,7 @@ function BusFormModal({
 
             <Text style={styles.inputLabel}>Bus Number</Text>
             <View style={styles.inputRow}>
-              <Ionicons name="bus-outline" size={17} style={styles.inputIcon} />
+              <AppIcon name="bus-outline" size={17} style={styles.inputIcon} />
               <TextInput
                 style={styles.inputWithIcon}
                 value={form.busNumber}
@@ -127,7 +127,7 @@ function BusFormModal({
 
             <Text style={styles.inputLabel}>Route Name</Text>
             <View style={styles.inputRow}>
-              <Ionicons name="navigate-outline" size={17} style={styles.inputIcon} />
+              <AppIcon name="navigate-outline" size={17} style={styles.inputIcon} />
               <TextInput
                 style={styles.inputWithIcon}
                 value={form.routeName}
@@ -139,7 +139,7 @@ function BusFormModal({
 
             <Text style={styles.inputLabel}>Driver Name</Text>
             <View style={styles.inputRow}>
-              <Ionicons name="person-outline" size={17} style={styles.inputIcon} />
+              <AppIcon name="person-outline" size={17} style={styles.inputIcon} />
               <TextInput
                 style={styles.inputWithIcon}
                 value={form.driverName}
@@ -151,7 +151,7 @@ function BusFormModal({
 
             <Text style={styles.inputLabel}>Driver Phone</Text>
             <View style={styles.inputRow}>
-              <Ionicons name="call-outline" size={17} style={styles.inputIcon} />
+              <AppIcon name="call-outline" size={17} style={styles.inputIcon} />
               <TextInput
                 style={styles.inputWithIcon}
                 value={form.driverPhone}
@@ -164,7 +164,7 @@ function BusFormModal({
 
             <Text style={styles.inputLabel}>Helper Name</Text>
             <View style={styles.inputRow}>
-              <Ionicons name="people-outline" size={17} style={styles.inputIcon} />
+              <AppIcon name="people-outline" size={17} style={styles.inputIcon} />
               <TextInput
                 style={styles.inputWithIcon}
                 value={form.helperName}
@@ -176,7 +176,7 @@ function BusFormModal({
 
             <Text style={styles.inputLabel}>Helper Phone</Text>
             <View style={styles.inputRow}>
-              <Ionicons name="call-outline" size={17} style={styles.inputIcon} />
+              <AppIcon name="call-outline" size={17} style={styles.inputIcon} />
               <TextInput
                 style={styles.inputWithIcon}
                 value={form.helperPhone}
@@ -189,7 +189,7 @@ function BusFormModal({
 
             <Text style={styles.inputLabel}>Tracking Username</Text>
             <View style={styles.inputRow}>
-              <Ionicons name="person-circle-outline" size={17} style={styles.inputIcon} />
+              <AppIcon name="person-circle-outline" size={17} style={styles.inputIcon} />
               <TextInput
                 style={styles.inputWithIcon}
                 value={form.trackingUsername}
@@ -202,7 +202,7 @@ function BusFormModal({
 
             <Text style={styles.inputLabel}>Tracking Password</Text>
             <View style={styles.inputRow}>
-              <Ionicons name="lock-closed-outline" size={17} style={styles.inputIcon} />
+              <AppIcon name="lock-closed-outline" size={17} style={styles.inputIcon} />
               <TextInput
                 style={styles.inputWithIcon}
                 value={form.trackingPassword}
@@ -218,7 +218,7 @@ function BusFormModal({
 
             <Text style={styles.inputLabel}>Capacity</Text>
             <View style={styles.inputRow}>
-              <Ionicons name="people-outline" size={17} style={styles.inputIcon} />
+              <AppIcon name="people-outline" size={17} style={styles.inputIcon} />
               <TextInput
                 style={styles.inputWithIcon}
                 value={form.capacity}
@@ -278,43 +278,43 @@ function BusDetailModal({ visible, onClose, detail, loading, styles, colors }) {
           ) : detail ? (
             <ScrollView style={styles.detailScroll}>
               <View style={styles.detailLineRow}>
-                <Ionicons name="bus-outline" size={15} color={colors.admin.accent} />
+                <AppIcon name="bus-outline" size={15} color={colors.admin.accent} />
                 <Text style={styles.detailLine}>Bus Number: {detail.busNumber ?? '-'}</Text>
               </View>
               <View style={styles.detailLineRow}>
-                <Ionicons name="navigate-outline" size={15} color={colors.admin.accent} />
+                <AppIcon name="navigate-outline" size={15} color={colors.admin.accent} />
                 <Text style={styles.detailLine}>Route: {detail.routeName ?? '-'}</Text>
               </View>
               <View style={styles.detailLineRow}>
-                <Ionicons name="person-outline" size={15} color={colors.admin.accent} />
+                <AppIcon name="person-outline" size={15} color={colors.admin.accent} />
                 <Text style={styles.detailLine}>Driver: {detail.driverName ?? '-'}</Text>
               </View>
               <View style={styles.detailLineRow}>
-                <Ionicons name="call-outline" size={15} color={colors.admin.accent} />
+                <AppIcon name="call-outline" size={15} color={colors.admin.accent} />
                 <Text style={styles.detailLine}>Driver Phone: {formatPhone(detail.driverPhone)}</Text>
               </View>
               <View style={styles.detailLineRow}>
-                <Ionicons name="people-outline" size={15} color={colors.admin.accent} />
+                <AppIcon name="people-outline" size={15} color={colors.admin.accent} />
                 <Text style={styles.detailLine}>Helper: {detail.helperName ?? '-'}</Text>
               </View>
               <View style={styles.detailLineRow}>
-                <Ionicons name="call-outline" size={15} color={colors.admin.accent} />
+                <AppIcon name="call-outline" size={15} color={colors.admin.accent} />
                 <Text style={styles.detailLine}>Helper Phone: {formatPhone(detail.helperPhone)}</Text>
               </View>
               <View style={styles.detailLineRow}>
-                <Ionicons name="person-circle-outline" size={15} color={colors.admin.accent} />
+                <AppIcon name="person-circle-outline" size={15} color={colors.admin.accent} />
                 <Text style={styles.detailLine}>Tracking Username: {detail.trackingUsername ?? '-'}</Text>
               </View>
               <View style={styles.detailLineRow}>
-                <Ionicons name="lock-closed-outline" size={15} color={colors.admin.accent} />
+                <AppIcon name="lock-closed-outline" size={15} color={colors.admin.accent} />
                 <Text style={styles.detailLine}>Tracking Password: {detail.trackingPassword ?? '-'}</Text>
               </View>
               <View style={styles.detailLineRow}>
-                <Ionicons name="people-outline" size={15} color={colors.admin.accent} />
+                <AppIcon name="people-outline" size={15} color={colors.admin.accent} />
                 <Text style={styles.detailLine}>Capacity: {detail.capacity ?? '-'}</Text>
               </View>
               <View style={styles.detailLineRow}>
-                <Ionicons name="checkmark-circle-outline" size={15} color={colors.admin.accent} />
+                <AppIcon name="checkmark-circle-outline" size={15} color={colors.admin.accent} />
                 <Text style={styles.detailLine}>Status: {detail.status ?? '-'}</Text>
               </View>
             </ScrollView>
@@ -349,26 +349,26 @@ function BusListCard({ item, styles, colors, onOpenDetail, onEdit, onDelete, del
 
       <View style={styles.metaGrid}>
         <View style={styles.metaBox}>
-          <Ionicons name="person-outline" size={14} color={colors.admin.accent} />
+          <AppIcon name="person-outline" size={14} color={colors.admin.accent} />
           <Text style={styles.metaBoxText}>Driver: {item.driverName || '-'}</Text>
         </View>
         <View style={styles.metaBox}>
-          <Ionicons name="call-outline" size={14} color={colors.admin.accent} />
+          <AppIcon name="call-outline" size={14} color={colors.admin.accent} />
           <Text style={styles.metaBoxText}>Phone: {formatPhone(item.driverPhone)}</Text>
         </View>
         <View style={styles.metaBox}>
-          <Ionicons name="person-circle-outline" size={14} color={colors.admin.accent} />
+          <AppIcon name="person-circle-outline" size={14} color={colors.admin.accent} />
           <Text style={styles.metaBoxText}>User: {item.trackingUsername || '-'}</Text>
         </View>
         <View style={styles.metaBox}>
-          <Ionicons name="people-outline" size={14} color={colors.admin.accent} />
+          <AppIcon name="people-outline" size={14} color={colors.admin.accent} />
           <Text style={styles.metaBoxText}>Capacity: {item.capacity ?? '-'}</Text>
         </View>
       </View>
 
       <View style={styles.actionRow}>
         <Pressable style={styles.editBtn} onPress={() => onEdit(item)}>
-          <Ionicons name="create-outline" size={14} color={colors.admin.textPrimary} />
+          <AppIcon name="create-outline" size={14} color={colors.admin.textPrimary} />
           <Text style={styles.editBtnText}>Edit</Text>
         </Pressable>
         <Pressable style={styles.deleteBtn} onPress={() => onDelete(busId)} disabled={!busId || deletingId === busId}>
@@ -376,7 +376,7 @@ function BusListCard({ item, styles, colors, onOpenDetail, onEdit, onDelete, del
             <ActivityIndicator size="small" color={colors.state.error} />
           ) : (
             <>
-              <Ionicons name="trash-outline" size={14} color={colors.state.error} />
+              <AppIcon name="trash-outline" size={14} color={colors.state.error} />
               <Text style={styles.deleteBtnText}>Delete</Text>
             </>
           )}
@@ -531,7 +531,7 @@ export default function AdminBusScreen() {
 
       <View style={styles.searchRow}>
         <View style={styles.searchInputRow}>
-          <Ionicons name="search-outline" size={17} style={styles.searchIcon} />
+          <AppIcon name="search-outline" size={17} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             value={search}
@@ -542,7 +542,7 @@ export default function AdminBusScreen() {
         </View>
         <Pressable style={styles.addBtn} onPress={openCreateModal}>
           <View style={styles.inlineAction}>
-            <Ionicons name="add" size={14} color={colors.text.inverse} />
+            <AppIcon name="add" size={14} color={colors.text.inverse} />
             <Text style={styles.addBtnText}>Add</Text>
           </View>
         </Pressable>

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Ionicons from '@react-native-vector-icons/ionicons';
+import AppIcon from './AppIcon.js';
 import { useAppTheme } from '../../theme/ThemeContext';
 
 export default function PaginationControls({
@@ -30,14 +30,14 @@ export default function PaginationControls({
         onPress={onFirst}
         disabled={isFirstDisabled}
       >
-        <Ionicons name="play-skip-back-outline" size={14} color={colors.text.inverse} />
+        <AppIcon name="play-skip-back-outline" size={14} color={colors.text.inverse} />
       </Pressable>
       <Pressable
         style={[styles.pageBtn, isPrevDisabled ? styles.disabledBtn : null]}
         onPress={onPrev}
         disabled={isPrevDisabled}
       >
-        <Ionicons name="chevron-back" size={14} color={colors.text.inverse} />
+        <AppIcon name="chevron-back" size={14} color={colors.text.inverse} />
         <Text style={styles.pageBtnText}>Prev</Text>
       </Pressable>
 
@@ -51,14 +51,14 @@ export default function PaginationControls({
         disabled={isNextDisabled}
       >
         <Text style={styles.pageBtnText}>Next</Text>
-        <Ionicons name="chevron-forward" size={14} color={colors.text.inverse} />
+        <AppIcon name="chevron-forward" size={14} color={colors.text.inverse} />
       </Pressable>
       <Pressable
         style={[styles.iconBtn, isLastDisabled ? styles.disabledBtn : null]}
         onPress={onLast}
         disabled={isLastDisabled}
       >
-        <Ionicons name="play-skip-forward-outline" size={14} color={colors.text.inverse} />
+        <AppIcon name="play-skip-forward-outline" size={14} color={colors.text.inverse} />
       </Pressable>
     </View>
   );

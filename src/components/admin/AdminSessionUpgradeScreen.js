@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Ionicons from '@react-native-vector-icons/ionicons';
+import AppIcon from '../common/AppIcon.js';
 import { useClassesQuery } from '../../hooks/useClassQueries';
 import { useSessionsQuery } from '../../hooks/useSessionQueries';
 import { useSessionTransitionMutation, useStudentsQuery } from '../../hooks/useStudentQueries';
@@ -329,9 +329,9 @@ export default function AdminSessionUpgradeScreen() {
 
       <View style={styles.topControlsRow}>
         <Pressable style={styles.sessionBtn} onPress={openSessionSelector}>
-          <Ionicons name="calendar-outline" size={16} color={colors.admin.accent} />
+          <AppIcon name="calendar-outline" size={16} color={colors.admin.accent} />
           <Text style={styles.sessionBtnText} numberOfLines={1}>{selectedSessionLabel}</Text>
-          <Ionicons name="chevron-down" size={15} color={colors.admin.textSecondary} />
+          <AppIcon name="chevron-down" size={15} color={colors.admin.textSecondary} />
         </Pressable>
       </View>
 
@@ -373,7 +373,7 @@ export default function AdminSessionUpgradeScreen() {
                 <ActivityIndicator size="small" color={colors.text.inverse} />
               ) : (
                 <>
-                  <Ionicons name="flash-outline" size={14} color={colors.text.inverse} />
+                  <AppIcon name="flash-outline" size={14} color={colors.text.inverse} />
                   <Text style={styles.applyBtnText}>Apply Upgrade</Text>
                 </>
               )}
@@ -425,18 +425,18 @@ export default function AdminSessionUpgradeScreen() {
 
                     <View style={styles.rowActions}>
                       <Pressable style={styles.selectorBtn} onPress={() => openActionSelector(studentId)}>
-                        <Ionicons name="sync-outline" size={14} color={colors.admin.accent} />
+                        <AppIcon name="sync-outline" size={14} color={colors.admin.accent} />
                         <Text style={styles.selectorBtnText}>{state.action}</Text>
-                        <Ionicons name="chevron-down" size={14} color={colors.admin.textSecondary} />
+                        <AppIcon name="chevron-down" size={14} color={colors.admin.textSecondary} />
                       </Pressable>
 
                       {state.action !== 'transfer' ? (
                         <Pressable style={styles.selectorBtn} onPress={() => openTargetSelector(studentId)}>
-                          <Ionicons name="library-outline" size={14} color={colors.admin.accent} />
+                          <AppIcon name="library-outline" size={14} color={colors.admin.accent} />
                           <Text style={styles.selectorBtnText} numberOfLines={1}>
                             {targetLabel ? toClassLabel(targetLabel) : 'Select class'}
                           </Text>
-                          <Ionicons name="chevron-down" size={14} color={colors.admin.textSecondary} />
+                          <AppIcon name="chevron-down" size={14} color={colors.admin.textSecondary} />
                         </Pressable>
                       ) : (
                         <View style={styles.transferChip}>

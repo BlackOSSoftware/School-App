@@ -13,7 +13,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import Ionicons from '@react-native-vector-icons/ionicons';
+import AppIcon from '../common/AppIcon.js';
 import {
   useActiveSessionQuery,
   useCreateSessionMutation,
@@ -105,7 +105,7 @@ function DateField({ label, value, onPress, styles }) {
     <View style={styles.dateFieldWrap}>
       <Text style={styles.inputLabel}>{label}</Text>
       <Pressable style={styles.dateBtn} onPress={onPress}>
-        <Ionicons name="calendar-outline" size={17} style={styles.dateBtnIcon} />
+        <AppIcon name="calendar-outline" size={17} style={styles.dateBtnIcon} />
         <Text style={styles.dateBtnText}>{toIsoDate(value)}</Text>
       </Pressable>
     </View>
@@ -308,7 +308,7 @@ export default function AdminSessionScreen() {
         <View style={styles.panelHeaderRow}>
           <Text style={styles.panelTitle}>Create Session</Text>
           <Pressable style={styles.smallBtnActiveSolid} onPress={() => setCreateModalVisible(true)}>
-            <Ionicons name="add" size={13} color={colors.text.inverse} />
+            <AppIcon name="add" size={13} color={colors.text.inverse} />
             <Text style={styles.smallBtnTextActive}>Add New</Text>
           </Pressable>
         </View>
@@ -402,7 +402,7 @@ export default function AdminSessionScreen() {
 
             <Text style={styles.inputLabel}>Session Name</Text>
             <View style={styles.inputRow}>
-              <Ionicons name="book-outline" size={17} style={styles.inputIcon} />
+              <AppIcon name="book-outline" size={17} style={styles.inputIcon} />
               <TextInput
                 style={styles.inputWithIcon}
                 placeholder="Session name (e.g. 2026-27)"
@@ -475,7 +475,7 @@ export default function AdminSessionScreen() {
 
             <Text style={styles.inputLabel}>Session Name</Text>
             <View style={styles.inputRow}>
-              <Ionicons name="create-outline" size={17} style={styles.inputIcon} />
+              <AppIcon name="create-outline" size={17} style={styles.inputIcon} />
               <TextInput
                 style={styles.inputWithIcon}
                 value={editName}

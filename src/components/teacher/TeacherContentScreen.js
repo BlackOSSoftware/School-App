@@ -13,7 +13,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import Ionicons from '@react-native-vector-icons/ionicons';
+import AppIcon from '../common/AppIcon.js';
 import { errorCodes, isErrorWithCode, keepLocalCopy, pick, types } from '@react-native-documents/picker';
 import { useTeacherClassesOverviewQuery } from '../../hooks/useTeacherQueries';
 import { useCreateTeacherContentMutation, useTeacherMyContentQuery } from '../../hooks/useContentQueries';
@@ -335,15 +335,15 @@ export default function TeacherContentScreen() {
 
       <View style={styles.toolbarRow}>
         <Pressable style={styles.filterBtn} onPress={() => setShowClassPicker(true)}>
-          <Ionicons name="business-outline" size={15} color={colors.teacher.accent} />
+          <AppIcon name="business-outline" size={15} color={colors.teacher.accent} />
           <Text style={styles.filterText}>{selectedClassLabel}</Text>
         </Pressable>
         <Pressable style={styles.filterBtn} onPress={() => setShowSubjectPicker(true)}>
-          <Ionicons name="book-outline" size={15} color={colors.teacher.accent} />
+          <AppIcon name="book-outline" size={15} color={colors.teacher.accent} />
           <Text style={styles.filterText}>{selectedSubject || 'All Subjects'}</Text>
         </Pressable>
         <Pressable style={styles.addBtn} onPress={openComposer}>
-          <Ionicons name="add" size={14} color={colors.text.inverse} />
+          <AppIcon name="add" size={14} color={colors.text.inverse} />
           <Text style={styles.addBtnText}>Post</Text>
         </Pressable>
       </View>
@@ -424,12 +424,12 @@ export default function TeacherContentScreen() {
             <Text style={styles.inputLabel}>Attachment (optional, max 10MB)</Text>
             <View style={styles.fileRow}>
               <Pressable style={styles.filePickerBtn} onPress={pickFile}>
-                <Ionicons name="attach-outline" size={15} color={colors.teacher.accent} />
+                <AppIcon name="attach-outline" size={15} color={colors.teacher.accent} />
                 <Text style={styles.filePickerText}>{form.file ? 'Change File' : 'Pick File'}</Text>
               </Pressable>
               {form.file ? (
                 <Pressable style={styles.removeFileBtn} onPress={() => setForm(prev => ({ ...prev, file: null }))}>
-                  <Ionicons name="trash-outline" size={14} color={colors.state.error} />
+                  <AppIcon name="trash-outline" size={14} color={colors.state.error} />
                   <Text style={styles.removeFileText}>Remove</Text>
                 </Pressable>
               ) : null}

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import Ionicons from '@react-native-vector-icons/ionicons';
+import AppIcon from '../common/AppIcon.js';
 import { changeStudentPassword, getStudentMe } from '../../services/authService';
 import { useAppTheme } from '../../theme/ThemeContext';
 import ConfirmModal from '../common/ConfirmModal';
@@ -110,12 +110,12 @@ export default function StudentProfileScreen({ session, onLogout }) {
 
       <View style={styles.gridRow}>
         <View style={styles.metricCard}>
-          <Ionicons name="id-card-outline" size={16} style={styles.metricIcon} />
+          <AppIcon name="id-card-outline" size={16} style={styles.metricIcon} />
           <Text style={styles.metricLabel}>Scholar Number</Text>
           <Text style={styles.metricValue}>{scholarNumber}</Text>
         </View>
         <View style={styles.metricCard}>
-          <Ionicons name="checkmark-circle-outline" size={16} style={styles.metricIcon} />
+          <AppIcon name="checkmark-circle-outline" size={16} style={styles.metricIcon} />
           <Text style={styles.metricLabel}>Status</Text>
           <Text style={styles.metricValue}>{status}</Text>
         </View>
@@ -151,24 +151,24 @@ export default function StudentProfileScreen({ session, onLogout }) {
         <Text style={styles.actionsTitle}>Account Actions</Text>
         <Pressable style={styles.actionRowPrimary} onPress={() => setPasswordModalVisible(true)}>
           <View style={styles.actionIconWrap}>
-            <Ionicons name="key-outline" size={16} color={colors.role.studentAccent} />
+            <AppIcon name="key-outline" size={16} color={colors.role.studentAccent} />
           </View>
           <View style={styles.actionBody}>
             <Text style={styles.actionTitle}>Change Password</Text>
             <Text style={styles.actionSub}>Update your login password</Text>
           </View>
-          <Ionicons name="chevron-forward" size={15} color={colors.student.textSecondary} />
+          <AppIcon name="chevron-forward" size={15} color={colors.student.textSecondary} />
         </Pressable>
 
         <Pressable style={styles.actionRowDanger} onPress={() => setLogoutVisible(true)}>
           <View style={styles.actionIconWrap}>
-            <Ionicons name="log-out-outline" size={16} color={colors.state.error} />
+            <AppIcon name="log-out-outline" size={16} color={colors.state.error} />
           </View>
           <View style={styles.actionBody}>
             <Text style={styles.actionTitle}>Logout</Text>
             <Text style={styles.actionSub}>Sign out and return to login</Text>
           </View>
-          <Ionicons name="chevron-forward" size={15} color={colors.state.error} />
+          <AppIcon name="chevron-forward" size={15} color={colors.state.error} />
         </Pressable>
       </View>
 
@@ -197,7 +197,7 @@ export default function StudentProfileScreen({ session, onLogout }) {
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Change Password</Text>
             <View style={styles.inputRow}>
-              <Ionicons name="lock-closed-outline" size={16} style={styles.inputIcon} />
+              <AppIcon name="lock-closed-outline" size={16} style={styles.inputIcon} />
               <TextInput
                 style={styles.inputWithIcon}
                 value={passwordForm.oldPassword}
@@ -208,7 +208,7 @@ export default function StudentProfileScreen({ session, onLogout }) {
               />
             </View>
             <View style={styles.inputRow}>
-              <Ionicons name="key-outline" size={16} style={styles.inputIcon} />
+              <AppIcon name="key-outline" size={16} style={styles.inputIcon} />
               <TextInput
                 style={styles.inputWithIcon}
                 value={passwordForm.newPassword}

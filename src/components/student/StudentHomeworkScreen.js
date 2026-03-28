@@ -1,6 +1,6 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Easing, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Ionicons from '@react-native-vector-icons/ionicons';
+import AppIcon from '../common/AppIcon.js';
 import { useStudentMyContentQuery } from '../../hooks/useContentQueries';
 import { downloadAndOpenContentFile, openContentFile } from '../../services/fileService';
 import { useAppTheme } from '../../theme/ThemeContext';
@@ -20,14 +20,14 @@ const HomeworkListItem = memo(function HomeworkListItem({ item, styles, onPress,
       <View style={styles.cardShine} />
       <View style={styles.cardTop}>
         <View style={styles.cardIconWrap}>
-          <Ionicons name="document-outline" size={14} color={brandColor} />
+          <AppIcon name="document-outline" size={14} color={brandColor} />
         </View>
         <Text style={styles.cardTitle}>{item.title}</Text>
       </View>
       <Text style={styles.cardMeta}>{item.subject || '-'} | {item.classInfo?.name || '-'}-{item.classInfo?.section || '-'}</Text>
       <Text style={styles.cardDesc}>{item.description}</Text>
       <View style={styles.cardLinkRow}>
-        <Ionicons name="chevron-forward" size={14} color={brandColor} />
+        <AppIcon name="chevron-forward" size={14} color={brandColor} />
         <Text style={styles.fileLink}>{item.file?.url ? 'Open details' : 'No attachment'}</Text>
       </View>
     </Pressable>
@@ -149,7 +149,7 @@ export default function StudentHomeworkScreen({ prefillSelectedItem = null }) {
     () => (
       <>
         <View style={styles.headerRow}>
-          <Ionicons name="book-outline" size={18} color={colors.student.textPrimary} />
+          <AppIcon name="book-outline" size={18} color={colors.student.textPrimary} />
           <Text style={styles.title}>Homework</Text>
         </View>
         <Text style={styles.sub}>Assigned homework from your class.</Text>
@@ -209,10 +209,10 @@ export default function StudentHomeworkScreen({ prefillSelectedItem = null }) {
       <Animated.View style={[styles.detailContainer, { opacity: fadeAnim, transform: [{ translateY: translateAnim }] }]}>
         <View style={styles.topBar}>
           <Pressable style={styles.backBtn} onPress={() => setSelectedItem(null)}>
-            <Ionicons name="arrow-back" size={18} color={colors.student.textPrimary} />
+            <AppIcon name="arrow-back" size={18} color={colors.student.textPrimary} />
           </Pressable>
           <View style={styles.topTitleWrap}>
-            <Ionicons name="book-outline" size={16} color={colors.student.textPrimary} />
+            <AppIcon name="book-outline" size={16} color={colors.student.textPrimary} />
             <Text style={styles.topBarTitle}>Homework</Text>
           </View>
           <View style={styles.backBtn} />
@@ -228,7 +228,7 @@ export default function StudentHomeworkScreen({ prefillSelectedItem = null }) {
           <Text style={styles.detailDesc}>{selectedItem.description || '-'}</Text>
           {selectedItem.file?.name ? (
             <View style={styles.fileNameRow}>
-              <Ionicons name="document-text-outline" size={14} color={colors.student.textSecondary} />
+              <AppIcon name="document-text-outline" size={14} color={colors.student.textSecondary} />
               <Text style={styles.fileName}>{selectedItem.file.name}</Text>
             </View>
           ) : null}
@@ -238,12 +238,12 @@ export default function StudentHomeworkScreen({ prefillSelectedItem = null }) {
               <Pressable style={styles.actionBtn} onPress={() => openAttachment(selectedItem)} disabled={busyAction.id === selectedItem.id && busyAction.type === 'open'}>
                 {busyAction.id === selectedItem.id && busyAction.type === 'open'
                   ? <ActivityIndicator size="small" color={colors.text.inverse} />
-                  : <><Ionicons name="open-outline" size={15} color={colors.text.inverse} /><Text style={styles.actionBtnText}>Open Direct</Text></>}
+                  : <><AppIcon name="open-outline" size={15} color={colors.text.inverse} /><Text style={styles.actionBtnText}>Open Direct</Text></>}
               </Pressable>
               <Pressable style={styles.actionBtn} onPress={() => handleDownloadAndOpen(selectedItem)} disabled={busyAction.id === selectedItem.id && busyAction.type === 'download'}>
                 {busyAction.id === selectedItem.id && busyAction.type === 'download'
                   ? <ActivityIndicator size="small" color={colors.text.inverse} />
-                  : <><Ionicons name="download-outline" size={15} color={colors.text.inverse} /><Text style={styles.actionBtnText}>Download</Text></>}
+                  : <><AppIcon name="download-outline" size={15} color={colors.text.inverse} /><Text style={styles.actionBtnText}>Download</Text></>}
               </Pressable>
             </View>
           ) : null}

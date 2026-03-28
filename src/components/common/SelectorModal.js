@@ -7,7 +7,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import Ionicons from '@react-native-vector-icons/ionicons';
+import AppIcon from './AppIcon.js';
 import { useAppTheme } from '../../theme/ThemeContext';
 
 function normalizeLabel(value) {
@@ -52,12 +52,12 @@ export default function SelectorModal({
         <View style={styles.headerRow}>
           <Text style={styles.title}>{title}</Text>
           <Pressable style={styles.closeBtn} onPress={onClose}>
-            <Ionicons name="close" size={16} color={colors.admin.textPrimary} />
+            <AppIcon name="close" size={16} color={colors.admin.textPrimary} />
           </Pressable>
         </View>
 
         <View style={styles.searchRow}>
-          <Ionicons name="search-outline" size={16} color={colors.admin.textSecondary} />
+          <AppIcon name="search-outline" size={16} color={colors.admin.textSecondary} />
           <TextInput
             style={styles.searchInput}
             value={search}
@@ -104,7 +104,7 @@ export default function SelectorModal({
               >
                 <Text style={[styles.itemText, active ? styles.itemTextActive : null]}>{label}</Text>
                 {active ? (
-                  <Ionicons name="checkmark-circle" size={16} color={colors.brand.primary} />
+                  <AppIcon name="checkmark-circle" size={16} color={colors.brand.primary} />
                 ) : null}
               </Pressable>
             );

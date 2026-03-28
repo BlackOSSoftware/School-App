@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import Ionicons from '@react-native-vector-icons/ionicons';
+import AppIcon from '../common/AppIcon.js';
 import { useStudentMyAttendanceReportQuery } from '../../hooks/useAttendanceQueries';
 import { useMyAnnouncementsQuery } from '../../hooks/useAnnouncementQueries';
 import { useStudentMyContentQuery } from '../../hooks/useContentQueries';
@@ -45,7 +45,7 @@ function ContentPreviewSection({
     <View style={styles.panel}>
       <View style={styles.panelHeader}>
         <View style={styles.panelTitleWrap}>
-          <Ionicons name={icon} size={16} color={colors.student.textPrimary} />
+          <AppIcon name={icon} size={16} color={colors.student.textPrimary} />
           <Text style={styles.panelTitle}>{title}</Text>
         </View>
         <Pressable style={styles.linkBtn} onPress={onViewAll}>
@@ -174,7 +174,7 @@ export default function StudentHomeScreen({
       <View style={styles.panel}>
         <View style={styles.panelHeader}>
           <View style={styles.panelTitleWrap}>
-            <Ionicons name="megaphone-outline" size={16} color={colors.student.textPrimary} />
+            <AppIcon name="megaphone-outline" size={16} color={colors.student.textPrimary} />
             <Text style={styles.panelTitle}>Recent Announcements</Text>
           </View>
           <Pressable style={styles.linkBtn} onPress={() => onOpenAnnouncements?.()}>
@@ -196,11 +196,11 @@ export default function StudentHomeScreen({
 
       <View style={styles.actionBtnRow}>
         <Pressable style={styles.secondaryActionBtn} onPress={() => setShowBusModal(true)}>
-          <Ionicons name="bus-outline" size={15} color={colors.student.textPrimary} />
+          <AppIcon name="bus-outline" size={15} color={colors.student.textPrimary} />
           <Text style={styles.secondaryActionText}>Bus Tracking</Text>
         </Pressable>
         <Pressable style={styles.primaryActionBtn} onPress={handleOpenFees}>
-          <Ionicons name="card-outline" size={15} color={colors.text.inverse} />
+          <AppIcon name="card-outline" size={15} color={colors.text.inverse} />
           <Text style={styles.primaryActionText}>Pay Fees</Text>
         </Pressable>
       </View>
@@ -213,11 +213,11 @@ export default function StudentHomeScreen({
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleWrap}>
-                <Ionicons name="bus-outline" size={16} color={colors.student.textPrimary} />
+                <AppIcon name="bus-outline" size={16} color={colors.student.textPrimary} />
                 <Text style={styles.modalTitle}>Bus Tracking</Text>
               </View>
               <Pressable style={styles.modalCloseBtn} onPress={() => setShowBusModal(false)}>
-                <Ionicons name="close" size={16} color={colors.student.textPrimary} />
+                <AppIcon name="close" size={16} color={colors.student.textPrimary} />
               </Pressable>
             </View>
 
@@ -241,7 +241,7 @@ export default function StudentHomeScreen({
                 <Text style={styles.modalGhostText}>Close</Text>
               </Pressable>
               <Pressable style={styles.modalPrimaryBtn} onPress={handleOpenBusLink}>
-                <Ionicons name="open-outline" size={14} color={colors.text.inverse} />
+                <AppIcon name="open-outline" size={14} color={colors.text.inverse} />
                 <Text style={styles.modalPrimaryText}>Open Link</Text>
               </Pressable>
             </View>

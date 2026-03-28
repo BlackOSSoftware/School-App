@@ -12,7 +12,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import Ionicons from '@react-native-vector-icons/ionicons';
+import AppIcon from '../common/AppIcon.js';
 import PaginationControls from '../common/PaginationControls';
 import {
   useClassesQuery,
@@ -334,7 +334,7 @@ export default function AdminClassScreen() {
 
             <Text style={styles.inputLabel}>Class Name</Text>
             <View style={styles.inputRow}>
-              <Ionicons name="school-outline" size={18} color={colors.admin.accent} style={styles.inputIcon} />
+              <AppIcon name="school-outline" size={18} color={colors.admin.accent} style={styles.inputIcon} />
               <TextInput
                 style={styles.inputWithIcon}
                 value={name}
@@ -346,7 +346,7 @@ export default function AdminClassScreen() {
 
             <Text style={styles.inputLabel}>Section</Text>
             <View style={styles.inputRow}>
-              <Ionicons name="layers-outline" size={18} color={colors.admin.accent} style={styles.inputIcon} />
+              <AppIcon name="layers-outline" size={18} color={colors.admin.accent} style={styles.inputIcon} />
               <TextInput
                 style={styles.inputWithIcon}
                 value={section}

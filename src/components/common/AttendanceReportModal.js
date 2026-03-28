@@ -10,7 +10,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import Ionicons from '@react-native-vector-icons/ionicons';
+import AppIcon from './AppIcon.js';
 import { useAppTheme } from '../../theme/ThemeContext';
 
 function toPct(value) {
@@ -71,7 +71,7 @@ export default function AttendanceReportModal({
               <Text style={styles.subtitle}>{studentName}</Text>
             </View>
             <Pressable style={styles.closeIconBtn} onPress={onClose}>
-              <Ionicons name="close" size={16} color={colors.admin.textPrimary} />
+              <AppIcon name="close" size={16} color={colors.admin.textPrimary} />
             </Pressable>
           </View>
 
@@ -83,15 +83,15 @@ export default function AttendanceReportModal({
             <>
               <View style={styles.statsRow}>
                 <View style={styles.statCard}>
-                  <Ionicons name="calendar-outline" size={14} color={colors.admin.accent} />
+                  <AppIcon name="calendar-outline" size={14} color={colors.admin.accent} />
                   <Text style={styles.statText}>Days {Number(report?.totalDays ?? 0)}</Text>
                 </View>
                 <View style={styles.statCard}>
-                  <Ionicons name="checkmark-circle-outline" size={14} color={colors.state.success} />
+                  <AppIcon name="checkmark-circle-outline" size={14} color={colors.state.success} />
                   <Text style={styles.statText}>Present {Number(report?.presentDays ?? 0)}</Text>
                 </View>
                 <View style={styles.statCard}>
-                  <Ionicons name="close-circle-outline" size={14} color={colors.state.error} />
+                  <AppIcon name="close-circle-outline" size={14} color={colors.state.error} />
                   <Text style={styles.statText}>Absent {Number(report?.absentDays ?? 0)}</Text>
                 </View>
               </View>

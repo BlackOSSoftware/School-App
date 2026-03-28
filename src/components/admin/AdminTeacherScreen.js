@@ -12,7 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import Ionicons from '@react-native-vector-icons/ionicons';
+import AppIcon from '../common/AppIcon.js';
 import {
   useCreateTeacherMutation,
   useDeleteTeacherMutation,
@@ -221,7 +221,7 @@ function TeacherFormModal({
 
             <Text style={styles.inputLabel}>Name</Text>
             <View style={styles.inputRow}>
-              <Ionicons name="person-outline" size={17} style={styles.inputIcon} />
+              <AppIcon name="person-outline" size={17} style={styles.inputIcon} />
               <TextInput
                 style={styles.inputWithIcon}
                 value={form.name}
@@ -233,7 +233,7 @@ function TeacherFormModal({
 
             <Text style={styles.inputLabel}>Email</Text>
             <View style={styles.inputRow}>
-              <Ionicons name="mail-outline" size={17} style={styles.inputIcon} />
+              <AppIcon name="mail-outline" size={17} style={styles.inputIcon} />
               <TextInput
                 style={styles.inputWithIcon}
                 value={form.email}
@@ -249,7 +249,7 @@ function TeacherFormModal({
               Password {mode === 'edit' ? '(optional)' : ''}
             </Text>
             <View style={styles.inputRow}>
-              <Ionicons name="lock-closed-outline" size={17} style={styles.inputIcon} />
+              <AppIcon name="lock-closed-outline" size={17} style={styles.inputIcon} />
               <TextInput
                 style={styles.inputWithIcon}
                 value={form.password}
@@ -271,7 +271,7 @@ function TeacherFormModal({
 
               <View style={styles.subjectEntryRow}>
                 <View style={[styles.inputRow, styles.subjectEntryInputWrap]}>
-                  <Ionicons name="reader-outline" size={17} style={styles.inputIcon} />
+                  <AppIcon name="reader-outline" size={17} style={styles.inputIcon} />
                   <TextInput
                     style={styles.inputWithIcon}
                     value={form.subjectDraft}
@@ -284,7 +284,7 @@ function TeacherFormModal({
                 </View>
                 <Pressable style={styles.smallAddBtn} onPress={addSubject}>
                   <View style={styles.inlineAction}>
-                    <Ionicons name="add" size={14} color={colors.text.inverse} />
+                    <AppIcon name="add" size={14} color={colors.text.inverse} />
                     <Text style={styles.smallAddText}>Add</Text>
                   </View>
                 </Pressable>
@@ -296,7 +296,7 @@ function TeacherFormModal({
                     <View key={subject} style={styles.subjectChip}>
                       <Text style={styles.subjectChipText}>{subject}</Text>
                       <Pressable onPress={() => removeSubject(subject)} hitSlop={6}>
-                        <Ionicons name="close" size={15} color={colors.admin.textSecondary} />
+                        <AppIcon name="close" size={15} color={colors.admin.textSecondary} />
                       </Pressable>
                     </View>
                   ))
@@ -331,7 +331,7 @@ function TeacherFormModal({
                   }
                 >
                   <View style={styles.inlineAction}>
-                    <Ionicons name="add" size={14} color={colors.text.inverse} />
+                    <AppIcon name="add" size={14} color={colors.text.inverse} />
                     <Text style={styles.smallAddText}>Add</Text>
                   </View>
                 </Pressable>
@@ -346,7 +346,7 @@ function TeacherFormModal({
                         style={styles.assignmentRemoveBtn}
                         onPress={() => updateAssignments(prev => prev.filter((_, idx) => idx !== index))}
                       >
-                        <Ionicons name="trash-outline" size={14} color={colors.state.error} />
+                        <AppIcon name="trash-outline" size={14} color={colors.state.error} />
                         <Text style={styles.assignmentRemoveText}>Remove</Text>
                       </Pressable>
                     </View>
@@ -356,18 +356,18 @@ function TeacherFormModal({
                       style={[styles.selectBtn, styles.assignmentField]}
                       onPress={() => openPicker(`assignment:${index}`)}
                     >
-                      <Ionicons name="business-outline" size={16} color={colors.admin.accent} />
+                      <AppIcon name="business-outline" size={16} color={colors.admin.accent} />
                       <Text style={styles.selectBtnText}>
                         {assignment.classId
                           ? getClassDisplay(assignment.classId, classLabelById)
                           : 'Select class (optional)'}
                       </Text>
-                      <Ionicons name="chevron-down" size={16} color={colors.admin.textSecondary} />
+                      <AppIcon name="chevron-down" size={16} color={colors.admin.textSecondary} />
                     </Pressable>
 
                     <Text style={styles.fieldMiniLabel}>Subject</Text>
                     <View style={[styles.inputRow, styles.assignmentSubjectInput, styles.assignmentField]}>
-                      <Ionicons name="book-outline" size={16} style={styles.inputIcon} />
+                      <AppIcon name="book-outline" size={16} style={styles.inputIcon} />
                       <TextInput
                         style={styles.inputWithIcon}
                         value={assignment.subject}
@@ -466,25 +466,25 @@ function TeacherDetailModal({ visible, onClose, detail, loading, styles, colors,
           ) : detail ? (
             <ScrollView style={styles.detailScroll}>
               <View style={styles.detailLineRow}>
-                <Ionicons name="person-outline" size={15} color={colors.admin.accent} />
+                <AppIcon name="person-outline" size={15} color={colors.admin.accent} />
                 <Text style={styles.detailLine}>Name: {detail.name}</Text>
               </View>
               <View style={styles.detailLineRow}>
-                <Ionicons name="mail-outline" size={15} color={colors.admin.accent} />
+                <AppIcon name="mail-outline" size={15} color={colors.admin.accent} />
                 <Text style={styles.detailLine}>Email: {detail.email}</Text>
               </View>
               <View style={styles.detailLineRow}>
-                <Ionicons name="checkmark-circle-outline" size={15} color={colors.admin.accent} />
+                <AppIcon name="checkmark-circle-outline" size={15} color={colors.admin.accent} />
                 <Text style={styles.detailLine}>Status: {detail.status ?? '-'}</Text>
               </View>
               <View style={styles.detailLineRow}>
-                <Ionicons name="book-outline" size={15} color={colors.admin.accent} />
+                <AppIcon name="book-outline" size={15} color={colors.admin.accent} />
                 <Text style={styles.detailLine}>
                 Subjects: {Array.isArray(detail.subjects) ? detail.subjects.join(', ') : '-'}
                 </Text>
               </View>
               <View style={styles.detailLineRow}>
-                <Ionicons name="business-outline" size={15} color={colors.admin.accent} />
+                <AppIcon name="business-outline" size={15} color={colors.admin.accent} />
                 <Text style={styles.detailLine}>
                 Class Teacher Of: {getClassDisplay(detail.classTeacherOf, classLabelById)}
                 </Text>
@@ -715,7 +715,7 @@ export default function AdminTeacherScreen() {
         ]}
       >
         <View style={styles.searchInputRow}>
-          <Ionicons name="search-outline" size={17} style={styles.searchIcon} />
+          <AppIcon name="search-outline" size={17} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             value={search}
@@ -726,7 +726,7 @@ export default function AdminTeacherScreen() {
         </View>
         <Pressable style={styles.addBtn} onPress={openCreateModal}>
           <View style={styles.inlineAction}>
-            <Ionicons name="add" size={14} color={colors.text.inverse} />
+            <AppIcon name="add" size={14} color={colors.text.inverse} />
             <Text style={styles.addBtnText}>Add</Text>
           </View>
         </Pressable>

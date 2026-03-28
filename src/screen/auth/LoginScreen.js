@@ -14,7 +14,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import Ionicons from '@react-native-vector-icons/ionicons';
+import AppIcon from '../../components/common/AppIcon.js';
 import { useLoginMutation, getApiErrorMessage } from '../../hooks/useLoginMutation';
 import { getApiBaseUrl, getApiBaseUrlCandidates, setAuthToken } from '../../api/client';
 import { updateMyFcmToken } from '../../services/authService';
@@ -244,7 +244,7 @@ export default function LoginScreen({ onLoginSuccess }) {
           >
             <Text style={styles.label}>{identifierLabel}</Text>
             <View style={styles.inputRow}>
-              <Ionicons name="person-outline" size={18} color={colors.auth.icon} style={styles.inputIcon} />
+              <AppIcon name="person-outline" size={18} color={colors.auth.icon} style={styles.inputIcon} />
               <TextInput
                 value={identifier}
                 onChangeText={setIdentifier}
@@ -261,7 +261,7 @@ export default function LoginScreen({ onLoginSuccess }) {
             <Text style={styles.label}>Password</Text>
             <View style={styles.passwordRow}>
               <View style={[styles.inputRow, styles.passwordInput]}>
-                <Ionicons name="lock-closed-outline" size={18} color={colors.auth.icon} style={styles.inputIcon} />
+                <AppIcon name="lock-closed-outline" size={18} color={colors.auth.icon} style={styles.inputIcon} />
                 <TextInput
                   ref={passwordInputRef}
                   value={password}
@@ -275,7 +275,7 @@ export default function LoginScreen({ onLoginSuccess }) {
                 />
               </View>
               <Pressable style={styles.toggleBtn} onPress={() => setHidePassword(prev => !prev)}>
-                <Ionicons
+                <AppIcon
                   name={hidePassword ? 'eye-outline' : 'eye-off-outline'}
                   size={18}
                   color={colors.text.secondary}

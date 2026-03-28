@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import Ionicons from '@react-native-vector-icons/ionicons';
+import AppIcon from '../common/AppIcon.js';
 import { useCreateTeacherAnnouncementMutation, useMyAnnouncementsQuery } from '../../hooks/useAnnouncementQueries';
 import { useTeacherClassesOverviewQuery } from '../../hooks/useTeacherQueries';
 import { useAppTheme } from '../../theme/ThemeContext';
@@ -103,7 +103,7 @@ export default function TeacherAnnouncementScreen() {
       <View style={styles.toolbarRow}>
         <Text style={styles.sectionTitle}>Recent Updates</Text>
         <Pressable style={styles.composeBtn} onPress={() => setComposeOpen(true)}>
-          <Ionicons name="add" size={15} color={colors.text.inverse} />
+          <AppIcon name="add" size={15} color={colors.text.inverse} />
           <Text style={styles.composeBtnText}>Post</Text>
         </Pressable>
       </View>
@@ -127,19 +127,19 @@ export default function TeacherAnnouncementScreen() {
             <View style={styles.modalHeadRow}>
               <Text style={styles.modalTitle}>Post Announcement</Text>
               <Pressable style={styles.circleClose} onPress={() => setComposeOpen(false)}>
-                <Ionicons name="close" size={16} color={colors.teacher.textPrimary} />
+                <AppIcon name="close" size={16} color={colors.teacher.textPrimary} />
               </Pressable>
             </View>
 
             <Text style={styles.inputLabel}>Target Classes</Text>
             <Pressable style={styles.selectBtn} onPress={() => setClassDropdownOpen(prev => !prev)}>
-              <Ionicons name="library-outline" size={16} color={colors.teacher.accent} />
+              <AppIcon name="library-outline" size={16} color={colors.teacher.accent} />
               <Text style={styles.selectText}>
                 {form.classIds.length
                   ? `${form.classIds.length} class${form.classIds.length > 1 ? 'es' : ''} selected`
                   : 'Select class(es)'}
               </Text>
-              <Ionicons name={classDropdownOpen ? 'chevron-up' : 'chevron-down'} size={16} color={colors.teacher.textSecondary} />
+              <AppIcon name={classDropdownOpen ? 'chevron-up' : 'chevron-down'} size={16} color={colors.teacher.textSecondary} />
             </Pressable>
             {classDropdownOpen ? (
               <View style={styles.dropdownBox}>
@@ -160,9 +160,9 @@ export default function TeacherAnnouncementScreen() {
                       {allClassesSelected ? 'Clear All' : 'Select All'}
                     </Text>
                     {allClassesSelected ? (
-                      <Ionicons name="checkmark-circle" size={16} color={colors.brand.primary} />
+                      <AppIcon name="checkmark-circle" size={16} color={colors.brand.primary} />
                     ) : (
-                      <Ionicons name="ellipse-outline" size={16} color={colors.teacher.textSecondary} />
+                      <AppIcon name="ellipse-outline" size={16} color={colors.teacher.textSecondary} />
                     )}
                   </Pressable>
                   {classes.map(item => (
@@ -183,7 +183,7 @@ export default function TeacherAnnouncementScreen() {
                     >
                       <Text style={styles.modalItemText}>{item.label}</Text>
                       {form.classIds.includes(item.id) ? (
-                        <Ionicons name="checkmark-circle" size={16} color={colors.brand.primary} />
+                        <AppIcon name="checkmark-circle" size={16} color={colors.brand.primary} />
                       ) : null}
                     </Pressable>
                   ))}
@@ -193,7 +193,7 @@ export default function TeacherAnnouncementScreen() {
 
             <Text style={styles.inputLabel}>Title</Text>
             <View style={styles.inputRow}>
-              <Ionicons name="megaphone-outline" size={16} style={styles.inputIcon} />
+              <AppIcon name="megaphone-outline" size={16} style={styles.inputIcon} />
               <TextInput
                 style={styles.inputWithIcon}
                 value={form.title}
@@ -205,7 +205,7 @@ export default function TeacherAnnouncementScreen() {
 
             <Text style={styles.inputLabel}>Details</Text>
             <View style={[styles.inputRow, styles.inputRowMultiline]}>
-              <Ionicons name="document-text-outline" size={16} style={styles.inputIcon} />
+              <AppIcon name="document-text-outline" size={16} style={styles.inputIcon} />
               <TextInput
                 style={[styles.inputWithIcon, styles.multilineInput]}
                 value={form.description}

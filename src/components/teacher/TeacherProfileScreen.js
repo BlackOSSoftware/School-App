@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Ionicons from '@react-native-vector-icons/ionicons';
+import AppIcon from '../common/AppIcon.js';
 import { useAppTheme } from '../../theme/ThemeContext';
 import ConfirmModal from '../common/ConfirmModal';
 
@@ -38,12 +38,12 @@ export default function TeacherProfileScreen({ session, onLogout }) {
 
       <View style={styles.infoCard}>
         <View style={styles.infoRow}>
-          <Ionicons name="mail-outline" size={15} style={styles.infoIcon} />
+          <AppIcon name="mail-outline" size={15} style={styles.infoIcon} />
           <Text style={styles.infoLabel}>Email</Text>
           <Text style={styles.infoValue}>{session?.user?.email || '-'}</Text>
         </View>
         <View style={styles.infoRow}>
-          <Ionicons name="school-outline" size={15} style={styles.infoIcon} />
+          <AppIcon name="school-outline" size={15} style={styles.infoIcon} />
           <Text style={styles.infoLabel}>Status</Text>
           <Text style={styles.infoValue}>Active</Text>
         </View>
@@ -59,13 +59,13 @@ export default function TeacherProfileScreen({ session, onLogout }) {
           }}
         >
           <View style={styles.logoutIconWrap}>
-            <Ionicons name="log-out-outline" size={16} color={colors.state.error} />
+            <AppIcon name="log-out-outline" size={16} color={colors.state.error} />
           </View>
           <View style={styles.logoutBody}>
             <Text style={styles.logoutTitle}>Logout</Text>
             <Text style={styles.logoutSub}>Sign out and return to login</Text>
           </View>
-          <Ionicons name="chevron-forward" size={15} color={colors.state.error} />
+          <AppIcon name="chevron-forward" size={15} color={colors.state.error} />
         </Pressable>
       </View>
 

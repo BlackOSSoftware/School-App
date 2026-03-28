@@ -1,6 +1,6 @@
 import React, { memo, useCallback, useMemo } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import Ionicons from '@react-native-vector-icons/ionicons';
+import AppIcon from '../common/AppIcon.js';
 import PaginationControls from '../common/PaginationControls';
 import { useAppTheme } from '../../theme/ThemeContext';
 
@@ -21,15 +21,15 @@ const StudentCard = memo(function StudentCard({ item, styles }) {
       </View>
 
       <View style={styles.metaRow}>
-        <Ionicons name="people-outline" size={14} style={styles.metaIcon} />
+        <AppIcon name="people-outline" size={14} style={styles.metaIcon} />
         <Text style={styles.metaText}>Parent: {item.parentName || '-'}</Text>
       </View>
       <View style={styles.metaRow}>
-        <Ionicons name="call-outline" size={14} style={styles.metaIcon} />
+        <AppIcon name="call-outline" size={14} style={styles.metaIcon} />
         <Text style={styles.metaText}>Phone: {item.phoneNumber || '-'}</Text>
       </View>
       <View style={styles.metaRow}>
-        <Ionicons name="calendar-outline" size={14} style={styles.metaIcon} />
+        <AppIcon name="calendar-outline" size={14} style={styles.metaIcon} />
         <Text style={styles.metaText}>Session: {item.sessionName || '-'}</Text>
       </View>
     </View>
@@ -55,7 +55,7 @@ export default function TeacherClassStudentsScreen({
     <View style={styles.container}>
       <View style={styles.headCard}>
         <Pressable style={styles.backInline} onPress={onBackToDashboard}>
-          <Ionicons name="chevron-back" size={16} color={colors.teacher.accent} />
+          <AppIcon name="chevron-back" size={16} color={colors.teacher.accent} />
           <Text style={styles.backText}>Back to Dashboard</Text>
         </Pressable>
         <Text style={styles.headTitle}>Class {classInfo?.label || '-'}</Text>

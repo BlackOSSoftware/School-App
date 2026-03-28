@@ -1,7 +1,7 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Ionicons from '@react-native-vector-icons/ionicons';
+import AppIcon from '../common/AppIcon.js';
 import {
   useAdminAttendanceSummaryByDateQuery,
   useAdminClassAttendanceByDateQuery,
@@ -59,7 +59,7 @@ export default function AdminAttendanceScreen() {
       </View>
 
       <Pressable style={styles.dateBtn} onPress={() => setShowPicker(true)}>
-        <Ionicons name="calendar-outline" size={16} color={colors.admin.accent} />
+        <AppIcon name="calendar-outline" size={16} color={colors.admin.accent} />
         <Text style={styles.dateBtnText}>Change Date: {dateIso}</Text>
       </Pressable>
 
