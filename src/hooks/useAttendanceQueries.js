@@ -4,6 +4,7 @@ import {
   getAdminAttendanceSummaryByDate,
   getAdminClassAttendanceByDate,
   getAdminStudentAttendanceReport,
+  updateAdminStudentAttendanceByDate,
   getStudentMyAttendanceReport,
   getTeacherClassAttendanceByDate,
   getTeacherStudentAttendanceReport,
@@ -16,8 +17,8 @@ export const ATTENDANCE_QUERY_KEYS = {
   teacherStudentReport: (classId, studentId, from, to) => ['attendance', 'teacher', 'student-report', classId, studentId, from, to],
   adminDashboardSummary: ['attendance', 'admin', 'dashboard-summary'],
   adminDateSummary: date => ['attendance', 'admin', 'date-summary', date],
-  adminClassDate: (classId, date) => ['attendance', 'admin', 'class-date', classId, date],
-  adminStudentReport: (classId, studentId, from, to) => ['attendance', 'admin', 'student-report', classId, studentId, from, to],
+  adminClassDate: (classId, date, sessionId) => ['attendance', 'admin', 'class-date', classId, date, sessionId],
+  adminStudentReport: (classId, studentId, from, to, sessionId) => ['attendance', 'admin', 'student-report', classId, studentId, from, to, sessionId],
   studentMeReport: (from, to) => ['attendance', 'student', 'me-report', from, to],
 };
 
@@ -71,10 +72,10 @@ export function useAdminDashboardSummaryQuery({ enabled = true } = {}) {
   });
 }
 
-export function useAdminClassAttendanceByDateQuery({ classId, date, enabled = true }) {
+export function useAdminClassAttendanceByDateQuery({ classId, date, sessionId, enabled = true }) {
   return useQuery({
-    queryKey: ATTENDANCE_QUERY_KEYS.adminClassDate(classId, date),
-    queryFn: () => getAdminClassAttendanceByDate({ classId, date }),
+    queryKey: ATTENDANCE_QUERY_KEYS.adminClassDate(classId, date, sessionId),
+    queryFn: () => getAdminClassAttendanceByDate({ classId, date, sessionId }),
     enabled: Boolean(classId) && Boolean(date) && enabled,
     staleTime: 20 * 1000,
     placeholderData: previousData => previousData,
@@ -86,11 +87,12 @@ export function useAdminStudentAttendanceReportQuery({
   studentId,
   from,
   to,
+  sessionId,
   enabled = true,
 }) {
   return useQuery({
-    queryKey: ATTENDANCE_QUERY_KEYS.adminStudentReport(classId, studentId, from, to),
-    queryFn: () => getAdminStudentAttendanceReport({ classId, studentId, from, to }),
+    queryKey: ATTENDANCE_QUERY_KEYS.adminStudentReport(classId, studentId, from, to, sessionId),
+    queryFn: () => getAdminStudentAttendanceReport({ classId, studentId, from, to, sessionId }),
     enabled: Boolean(classId) && Boolean(studentId) && enabled,
     staleTime: 20 * 1000,
     placeholderData: previousData => previousData,
@@ -104,5 +106,15 @@ export function useStudentMyAttendanceReportQuery({ from, to, enabled = true }) 
     enabled: Boolean(from) && Boolean(to) && enabled,
     staleTime: 20 * 1000,
     placeholderData: previousData => previousData,
+  });
+}
+
+export function useUpdateAdminStudentAttendanceByDateMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: updateAdminStudentAttendanceByDate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ATTENDANCE_QUERY_KEYS.all });
+    },
   });
 }

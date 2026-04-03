@@ -6,6 +6,7 @@ import { useTeacherClassesOverviewQuery } from '../../hooks/useTeacherQueries';
 import { useAppTheme } from '../../theme/ThemeContext';
 import AnnouncementFeed from '../common/AnnouncementFeed';
 import KeyboardAwareModal from '../common/KeyboardAwareModal';
+import NotificationDetailsModal from '../common/NotificationDetailsModal';
 
 function getErrorMessage(error, fallback) {
   const message = error?.response?.data?.message || error?.response?.data?.error || error?.message;
@@ -36,6 +37,7 @@ export default function TeacherAnnouncementScreen() {
   const [classDropdownOpen, setClassDropdownOpen] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [form, setForm] = useState({ title: '', description: '', classIds: [] });
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
 
   const createMutation = useCreateTeacherAnnouncementMutation();
   const overviewQuery = useTeacherClassesOverviewQuery();
@@ -115,7 +117,7 @@ export default function TeacherAnnouncementScreen() {
         styles={styles}
       />
 
-      <AnnouncementFeed query={announcementQuery} page={page} onPageChange={setPage} variant="teacher" />
+      <AnnouncementFeed query={announcementQuery} page={page} onPageChange={setPage} variant="teacher" onPressItem={setSelectedAnnouncement} />
 
       <Modal visible={composeOpen} transparent animationType="slide" onRequestClose={() => setComposeOpen(false)}>
         <KeyboardAwareModal
@@ -230,6 +232,13 @@ export default function TeacherAnnouncementScreen() {
             </View>
         </KeyboardAwareModal>
       </Modal>
+
+      <NotificationDetailsModal
+        visible={Boolean(selectedAnnouncement)}
+        item={selectedAnnouncement}
+        onClose={() => setSelectedAnnouncement(null)}
+        variant="teacher"
+      />
 
     </View>
   );

@@ -50,7 +50,11 @@ export default function AttendanceReportModal({
     outputRange: [32, 0],
   });
 
-  const daily = Array.isArray(report?.daily) ? report.daily : [];
+  const normalizedReport = useMemo(() => {
+    const candidate = report?.data && typeof report.data === 'object' ? report.data : report;
+    return candidate && typeof candidate === 'object' ? candidate : null;
+  }, [report]);
+  const daily = Array.isArray(normalizedReport?.daily) ? normalizedReport.daily : [];
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
@@ -79,23 +83,23 @@ export default function AttendanceReportModal({
             <View style={styles.loaderWrap}>
               <ActivityIndicator size="small" color={colors.brand.primary} />
             </View>
-          ) : report ? (
+          ) : normalizedReport ? (
             <>
               <View style={styles.statsRow}>
                 <View style={styles.statCard}>
                   <AppIcon name="calendar-outline" size={14} color={colors.admin.accent} />
-                  <Text style={styles.statText}>Days {Number(report?.totalDays ?? 0)}</Text>
+                  <Text style={styles.statText}>Days {Number(normalizedReport?.totalDays ?? 0)}</Text>
                 </View>
                 <View style={styles.statCard}>
                   <AppIcon name="checkmark-circle-outline" size={14} color={colors.state.success} />
-                  <Text style={styles.statText}>Present {Number(report?.presentDays ?? 0)}</Text>
+                  <Text style={styles.statText}>Present {Number(normalizedReport?.presentDays ?? 0)}</Text>
                 </View>
                 <View style={styles.statCard}>
                   <AppIcon name="close-circle-outline" size={14} color={colors.state.error} />
-                  <Text style={styles.statText}>Absent {Number(report?.absentDays ?? 0)}</Text>
+                  <Text style={styles.statText}>Absent {Number(normalizedReport?.absentDays ?? 0)}</Text>
                 </View>
               </View>
-              <Text style={styles.percentText}>Attendance: {toPct(report?.presentPercentage)}</Text>
+              <Text style={styles.percentText}>Attendance: {toPct(normalizedReport?.presentPercentage)}</Text>
               <ScrollView style={styles.dailyList} showsVerticalScrollIndicator={false}>
                 {daily.length ? (
                   daily.map((item, index) => {

@@ -10,15 +10,15 @@ import {
 
 export const STUDENT_QUERY_KEYS = {
   all: ['students'],
-  list: (page, limit, search, classId) => ['students', 'list', page, limit, search, classId],
+  list: (page, limit, search, classId, status) => ['students', 'list', page, limit, search, classId, status],
   detail: id => ['students', 'detail', id],
   sessionTransition: ['students', 'session-transition'],
 };
 
-export function useStudentsQuery({ page = 1, limit = 10, search = '', classId = '', sessionId = '' }) {
+export function useStudentsQuery({ page = 1, limit = 10, search = '', classId = '', sessionId = '', status = '' }) {
   return useQuery({
-    queryKey: STUDENT_QUERY_KEYS.list(page, limit, search, `${classId}:${sessionId}`),
-    queryFn: () => getAllStudents({ page, limit, search, classId, sessionId }),
+    queryKey: STUDENT_QUERY_KEYS.list(page, limit, search, `${classId}:${sessionId}`, status),
+    queryFn: () => getAllStudents({ page, limit, search, classId, sessionId, status }),
     placeholderData: previousData => previousData,
   });
 }

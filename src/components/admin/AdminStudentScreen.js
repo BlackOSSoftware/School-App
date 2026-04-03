@@ -432,6 +432,7 @@ export default function AdminStudentScreen() {
     limit: PAGE_LIMIT,
     search: debouncedSearch,
     classId: selectedClassId,
+    status: 'all',
   });
   const createMutation = useCreateStudentMutation();
   const updateMutation = useUpdateStudentMutation();

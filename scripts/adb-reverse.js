@@ -20,6 +20,11 @@ function main() {
   if (status !== 0) {
     process.exit(status);
   }
+
+  status = runAdb(['reverse', 'tcp:4000', 'tcp:4000']);
+  if (status !== 0) {
+    process.exit(status);
+  }
 }
 
 main();

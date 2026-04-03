@@ -1,9 +1,7 @@
 import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
   ActivityIndicator,
   FlatList,
-  Linking,
   Modal,
   NativeModules,
   Pressable,
@@ -17,7 +15,7 @@ import AppIcon from '../common/AppIcon.js';
 import { errorCodes, isErrorWithCode, keepLocalCopy, pick, types } from '@react-native-documents/picker';
 import { useTeacherClassesOverviewQuery } from '../../hooks/useTeacherQueries';
 import { useCreateTeacherContentMutation, useTeacherMyContentQuery } from '../../hooks/useContentQueries';
-import { downloadAndOpenContentFile, resolveContentFileUrl } from '../../services/fileService';
+import { openContentFile } from '../../services/fileService';
 import { useAppTheme } from '../../theme/ThemeContext';
 import KeyboardAwareModal from '../common/KeyboardAwareModal';
 
@@ -98,7 +96,6 @@ export default function TeacherContentScreen() {
   const [showClassPicker, setShowClassPicker] = useState(false);
   const [showSubjectPicker, setShowSubjectPicker] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
-  const [downloadingId, setDownloadingId] = useState('');
   const [form, setForm] = useState({
     type: 'homework',
     classId: '',
@@ -260,35 +257,18 @@ export default function TeacherContentScreen() {
   const selectedClassLabel = classList.find(item => item.id === selectedClassId)?.label || 'All Classes';
 
   const openAttachment = async item => {
-    const openUrl = resolveContentFileUrl(item?.file?.openUrl || item?.file?.url);
-    if (!openUrl) {
+    if (!item?.file?.openUrl && !item?.file?.downloadUrl && !item?.file?.url) {
       return;
     }
     try {
-      await Linking.openURL(openUrl);
-    } catch (error) {
-      setMessage({ type: 'error', text: getErrorMessage(error, 'Unable to open attachment.') });
-    }
-  };
-
-  const handleDownloadAndOpen = async item => {
-    if (!item?.file?.downloadUrl && !item?.file?.url && !item?.id) {
-      return;
-    }
-    setDownloadingId(item.id);
-    try {
-      await downloadAndOpenContentFile({
-        downloadUrl: item.file.downloadUrl,
-        contentId: item.id,
-        url: item.file.url,
-        fileName: item.file.name || `${item.title}.pdf`,
-        category: 'TeacherContent',
-        mode: 'download',
+      await openContentFile({
+        openUrl: item?.file?.openUrl,
+        downloadUrl: item?.file?.downloadUrl,
+        contentId: item?.id,
+        url: item?.file?.url,
       });
     } catch (error) {
-      Alert.alert('Download failed', getErrorMessage(error, 'Unable to download and open file.'));
-    } finally {
-      setDownloadingId('');
+      setMessage({ type: 'error', text: getErrorMessage(error, 'Unable to open attachment.') });
     }
   };
 
@@ -452,25 +432,27 @@ export default function TeacherContentScreen() {
       <Modal visible={Boolean(selectedItem)} transparent animationType="slide" onRequestClose={() => setSelectedItem(null)}>
         <View style={styles.pickerOverlay}>
           <View style={styles.detailCard}>
-            <Text style={styles.modalTitle}>{selectedItem?.title || 'Content'}</Text>
+            <View style={styles.detailHeader}>
+              <Text style={styles.modalTitle}>Attachment Preview</Text>
+              <Pressable style={styles.detailCloseBtn} onPress={() => setSelectedItem(null)}>
+                <AppIcon name="close" size={14} color={colors.teacher.textPrimary} />
+              </Pressable>
+            </View>
+            <Text style={styles.detailTitle}>{selectedItem?.title || 'Content'}</Text>
             <Text style={styles.detailMeta}>
               {selectedItem?.subject || '-'} | {selectedItem?.classInfo?.name || '-'}-{selectedItem?.classInfo?.section || '-'}
             </Text>
             <Text style={styles.detailDesc}>{selectedItem?.description || '-'}</Text>
-            {selectedItem?.file?.name ? <Text style={styles.helperText}>{selectedItem.file.name}</Text> : null}
+            {selectedItem?.file?.name ? (
+              <View style={styles.filePill}>
+                <AppIcon name="document-outline" size={13} color={colors.teacher.accent} />
+                <Text style={styles.filePillText}>{selectedItem.file.name}</Text>
+              </View>
+            ) : null}
             {selectedItem?.file ? (
-              <View style={styles.modalActions}>
+              <View style={styles.singleActionRow}>
                 <Pressable style={styles.submitBtn} onPress={() => openAttachment(selectedItem)}>
                   <Text style={styles.submitText}>Open File</Text>
-                </Pressable>
-                <Pressable
-                  style={styles.submitBtn}
-                  onPress={() => handleDownloadAndOpen(selectedItem)}
-                  disabled={downloadingId === selectedItem?.id}
-                >
-                  {downloadingId === selectedItem?.id
-                    ? <ActivityIndicator size="small" color={colors.text.inverse} />
-                    : <Text style={styles.submitText}>Download & Open</Text>}
                 </Pressable>
               </View>
             ) : null}
@@ -726,14 +708,47 @@ const createStyles = colors =>
     detailCard: {
       width: '100%',
       maxHeight: '74%',
-      borderRadius: 14,
+      borderRadius: 18,
       borderWidth: 1,
       borderColor: colors.teacher.borderStrong,
       backgroundColor: colors.teacher.surface,
-      padding: 12,
+      padding: 14,
+      shadowColor: '#0a2e46',
+      shadowOpacity: 0.25,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 10,
     },
+    detailHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    detailCloseBtn: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.teacher.borderSoft,
+      backgroundColor: colors.teacher.surfaceStrong,
+    },
+    detailTitle: { marginTop: 4, color: colors.teacher.textPrimary, fontSize: 18, fontWeight: '900' },
     detailMeta: { marginTop: 4, color: colors.teacher.textSecondary, fontSize: 12, fontWeight: '700' },
     detailDesc: { marginTop: 10, color: colors.teacher.textPrimary, fontSize: 13, lineHeight: 20 },
+    filePill: {
+      marginTop: 10,
+      marginBottom: 10,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.teacher.borderSoft,
+      backgroundColor: colors.teacher.surfaceStrong,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      alignSelf: 'flex-start',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    filePillText: { color: colors.teacher.textSecondary, fontSize: 11.5, fontWeight: '700' },
+    singleActionRow: { marginTop: 4, marginBottom: 2 },
     pickerList: { maxHeight: 280 },
     pickerItem: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.teacher.borderSubtle },
     pickerText: { color: colors.teacher.textPrimary, fontSize: 12.5, fontWeight: '700' },

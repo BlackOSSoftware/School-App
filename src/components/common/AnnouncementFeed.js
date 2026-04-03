@@ -74,11 +74,17 @@ const AnnouncementItem = memo(function AnnouncementItem({ item, styles, onPress 
     ? item.classIds.map(formatClassLabel).filter(Boolean)
     : [];
   const isSchoolWide = String(item?.announcementType ?? '').toLowerCase() === 'school_wide';
-  const classSummary = isSchoolWide
-    ? 'All'
-    : classNames.length > 1
-      ? `${classNames[0]} +${classNames.length - 1}`
-      : classNames[0] || 'Class';
+  const typeValue = String(item?.announcementType ?? '').toLowerCase();
+  const audienceValue = String(item?.targetAudience ?? '').toLowerCase();
+  const isTeachersOnly = ['teacher_only', 'teachers_only'].includes(typeValue)
+    || ['teacher_only', 'teachers_only'].includes(audienceValue);
+  const classSummary = isTeachersOnly
+    ? 'Teachers'
+    : isSchoolWide
+      ? 'All'
+      : classNames.length > 1
+        ? `${classNames[0]} +${classNames.length - 1}`
+        : classNames[0] || 'Class';
 
   const Wrapper = onPress ? Pressable : View;
 

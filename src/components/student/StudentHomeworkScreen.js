@@ -2,7 +2,7 @@ import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from '
 import { ActivityIndicator, Animated, Easing, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import AppIcon from '../common/AppIcon.js';
 import { useStudentMyContentQuery } from '../../hooks/useContentQueries';
-import { downloadAndOpenContentFile, openContentFile } from '../../services/fileService';
+import { openContentFile } from '../../services/fileService';
 import { useAppTheme } from '../../theme/ThemeContext';
 
 function MessageBanner({ message, type, styles }) {
@@ -118,27 +118,6 @@ export default function StudentHomeworkScreen({ prefillSelectedItem = null }) {
     }
   };
 
-  const handleDownloadAndOpen = async item => {
-    if (!item?.file?.downloadUrl && !item?.file?.url && !item?.id) return;
-    setBusyAction({ id: item.id, type: 'download' });
-    try {
-      await downloadAndOpenContentFile({
-        openUrl: item.file.openUrl,
-        downloadUrl: item.file.downloadUrl,
-        contentId: item.id,
-        url: item.file.url,
-        fileName: item.file.name || `${item.title}.pdf`,
-        category: 'Homework',
-        mode: 'download',
-      });
-      setMessage({ type: 'success', text: 'File downloaded successfully.' });
-    } catch (error) {
-      setMessage({ type: 'error', text: error?.message || 'Unable to download and open file.' });
-    } finally {
-      setBusyAction({ id: '', type: '' });
-    }
-  };
-
   const openDetails = useCallback(item => setSelectedItem(item), []);
   const keyExtractor = useCallback(item => item.id, []);
   const renderItem = useCallback(
@@ -238,12 +217,7 @@ export default function StudentHomeworkScreen({ prefillSelectedItem = null }) {
               <Pressable style={styles.actionBtn} onPress={() => openAttachment(selectedItem)} disabled={busyAction.id === selectedItem.id && busyAction.type === 'open'}>
                 {busyAction.id === selectedItem.id && busyAction.type === 'open'
                   ? <ActivityIndicator size="small" color={colors.text.inverse} />
-                  : <><AppIcon name="open-outline" size={15} color={colors.text.inverse} /><Text style={styles.actionBtnText}>Open Direct</Text></>}
-              </Pressable>
-              <Pressable style={styles.actionBtn} onPress={() => handleDownloadAndOpen(selectedItem)} disabled={busyAction.id === selectedItem.id && busyAction.type === 'download'}>
-                {busyAction.id === selectedItem.id && busyAction.type === 'download'
-                  ? <ActivityIndicator size="small" color={colors.text.inverse} />
-                  : <><AppIcon name="download-outline" size={15} color={colors.text.inverse} /><Text style={styles.actionBtnText}>Download</Text></>}
+                  : <><AppIcon name="open-outline" size={15} color={colors.text.inverse} /><Text style={styles.actionBtnText}>Open File</Text></>}
               </Pressable>
             </View>
           ) : null}

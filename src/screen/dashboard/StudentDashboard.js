@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { BackHandler, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import StudentAttendanceScreen from '../../components/student/StudentAttendanceScreen';
 import StudentAnnouncementScreen from '../../components/student/StudentAnnouncementScreen';
 import StudentBottomNav from '../../components/student/StudentBottomNav';
@@ -8,10 +9,12 @@ import StudentHomeworkScreen from '../../components/student/StudentHomeworkScree
 import StudentNotesScreen from '../../components/student/StudentNotesScreen';
 import StudentProfileScreen from '../../components/student/StudentProfileScreen';
 import StudentTopBar from '../../components/student/StudentTopBar';
+import StudentVideoScreen from '../../components/student/StudentVideoScreen';
 import { useAppTheme } from '../../theme/ThemeContext';
 
 export default function StudentDashboard({ session, onLogout }) {
   const { colors } = useAppTheme();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [prefillHomework, setPrefillHomework] = useState(null);
@@ -43,6 +46,8 @@ export default function StudentDashboard({ session, onLogout }) {
           ? 'Announcements'
         : activeTab === 'homework'
           ? 'Homework'
+          : activeTab === 'videos'
+            ? 'Videos'
           : activeTab === 'profile'
             ? 'Profile'
             : 'Student Dashboard';
@@ -69,6 +74,13 @@ export default function StudentDashboard({ session, onLogout }) {
       return (
         <View style={styles.blockWrap}>
           <StudentHomeworkScreen prefillSelectedItem={prefillHomework} />
+        </View>
+      );
+    }
+    if (activeTab === 'videos') {
+      return (
+        <View style={styles.blockWrap}>
+          <StudentVideoScreen />
         </View>
       );
     }
@@ -100,12 +112,12 @@ export default function StudentDashboard({ session, onLogout }) {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={[styles.blob, styles.blobA]} />
       <View style={[styles.blob, styles.blobB]} />
       <View style={styles.gridOverlay} />
       <StudentTopBar title={title} />
-      <View style={styles.contentArea}>{renderContent()}</View>
+      <View style={[styles.contentArea, { paddingBottom: Math.max(8, insets.bottom * 0.25) }]}>{renderContent()}</View>
       <StudentBottomNav activeTab={activeTab} onTabChange={setActiveTab} />
 
       <Modal
@@ -129,7 +141,7 @@ export default function StudentDashboard({ session, onLogout }) {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 

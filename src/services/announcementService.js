@@ -30,17 +30,49 @@ function normalizePagination(payload = {}) {
   };
 }
 
+function normalizeAnnouncementType(value, targetAudience) {
+  const type = String(value ?? '').trim().toLowerCase();
+  const audience = String(targetAudience ?? '').trim().toLowerCase();
+  if (audience === 'teacher_only' || audience === 'teachers_only') {
+    return 'teacher_only';
+  }
+  if (type === 'teacher_only' || type === 'teachers_only') {
+    return 'teacher_only';
+  }
+  if (type === 'class_wise') {
+    return 'class_wise';
+  }
+  return 'school_wide';
+}
+
+function normalizeAudience(value, announcementType) {
+  const audience = String(value ?? '').trim().toLowerCase();
+  const type = String(announcementType ?? '').trim().toLowerCase();
+  if (audience === 'teacher_only' || audience === 'teachers_only' || type === 'teacher_only' || type === 'teachers_only') {
+    return 'teacher_only';
+  }
+  return 'all';
+}
+
 export async function createAdminAnnouncement(payload) {
+  const targetAudience = ['teacher_only', 'teachers_only']
+    .includes(String(payload?.targetAudience ?? 'all').trim().toLowerCase())
+    ? 'teacher_only'
+    : 'all';
+  const requestedType = String(payload?.announcementType ?? '').trim().toLowerCase();
+  const normalizedType = targetAudience === 'teacher_only'
+      ? 'teacher_only'
+      : requestedType === 'class_wise'
+      ? 'class_wise'
+      : 'school_wide';
   const body = {
     title: String(payload?.title ?? '').trim(),
     description: String(payload?.description ?? '').trim(),
-    announcementType:
-      String(payload?.announcementType ?? '').trim().toLowerCase() === 'class_wise'
-        ? 'class_wise'
-        : 'school_wide',
+    announcementType: normalizedType,
+    targetAudience,
   };
 
-  if (body.announcementType === 'class_wise') {
+  if (normalizedType === 'class_wise' && targetAudience === 'all') {
     const classIds = Array.isArray(payload?.classIds)
       ? payload.classIds.map(normalizeEntityId).filter(Boolean)
       : [];
@@ -100,9 +132,16 @@ export async function getMyAnnouncements({ page = 1, limit = 10 }) {
     params: { page, limit },
   });
 
+  const rows = Array.isArray(data?.data) ? data.data : [];
+  const normalizedRows = rows.map(item => ({
+    ...item,
+    announcementType: normalizeAnnouncementType(item?.announcementType, item?.targetAudience),
+    targetAudience: normalizeAudience(item?.targetAudience, item?.announcementType),
+  }));
+
   return {
     success: Boolean(data?.success),
-    data: Array.isArray(data?.data) ? data.data : [],
+    data: normalizedRows,
     ...normalizePagination(data),
   };
 }

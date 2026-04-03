@@ -45,7 +45,9 @@ export default function TeacherDashboardHome({
         <View style={styles.quickGrid}>
           {QUICK_ACTIONS.map(action => (
             <Pressable key={action.key} style={styles.quickCard} onPress={() => onQuickActionPress(action.key)}>
-              <AppIcon name={action.icon} size={19} style={styles.quickIcon} />
+              <View style={styles.quickIconWrap}>
+                <AppIcon name={action.icon} size={27} style={styles.quickIcon} />
+              </View>
               <Text style={styles.quickTitle}>{action.title}</Text>
             </Pressable>
           ))}
@@ -171,28 +173,41 @@ const createStyles = colors =>
     },
     quickCard: {
       width: '48.5%',
-      minHeight: 92,
+      minHeight: 84,
       borderRadius: 14,
       backgroundColor: colors.teacher.surface,
       borderWidth: 1,
       borderColor: colors.teacher.borderStrong,
       paddingHorizontal: 10,
       paddingVertical: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
       shadowColor: '#0b4d70',
       shadowOpacity: 0.08,
       shadowRadius: 8,
       shadowOffset: { width: 0, height: 3 },
       elevation: 2,
     },
+    quickIconWrap: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.teacher.borderSoft,
+      backgroundColor: colors.teacher.surfaceStrong,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     quickIcon: {
       color: colors.teacher.accent,
     },
     quickTitle: {
-      marginTop: 10,
       color: colors.teacher.textPrimary,
       fontSize: 13,
       fontWeight: '800',
       lineHeight: 18,
+      flexShrink: 1,
     },
     classRow: {
       borderRadius: 12,

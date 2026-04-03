@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, BackHandler, Easing, Modal, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { Animated, BackHandler, Easing, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import TeacherBottomNav from '../../components/teacher/TeacherBottomNav';
 import TeacherClassStudentsScreen from '../../components/teacher/TeacherClassStudentsScreen';
 import TeacherAnnouncementScreen from '../../components/teacher/TeacherAnnouncementScreen';
@@ -8,6 +9,7 @@ import TeacherContentScreen from '../../components/teacher/TeacherContentScreen'
 import TeacherDashboardHome from '../../components/teacher/TeacherDashboardHome';
 import TeacherProfileScreen from '../../components/teacher/TeacherProfileScreen';
 import TeacherTopBar from '../../components/teacher/TeacherTopBar';
+import TeacherVideoScreen from '../../components/teacher/TeacherVideoScreen';
 import { useTeacherClassesOverviewQuery, useTeacherStudentsByClassQuery } from '../../hooks/useTeacherQueries';
 import { useAppTheme } from '../../theme/ThemeContext';
 
@@ -15,6 +17,7 @@ const STUDENT_PAGE_LIMIT = 10;
 
 export default function TeacherDashboard({ session, onLogout }) {
   const { colors } = useAppTheme();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [currentScreen, setCurrentScreen] = useState('root');
@@ -171,6 +174,8 @@ export default function TeacherDashboard({ session, onLogout }) {
           ? 'Content'
           : activeTab === 'announcement'
             ? 'Announcement'
+            : activeTab === 'videos'
+              ? 'Videos'
             : activeTab === 'profile'
               ? 'Profile'
               : 'Teacher Dashboard';
@@ -195,13 +200,16 @@ export default function TeacherDashboard({ session, onLogout }) {
     if (activeTab === 'announcement') {
       return <TeacherAnnouncementScreen />;
     }
+    if (activeTab === 'videos') {
+      return <TeacherVideoScreen />;
+    }
     return (
       <TeacherProfileScreen session={session} onLogout={onLogout} />
     );
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <Animated.View
         style={[
           styles.blob,
@@ -237,6 +245,7 @@ export default function TeacherDashboard({ session, onLogout }) {
       <Animated.View
         style={[
           styles.contentArea,
+          { paddingBottom: Math.max(8, insets.bottom * 0.25) },
           { opacity: pageOpacity, transform: [{ translateY: pageTranslate }] },
         ]}
       >
@@ -248,7 +257,7 @@ export default function TeacherDashboard({ session, onLogout }) {
             onPageChange={setClassStudentsPage}
             onBackToDashboard={handleGoBack}
           />
-        ) : activeTab === 'announcement' || activeTab === 'attendance' ? (
+        ) : activeTab === 'announcement' || activeTab === 'attendance' || activeTab === 'homework' || activeTab === 'videos' ? (
           renderRootScreen()
         ) : (
           <Animated.ScrollView

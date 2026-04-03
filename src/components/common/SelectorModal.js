@@ -74,15 +74,21 @@ export default function SelectorModal({
         >
           {includeNone ? (
             <Pressable
-              style={[
+              style={({ pressed }) => [
                 styles.item,
                 !selectedValue ? styles.itemActive : null,
+                pressed ? styles.itemPressed : null,
               ]}
               onPress={() => onSelect?.('')}
             >
               <Text style={[styles.itemText, !selectedValue ? styles.itemTextActive : null]}>
                 {noneLabel}
               </Text>
+              {!selectedValue ? (
+                <View style={styles.selectedPill}>
+                  <Text style={styles.selectedPillText}>Selected</Text>
+                </View>
+              ) : null}
             </Pressable>
           ) : null}
 
@@ -95,16 +101,19 @@ export default function SelectorModal({
             const active = value === selectedValue;
             return (
               <Pressable
-                style={[
+                style={({ pressed }) => [
                   styles.item,
                   active ? styles.itemActive : null,
+                  pressed ? styles.itemPressed : null,
                 ]}
                 key={value}
                 onPress={() => onSelect?.(value)}
               >
                 <Text style={[styles.itemText, active ? styles.itemTextActive : null]}>{label}</Text>
                 {active ? (
-                  <AppIcon name="checkmark-circle" size={16} color={colors.brand.primary} />
+                  <View style={styles.selectedPill}>
+                    <Text style={styles.selectedPillText}>Selected</Text>
+                  </View>
                 ) : null}
               </Pressable>
             );
@@ -196,7 +205,16 @@ const createStyles = colors =>
     },
     itemActive: {
       borderColor: colors.brand.primary,
-      backgroundColor: colors.admin.surface,
+      backgroundColor: colors.admin.surfaceSoft,
+      shadowColor: '#0e3c67',
+      shadowOpacity: 0.18,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 2,
+    },
+    itemPressed: {
+      opacity: 0.86,
+      transform: [{ scale: 0.99 }],
     },
     itemText: {
       color: colors.admin.textPrimary,
@@ -206,6 +224,19 @@ const createStyles = colors =>
     },
     itemTextActive: {
       fontWeight: '800',
+      color: colors.brand.primary,
+    },
+    selectedPill: {
+      borderRadius: 999,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      backgroundColor: colors.brand.primary,
+    },
+    selectedPillText: {
+      color: colors.text.inverse,
+      fontSize: 10,
+      fontWeight: '800',
+      letterSpacing: 0.2,
     },
     emptyText: {
       color: colors.admin.textSecondary,

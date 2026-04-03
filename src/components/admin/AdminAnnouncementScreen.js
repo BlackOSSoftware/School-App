@@ -15,6 +15,7 @@ import { useClassesQuery } from '../../hooks/useClassQueries';
 import { useAppTheme } from '../../theme/ThemeContext';
 import AnnouncementFeed from '../common/AnnouncementFeed';
 import KeyboardAwareModal from '../common/KeyboardAwareModal';
+import NotificationDetailsModal from '../common/NotificationDetailsModal';
 
 function getErrorMessage(error, fallback) {
   const message = error?.response?.data?.message || error?.response?.data?.error || error?.message;
@@ -64,8 +65,10 @@ export default function AdminAnnouncementScreen() {
     title: '',
     description: '',
     announcementType: 'school_wide',
+    targetAudience: 'all',
     classIds: [],
   });
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
 
   const classesQuery = useClassesQuery(1, 200);
   const createMutation = useCreateAdminAnnouncementMutation();
@@ -102,7 +105,7 @@ export default function AdminAnnouncementScreen() {
       return;
     }
 
-    if (form.announcementType === 'class_wise' && !form.classIds.length) {
+    if (form.targetAudience === 'all' && form.announcementType === 'class_wise' && !form.classIds.length) {
       setMessage({ type: 'error', text: 'Please select at least one class for class-wise announcement.' });
       return;
     }
@@ -112,10 +115,11 @@ export default function AdminAnnouncementScreen() {
         title: form.title,
         description: form.description,
         announcementType: form.announcementType,
+        targetAudience: form.targetAudience,
         classIds: form.classIds,
       });
       setMessage({ type: 'success', text: 'Announcement published successfully.' });
-      setForm({ title: '', description: '', announcementType: 'school_wide', classIds: [] });
+      setForm({ title: '', description: '', announcementType: 'school_wide', targetAudience: 'all', classIds: [] });
       setClassDropdownOpen(false);
       setComposeOpen(false);
       setPage(1);
@@ -140,7 +144,14 @@ export default function AdminAnnouncementScreen() {
 
       <View style={styles.toolbarRow}>
         <Text style={styles.sectionTitle}>Latest Announcements</Text>
-        <Pressable style={styles.composeBtn} onPress={() => setComposeOpen(true)}>
+        <Pressable
+          style={styles.composeBtn}
+          onPress={() => {
+            setSelectedAnnouncement(null);
+            setClassDropdownOpen(false);
+            setComposeOpen(true);
+          }}
+        >
           <AppIcon name="add" size={15} color={colors.text.inverse} />
           <Text style={styles.composeBtnText}>Create</Text>
         </Pressable>
@@ -153,7 +164,7 @@ export default function AdminAnnouncementScreen() {
         styles={styles}
       />
 
-      <AnnouncementFeed query={announcementQuery} page={page} onPageChange={setPage} variant="admin" />
+      <AnnouncementFeed query={announcementQuery} page={page} onPageChange={setPage} variant="admin" onPressItem={setSelectedAnnouncement} />
 
       <Modal visible={composeOpen} transparent animationType="slide" onRequestClose={() => setComposeOpen(false)}>
         <KeyboardAwareModal
@@ -172,27 +183,62 @@ export default function AdminAnnouncementScreen() {
             <Text style={styles.inputLabel}>Audience Type</Text>
             <View style={styles.segmentWrap}>
               <Pressable
-                style={[styles.segmentBtn, form.announcementType === 'school_wide' ? styles.segmentBtnActive : null]}
+                style={[
+                  styles.segmentBtn,
+                  form.targetAudience !== 'teacher_only' && form.announcementType === 'school_wide'
+                    ? styles.segmentBtnActive
+                    : null,
+                ]}
                 onPress={() => {
-                  setForm(prev => ({ ...prev, announcementType: 'school_wide', classIds: [] }));
+                  setForm(prev => ({ ...prev, announcementType: 'school_wide', targetAudience: 'all', classIds: [] }));
                   setClassDropdownOpen(false);
                 }}
               >
-                <Text style={[styles.segmentText, form.announcementType === 'school_wide' ? styles.segmentTextActive : null]}>
+                <Text
+                  style={[
+                    styles.segmentText,
+                    form.targetAudience !== 'teacher_only' && form.announcementType === 'school_wide'
+                      ? styles.segmentTextActive
+                      : null,
+                  ]}
+                >
                   School Wide
                 </Text>
               </Pressable>
               <Pressable
-                style={[styles.segmentBtn, form.announcementType === 'class_wise' ? styles.segmentBtnActive : null]}
-                onPress={() => setForm(prev => ({ ...prev, announcementType: 'class_wise' }))}
+                style={[
+                  styles.segmentBtn,
+                  form.targetAudience !== 'teacher_only' && form.announcementType === 'class_wise'
+                    ? styles.segmentBtnActive
+                    : null,
+                ]}
+                onPress={() => setForm(prev => ({ ...prev, announcementType: 'class_wise', targetAudience: 'all' }))}
               >
-                <Text style={[styles.segmentText, form.announcementType === 'class_wise' ? styles.segmentTextActive : null]}>
+                <Text
+                  style={[
+                    styles.segmentText,
+                    form.targetAudience !== 'teacher_only' && form.announcementType === 'class_wise'
+                      ? styles.segmentTextActive
+                      : null,
+                  ]}
+                >
                   Class Wise
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.segmentBtn, form.targetAudience === 'teacher_only' ? styles.segmentBtnActive : null]}
+                onPress={() => {
+                  setForm(prev => ({ ...prev, targetAudience: 'teacher_only', announcementType: 'teacher_only', classIds: [] }));
+                  setClassDropdownOpen(false);
+                }}
+              >
+                <Text style={[styles.segmentText, form.targetAudience === 'teacher_only' ? styles.segmentTextActive : null]}>
+                  Teachers Only
                 </Text>
               </Pressable>
             </View>
 
-            {form.announcementType === 'class_wise' ? (
+            {form.targetAudience === 'all' && form.announcementType === 'class_wise' ? (
               <>
                 <Text style={styles.inputLabel}>Target Classes</Text>
                 <Pressable style={styles.selectBtn} onPress={() => setClassDropdownOpen(prev => !prev)}>
@@ -305,6 +351,15 @@ export default function AdminAnnouncementScreen() {
             </View>
         </KeyboardAwareModal>
       </Modal>
+
+      {selectedAnnouncement ? (
+        <NotificationDetailsModal
+          visible={Boolean(selectedAnnouncement)}
+          item={selectedAnnouncement}
+          onClose={() => setSelectedAnnouncement(null)}
+          variant="admin"
+        />
+      ) : null}
 
     </View>
   );

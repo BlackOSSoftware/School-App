@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Platform, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import messaging from '@react-native-firebase/messaging';
 import LoginScreen from './src/screen/auth/LoginScreen';
@@ -18,9 +18,32 @@ import {
   readLocalSession,
   saveLocalSession,
 } from './src/services/localSessionService';
+import { useAppTheme } from './src/theme/ThemeContext';
+
+const SESSION_RESTORE_TIMEOUT_MS = 2200;
+const STARTUP_GUARD_TIMEOUT_MS = 7000;
 
 function normalizeRole(role: string | undefined | null) {
   return String(role ?? '').toLowerCase();
+}
+
+function getMessagingSafe() {
+  try {
+    return messaging();
+  } catch {
+    return null;
+  }
+}
+
+function AppStatusBar() {
+  const { colors, isDark } = useAppTheme();
+  return (
+    <StatusBar
+      barStyle={isDark ? 'light-content' : 'dark-content'}
+      translucent={false}
+      backgroundColor={Platform.OS === 'android' ? colors.background.app : undefined}
+    />
+  );
 }
 
 export default function App() {
@@ -58,7 +81,12 @@ export default function App() {
 
   useEffect(() => {
     let alive = true;
-    readLocalSession()
+    let restoreTimeoutId: ReturnType<typeof setTimeout> | null = null;
+    const timeout = new Promise<null>(resolve => {
+      restoreTimeoutId = setTimeout(() => resolve(null), SESSION_RESTORE_TIMEOUT_MS);
+    });
+
+    Promise.race([readLocalSession(), timeout])
       .then(savedSession => {
         if (!alive || !savedSession?.token) {
           return;
@@ -73,7 +101,19 @@ export default function App() {
       });
     return () => {
       alive = false;
+      if (restoreTimeoutId) {
+        clearTimeout(restoreTimeoutId);
+      }
     };
+  }, []);
+
+  useEffect(() => {
+    const startupGuardTimer = setTimeout(() => {
+      setRestoringSession(false);
+      setShowSplash(false);
+    }, STARTUP_GUARD_TIMEOUT_MS);
+
+    return () => clearTimeout(startupGuardTimer);
   }, []);
 
   useEffect(() => {
@@ -81,7 +121,14 @@ export default function App() {
       requestNotificationPermissionPrompt().catch(() => {});
     }, 1800);
 
-    const unsubscribeForeground = messaging().onMessage(async remoteMessage => {
+    const messagingInstance = getMessagingSafe();
+    if (!messagingInstance) {
+      return () => {
+        clearTimeout(timer);
+      };
+    }
+
+    const unsubscribeForeground = messagingInstance.onMessage(async remoteMessage => {
       const payload = await displayRemoteNotification(remoteMessage);
       setNotificationModal({
         visible: true,
@@ -90,9 +137,9 @@ export default function App() {
       });
     });
 
-    const unsubscribeOpen = messaging().onNotificationOpenedApp(() => {});
+    const unsubscribeOpen = messagingInstance.onNotificationOpenedApp(() => {});
 
-    messaging()
+    messagingInstance
       .getInitialNotification()
       .catch(() => {});
 
@@ -156,6 +203,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
+        <AppStatusBar />
         <QueryClientProvider client={queryClient}>
           {showSplash || restoringSession ? (
             <SplashScreen onFinish={() => setShowSplash(false)} />

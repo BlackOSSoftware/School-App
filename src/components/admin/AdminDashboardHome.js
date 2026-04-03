@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { ActivityIndicator, Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import AppIcon from '../common/AppIcon.js';
 import { useAppTheme } from '../../theme/ThemeContext';
-import { useAdminDashboardSummaryQuery } from '../../hooks/useAttendanceQueries';
+import { useAdminAttendanceSummaryByDateQuery, useAdminDashboardSummaryQuery } from '../../hooks/useAttendanceQueries';
 
 const ACTIONS = [
   { key: 'session', title: 'Session', desc: 'Academic year controls', icon: 'calendar-outline' },
@@ -14,6 +14,39 @@ const ACTIONS = [
   { key: 'announcement', title: 'Announcements', desc: 'Post school updates', icon: 'megaphone-outline' },
   { key: 'manage-bus', title: 'Bus', desc: 'Routes & tracking access', icon: 'bus-outline' },
 ];
+
+function toIsoDate(date) {
+  const safe = date instanceof Date ? date : new Date(date);
+  const year = safe.getFullYear();
+  const month = String(safe.getMonth() + 1).padStart(2, '0');
+  const day = String(safe.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function computeDayPercentage(rows = []) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const totals = safeRows.reduce(
+    (acc, row) => {
+      const totalStudents = Number(row?.totalStudents ?? 0);
+      const presentCount = Number(row?.presentCount ?? 0);
+      return {
+        present: acc.present + (Number.isFinite(presentCount) ? presentCount : 0),
+        total: acc.total + (Number.isFinite(totalStudents) ? totalStudents : 0),
+        hasAttendance: acc.hasAttendance || Boolean(row?.attendanceTaken),
+      };
+    },
+    { present: 0, total: 0, hasAttendance: false },
+  );
+
+  if (!totals.total) {
+    return { value: 0, hasAttendance: totals.hasAttendance };
+  }
+
+  return {
+    value: Number(((totals.present / totals.total) * 100).toFixed(2)),
+    hasAttendance: totals.hasAttendance,
+  };
+}
 
 function KpiStrip({ reveal, styles, kpiData, loading, colors }) {
   if (loading) {
@@ -83,9 +116,13 @@ function QuickActions({ onQuickActionPress, reveal, styles }) {
             ]}
           >
             <Pressable style={styles.actionCard} onPress={() => onQuickActionPress(action.key)}>
-              <AppIcon name={action.icon} size={20} style={styles.actionIcon} />
-              <Text style={styles.actionTitle}>{action.title}</Text>
-              <Text style={styles.actionDesc}>{action.desc}</Text>
+              <View style={styles.actionIconWrap}>
+                <AppIcon name={action.icon} size={26} style={styles.actionIcon} />
+              </View>
+              <View style={styles.actionCopy}>
+                <Text style={styles.actionTitle}>{action.title}</Text>
+                <Text style={styles.actionDesc}>{action.desc}</Text>
+              </View>
             </Pressable>
           </Animated.View>
         ))}
@@ -99,6 +136,12 @@ export default function AdminDashboardHome({ onQuickActionPress }) {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const reveal = useRef(new Animated.Value(0)).current;
   const summaryQuery = useAdminDashboardSummaryQuery();
+  const yesterdayIso = useMemo(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 1);
+    return toIsoDate(date);
+  }, []);
+  const yesterdaySummaryQuery = useAdminAttendanceSummaryByDateQuery({ date: yesterdayIso });
 
   useEffect(() => {
     reveal.setValue(0);
@@ -112,6 +155,34 @@ export default function AdminDashboardHome({ onQuickActionPress }) {
 
   const summary = summaryQuery.data?.data ?? {};
   const todayAttendance = summary.todayAttendance ?? {};
+  const todayIso = useMemo(() => toIsoDate(new Date()), []);
+  const todayTaken = Boolean(todayAttendance.attendanceTaken) && String(todayAttendance.date ?? '') === todayIso;
+  const yesterdayRows = useMemo(() => {
+    const rows = yesterdaySummaryQuery.data?.data?.data;
+    return Array.isArray(rows) ? rows : [];
+  }, [yesterdaySummaryQuery.data?.data?.data]);
+  const yesterdayComputed = useMemo(() => computeDayPercentage(yesterdayRows), [yesterdayRows]);
+  const attendanceCard = useMemo(() => {
+    if (todayTaken) {
+      return {
+        label: 'Today',
+        value: Number(todayAttendance.presentPercentage ?? 0),
+      };
+    }
+
+    if (yesterdayComputed.hasAttendance) {
+      return {
+        label: 'Yesterday',
+        value: yesterdayComputed.value,
+      };
+    }
+
+    return {
+      label: 'Today',
+      value: Number(todayAttendance.presentPercentage ?? 0),
+    };
+  }, [todayAttendance.presentPercentage, todayTaken, yesterdayComputed.hasAttendance, yesterdayComputed.value]);
+
   const kpiData = useMemo(
     () => [
       {
@@ -134,12 +205,12 @@ export default function AdminDashboardHome({ onQuickActionPress }) {
       },
       {
         key: 'attendance',
-        label: 'Today',
-        value: `${Number(todayAttendance.presentPercentage ?? 0).toFixed(2).replace(/\.00$/, '')}%`,
+        label: attendanceCard.label,
+        value: `${Number(attendanceCard.value ?? 0).toFixed(2).replace(/\.00$/, '')}%`,
         icon: 'pulse-outline',
       },
     ],
-    [summary.totalClasses, summary.totalStudents, summary.totalTeachers, todayAttendance.presentPercentage],
+    [attendanceCard.label, attendanceCard.value, summary.totalClasses, summary.totalStudents, summary.totalTeachers],
   );
 
   return (
@@ -171,7 +242,7 @@ export default function AdminDashboardHome({ onQuickActionPress }) {
         reveal={reveal}
         styles={styles}
         kpiData={kpiData}
-        loading={summaryQuery.isLoading}
+        loading={summaryQuery.isLoading || yesterdaySummaryQuery.isLoading}
         colors={colors}
       />
       <QuickActions onQuickActionPress={onQuickActionPress} reveal={reveal} styles={styles} />
@@ -275,18 +346,33 @@ const createStyles = colors =>
       paddingHorizontal: 12,
       paddingVertical: 12,
       minHeight: 110,
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: 10,
       shadowColor: '#1e3a8a',
       shadowOpacity: 0.08,
       shadowRadius: 8,
       shadowOffset: { width: 0, height: 3 },
       elevation: 2,
     },
+    actionIconWrap: {
+      width: 42,
+      height: 42,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.admin.borderSoft,
+      backgroundColor: colors.admin.surfaceStrong,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     actionIcon: {
       color: colors.admin.accent,
-      fontSize: 20,
+      fontSize: 26,
+    },
+    actionCopy: {
+      flex: 1,
     },
     actionTitle: {
-      marginTop: 10,
       color: colors.admin.textPrimary,
       fontSize: 14,
       fontWeight: '800',

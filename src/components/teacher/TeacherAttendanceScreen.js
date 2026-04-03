@@ -33,10 +33,79 @@ function getErrorMessage(error, fallback) {
   return typeof message === 'string' && message.trim() ? message : fallback;
 }
 
+function isAlreadySubmittedError(error) {
+  const message = getErrorMessage(error, '').toLowerCase();
+  return message.includes('already') && (message.includes('submitted') || message.includes('exist') || message.includes('duplicate'));
+}
+
+function toStudentMap(students = []) {
+  const map = new Map();
+  students.forEach(student => {
+    if (student?.id) {
+      map.set(student.id, student);
+    }
+  });
+  return map;
+}
+
+function sortStudentsByName(rows = []) {
+  return [...rows].sort((a, b) => String(a?.name || '').localeCompare(String(b?.name || '')));
+}
+
+function normalizeAttendanceRows(summary, classStudents) {
+  if (!summary?.attendanceTaken) {
+    return [];
+  }
+
+  const studentMap = toStudentMap(classStudents);
+  const mergedRows = [...(summary.presentStudents || []), ...(summary.absentStudents || [])].map(row => {
+    const linked = studentMap.get(row.studentId);
+    return {
+      studentId: row.studentId,
+      studentName: row.studentName || linked?.name || '-',
+      scholarNumber: row.scholarNumber || linked?.scholarNumber || '-',
+      status: row.status === 'present' ? 'present' : 'absent',
+    };
+  });
+
+  return mergedRows.sort((a, b) => a.studentName.localeCompare(b.studentName));
+}
+
+function computeSummary(summary, classStudents) {
+  if (!summary) {
+    return {
+      attendanceTaken: false,
+      presentCount: 0,
+      absentCount: 0,
+      totalStudents: classStudents.length,
+      presentPercentage: 0,
+    };
+  }
+
+  const presentFromList = Array.isArray(summary.presentStudents) ? summary.presentStudents.length : 0;
+  const absentFromList = Array.isArray(summary.absentStudents) ? summary.absentStudents.length : 0;
+  const presentFromCount = Number(summary.presentCount || 0);
+  const absentFromCount = Number(summary.absentCount || 0);
+  const presentCount = Math.max(presentFromList, presentFromCount);
+  const absentCount = Math.max(absentFromList, absentFromCount);
+
+  const totalStudents = Number(summary.totalStudents || 0) || presentCount + absentCount || classStudents.length;
+  const safeTotal = totalStudents || 0;
+
+  return {
+    attendanceTaken: Boolean(summary.attendanceTaken),
+    presentCount,
+    absentCount,
+    totalStudents: safeTotal,
+    presentPercentage: safeTotal > 0 ? Number(((presentCount / safeTotal) * 100).toFixed(2)) : 0,
+  };
+}
+
 function MessageBanner({ message, type, onClose, styles }) {
   if (!message) {
     return null;
   }
+
   return (
     <View style={[styles.banner, type === 'error' ? styles.bannerError : styles.bannerSuccess]}>
       <Text style={styles.bannerText}>{message}</Text>
@@ -52,6 +121,24 @@ function SummaryTile({ label, value, styles }) {
     <View style={styles.tile}>
       <Text style={styles.tileValue}>{value}</Text>
       <Text style={styles.tileLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function AttendanceStateHint({ attendanceTaken, styles, colors }) {
+  if (attendanceTaken) {
+    return (
+      <View style={styles.stateHintWrap}>
+        <AppIcon name="checkmark-circle-outline" size={14} color={colors.state.success} />
+        <Text style={[styles.stateHintText, styles.stateHintTaken]}>Today's attendance is already submitted. You can still edit and update it.</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.stateHintWrap}>
+      <AppIcon name="create-outline" size={14} color={colors.teacher.textSecondary} />
+      <Text style={[styles.stateHintText, styles.stateHintPending]}>Attendance for today is pending. Tap mark to submit now.</Text>
     </View>
   );
 }
@@ -75,46 +162,45 @@ export default function TeacherAttendanceScreen() {
   const overviewQuery = useTeacherClassesOverviewQuery();
   const markMutation = useMarkTeacherClassAttendanceMutation();
 
-  const classes = useMemo(
-    () => (Array.isArray(overviewQuery.data?.assignedClasses) ? overviewQuery.data.assignedClasses : []),
-    [overviewQuery.data?.assignedClasses],
-  );
+  const classTeacherClass = useMemo(() => {
+    const item = overviewQuery.data?.teacher?.classTeacherOf;
+    if (!item?.id) {
+      return null;
+    }
+    return {
+      id: item.id,
+      label: item.label || `${item.name || ''}${item.section ? ` - ${item.section}` : ''}`.trim(),
+      name: item.name,
+      section: item.section,
+    };
+  }, [overviewQuery.data?.teacher?.classTeacherOf]);
+
+  const classes = useMemo(() => {
+    if (classTeacherClass) {
+      return [classTeacherClass];
+    }
+
+    return Array.isArray(overviewQuery.data?.assignedClasses)
+      ? overviewQuery.data.assignedClasses.filter(item => item?.id)
+      : [];
+  }, [classTeacherClass, overviewQuery.data?.assignedClasses]);
 
   useEffect(() => {
-    if (!selectedClassId && classes.length) {
+    if (!classes.length) {
+      setSelectedClassId('');
+      return;
+    }
+
+    if (!selectedClassId || !classes.some(item => item.id === selectedClassId)) {
       setSelectedClassId(classes[0].id);
     }
   }, [classes, selectedClassId]);
-
-  const attendanceQuery = useTeacherClassAttendanceByDateQuery({
-    classId: selectedClassId,
-    date: today,
-    enabled: Boolean(selectedClassId),
-  });
-
-  const studentsQuery = useTeacherStudentsByClassQuery({
-    classId: selectedClassId,
-    page: 1,
-    limit: 200,
-    enabled: Boolean(selectedClassId),
-  });
-
-  const reportQuery = useTeacherStudentAttendanceReportQuery({
-    classId: selectedClassId,
-    studentId: reportStudent?.id,
-    from: toIsoDate(fromDate),
-    to: toIsoDate(toDate),
-    enabled: reportVisible && Boolean(reportStudent?.id),
-  });
-
-  const summary = attendanceQuery.data?.data ?? null;
-  const selectedClass = classes.find(item => item.id === selectedClassId) ?? null;
 
   useEffect(() => {
     if (!message.text) {
       return undefined;
     }
-    const timer = setTimeout(() => setMessage({ type: '', text: '' }), 2500);
+    const timer = setTimeout(() => setMessage({ type: '', text: '' }), 2600);
     return () => clearTimeout(timer);
   }, [message.text]);
 
@@ -129,28 +215,61 @@ export default function TeacherAttendanceScreen() {
     return () => clearInterval(intervalId);
   }, []);
 
+  const attendanceQuery = useTeacherClassAttendanceByDateQuery({
+    classId: selectedClassId,
+    date: today,
+    enabled: Boolean(selectedClassId),
+  });
+
+  const studentsQuery = useTeacherStudentsByClassQuery({
+    classId: selectedClassId,
+    page: 1,
+    limit: 500,
+    enabled: Boolean(selectedClassId),
+  });
+
+  const classStudents = useMemo(() => {
+    const rows = Array.isArray(studentsQuery.data?.students) ? studentsQuery.data.students : [];
+    return sortStudentsByName(rows);
+  }, [studentsQuery.data?.students]);
+
+  const summary = attendanceQuery.data?.data ?? null;
+  const selectedClass = classes.find(item => item.id === selectedClassId) ?? null;
+  const summaryStats = useMemo(() => computeSummary(summary, classStudents), [summary, classStudents]);
+  const attendanceRows = useMemo(() => normalizeAttendanceRows(summary, classStudents), [summary, classStudents]);
+
+  const reportQuery = useTeacherStudentAttendanceReportQuery({
+    classId: selectedClassId,
+    studentId: reportStudent?.id,
+    from: toIsoDate(fromDate),
+    to: toIsoDate(toDate),
+    enabled: reportVisible && Boolean(reportStudent?.id),
+  });
+
   const openMarkModal = () => {
-    const classStudents = Array.isArray(studentsQuery.data?.students) ? studentsQuery.data.students : [];
+    if (!classStudents.length) {
+      setMessage({ type: 'error', text: 'No students found in your assigned class for today.' });
+      return;
+    }
+
     const existingMap = {};
-    (summary?.presentStudents || []).forEach(item => {
-      existingMap[item.studentId] = 'present';
-    });
-    (summary?.absentStudents || []).forEach(item => {
-      existingMap[item.studentId] = 'absent';
+    attendanceRows.forEach(row => {
+      existingMap[row.studentId] = row.status;
     });
 
     const draft = {};
     classStudents.forEach(student => {
       draft[student.id] = existingMap[student.id] || 'absent';
     });
+
     setDraftAttendance(draft);
     setMarkModalVisible(true);
   };
 
   const submitAttendance = async () => {
-    const payload = Object.entries(draftAttendance).map(([studentId, status]) => ({
-      studentId,
-      status,
+    const payload = classStudents.map(student => ({
+      studentId: student.id,
+      status: draftAttendance[student.id] === 'present' ? 'present' : 'absent',
     }));
 
     try {
@@ -159,35 +278,51 @@ export default function TeacherAttendanceScreen() {
         date: today,
         attendance: payload,
       });
-      setMessage({ type: 'success', text: 'Attendance saved successfully.' });
+      setMessage({ type: 'success', text: summaryStats.attendanceTaken ? 'Attendance updated successfully.' : 'Attendance saved successfully.' });
       setMarkModalVisible(false);
-      attendanceQuery.refetch();
+      await attendanceQuery.refetch();
     } catch (error) {
+      if (isAlreadySubmittedError(error)) {
+        await attendanceQuery.refetch();
+        setMarkModalVisible(false);
+        setMessage({ type: 'success', text: 'Attendance already exists for today. Loaded saved record for update.' });
+        return;
+      }
       setMessage({ type: 'error', text: getErrorMessage(error, 'Unable to save attendance.') });
     }
   };
 
-  const classStudents = Array.isArray(studentsQuery.data?.students) ? studentsQuery.data.students : [];
+  const showClassSelector = classes.length > 1;
 
   return (
     <View style={styles.container}>
       <View style={styles.heroCard}>
         <Text style={styles.heroKicker}>TODAY ATTENDANCE</Text>
         <Text style={styles.heroTitle}>{today}</Text>
-        <Text style={styles.heroSub}>Mark and review attendance class-wise.</Text>
+        <Text style={styles.heroSub}>Your class: {selectedClass?.label || 'Not assigned'}.</Text>
       </View>
 
       <View style={styles.controlRow}>
-        <Pressable style={styles.classSelectBtn} onPress={() => setClassPickerVisible(true)}>
+        <Pressable
+          style={[styles.classSelectBtn, !showClassSelector ? styles.classSelectLocked : null]}
+          onPress={() => (showClassSelector ? setClassPickerVisible(true) : undefined)}
+          disabled={!showClassSelector}
+        >
           <AppIcon name="library-outline" size={16} color={colors.teacher.accent} />
           <Text style={styles.classSelectText}>{selectedClass?.label || 'Select class'}</Text>
-          <AppIcon name="chevron-down" size={16} color={colors.teacher.textSecondary} />
+          {showClassSelector ? <AppIcon name="chevron-down" size={16} color={colors.teacher.textSecondary} /> : null}
         </Pressable>
-        <Pressable style={styles.markBtn} onPress={openMarkModal} disabled={!selectedClassId || markMutation.isPending}>
-          <AppIcon name="create-outline" size={14} color={colors.text.inverse} />
-          <Text style={styles.markBtnText}>Mark</Text>
+        <Pressable
+          style={[styles.markBtn, (!selectedClassId || markMutation.isPending || studentsQuery.isLoading) ? styles.markBtnDisabled : null]}
+          onPress={openMarkModal}
+          disabled={!selectedClassId || markMutation.isPending || studentsQuery.isLoading}
+        >
+          <AppIcon name={summaryStats.attendanceTaken ? 'create-outline' : 'checkmark-circle-outline'} size={14} color={colors.text.inverse} />
+          <Text style={styles.markBtnText}>{summaryStats.attendanceTaken ? 'Edit' : 'Mark'}</Text>
         </Pressable>
       </View>
+
+      <AttendanceStateHint attendanceTaken={summaryStats.attendanceTaken} styles={styles} colors={colors} />
 
       <MessageBanner
         message={message.text}
@@ -196,50 +331,61 @@ export default function TeacherAttendanceScreen() {
         styles={styles}
       />
 
-      {attendanceQuery.isLoading ? (
-        <ActivityIndicator size="small" color={colors.brand.primary} />
-      ) : summary ? (
+      {overviewQuery.isLoading || studentsQuery.isLoading || attendanceQuery.isLoading ? (
+        <ActivityIndicator size="small" color={colors.brand.primary} style={styles.loadingState} />
+      ) : !selectedClassId ? (
+        <Text style={styles.emptyText}>Class teacher mapping not found. Contact admin.</Text>
+      ) : (
         <>
           <View style={styles.tilesRow}>
-            <SummaryTile label="Present" value={summary.presentCount} styles={styles} />
-            <SummaryTile label="Absent" value={summary.absentCount} styles={styles} />
-            <SummaryTile label="Total" value={summary.totalStudents} styles={styles} />
-            <SummaryTile label="%" value={`${summary.presentPercentage}`} styles={styles} />
+            <SummaryTile label="Present" value={summaryStats.presentCount} styles={styles} />
+            <SummaryTile label="Absent" value={summaryStats.absentCount} styles={styles} />
+            <SummaryTile label="Total" value={summaryStats.totalStudents} styles={styles} />
+            <SummaryTile label="%" value={`${summaryStats.presentPercentage}`} styles={styles} />
           </View>
 
           <Text style={styles.sectionTitle}>Students</Text>
-          <ScrollView style={styles.studentList} showsVerticalScrollIndicator={false}>
-            {[...(summary.presentStudents || []), ...(summary.absentStudents || [])].map(student => (
-              <Pressable
-                key={student.studentId}
-                style={styles.studentRow}
-                onPress={() => {
-                  const matched = classStudents.find(item => item.id === student.studentId) || {
-                    id: student.studentId,
-                    name: student.studentName,
-                  };
-                  setReportStudent(matched);
-                  setReportVisible(true);
-                }}
-              >
-                <View style={styles.studentLeft}>
-                  <Text style={styles.studentName}>{student.studentName}</Text>
-                  <Text style={styles.studentMeta}>Scholar #{student.scholarNumber || '-'}</Text>
-                </View>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    student.status === 'present' ? styles.presentBadge : styles.absentBadge,
-                  ]}
+          <ScrollView style={styles.studentList} contentContainerStyle={styles.studentListContent} showsVerticalScrollIndicator={false}>
+            {summaryStats.attendanceTaken ? (
+              attendanceRows.map(student => (
+                <Pressable
+                  key={student.studentId}
+                  style={styles.studentRow}
+                  onPress={() => {
+                    const matched = classStudents.find(item => item.id === student.studentId) || {
+                      id: student.studentId,
+                      name: student.studentName,
+                    };
+                    setReportStudent(matched);
+                    setReportVisible(true);
+                  }}
                 >
-                  <Text style={styles.statusBadgeText}>{student.status}</Text>
+                  <View style={styles.studentLeft}>
+                    <Text style={styles.studentName}>{student.studentName}</Text>
+                    <Text style={styles.studentMeta}>Scholar #{student.scholarNumber || '-'}</Text>
+                  </View>
+                  <View style={[styles.statusBadge, student.status === 'present' ? styles.presentBadge : styles.absentBadge]}>
+                    <Text style={styles.statusBadgeText}>{student.status}</Text>
+                  </View>
+                </Pressable>
+              ))
+            ) : classStudents.length ? (
+              classStudents.map(student => (
+                <View key={student.id} style={styles.studentRow}>
+                  <View style={styles.studentLeft}>
+                    <Text style={styles.studentName}>{student.name}</Text>
+                    <Text style={styles.studentMeta}>Scholar #{student.scholarNumber || '-'}</Text>
+                  </View>
+                  <View style={[styles.statusBadge, styles.pendingBadge]}>
+                    <Text style={styles.statusBadgeText}>Pending</Text>
+                  </View>
                 </View>
-              </Pressable>
-            ))}
+              ))
+            ) : (
+              <Text style={styles.emptyText}>No students found in this class.</Text>
+            )}
           </ScrollView>
         </>
-      ) : (
-        <Text style={styles.emptyText}>No attendance data available.</Text>
       )}
 
       <Modal visible={classPickerVisible} transparent animationType="fade">
@@ -247,18 +393,22 @@ export default function TeacherAttendanceScreen() {
           <View style={styles.pickerCard}>
             <Text style={styles.modalTitle}>Select Class</Text>
             <ScrollView style={styles.pickerList}>
-              {classes.map(item => (
-                <Pressable
-                  key={item.id}
-                  style={styles.pickerItem}
-                  onPress={() => {
-                    setSelectedClassId(item.id);
-                    setClassPickerVisible(false);
-                  }}
-                >
-                  <Text style={styles.pickerItemText}>{item.label}</Text>
-                </Pressable>
-              ))}
+              {classes.map(item => {
+                const active = item.id === selectedClassId;
+                return (
+                  <Pressable
+                    key={item.id}
+                    style={[styles.pickerItem, active ? styles.pickerItemActive : null]}
+                    onPress={() => {
+                      setSelectedClassId(item.id);
+                      setClassPickerVisible(false);
+                    }}
+                  >
+                    <Text style={[styles.pickerItemText, active ? styles.pickerItemTextActive : null]}>{item.label}</Text>
+                    {active ? <AppIcon name="checkmark-circle" size={16} color={colors.brand.primary} /> : null}
+                  </Pressable>
+                );
+              })}
             </ScrollView>
             <Pressable style={styles.closeBtn} onPress={() => setClassPickerVisible(false)}>
               <Text style={styles.closeBtnText}>Close</Text>
@@ -271,7 +421,7 @@ export default function TeacherAttendanceScreen() {
         <View style={styles.modalOverlayBottom}>
           <View style={styles.markModalCard}>
             <View style={styles.modalHeaderRow}>
-              <Text style={styles.modalTitle}>Mark Attendance ({today})</Text>
+              <Text style={styles.modalTitle}>{summaryStats.attendanceTaken ? 'Edit Attendance' : 'Mark Attendance'} ({today})</Text>
               <Pressable style={styles.iconCloseBtn} onPress={() => setMarkModalVisible(false)}>
                 <AppIcon name="close" size={16} color={colors.teacher.textPrimary} />
               </Pressable>
@@ -315,7 +465,7 @@ export default function TeacherAttendanceScreen() {
                 {markMutation.isPending ? (
                   <ActivityIndicator size="small" color={colors.text.inverse} />
                 ) : (
-                  <Text style={styles.submitBtnText}>Submit</Text>
+                  <Text style={styles.submitBtnText}>{summaryStats.attendanceTaken ? 'Update' : 'Submit'}</Text>
                 )}
               </Pressable>
             </View>
@@ -415,6 +565,9 @@ const createStyles = colors =>
       alignItems: 'center',
       gap: 8,
     },
+    classSelectLocked: {
+      opacity: 0.95,
+    },
     classSelectText: { flex: 1, color: colors.teacher.textPrimary, fontSize: 12.5, fontWeight: '700' },
     markBtn: {
       borderRadius: 10,
@@ -425,7 +578,28 @@ const createStyles = colors =>
       alignItems: 'center',
       gap: 4,
     },
+    markBtnDisabled: {
+      opacity: 0.5,
+    },
     markBtnText: { color: colors.text.inverse, fontSize: 12, fontWeight: '800' },
+    stateHintWrap: {
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.teacher.borderSoft,
+      backgroundColor: colors.teacher.surface,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      marginBottom: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    stateHintText: { flex: 1, fontSize: 11.5, fontWeight: '700' },
+    stateHintTaken: { color: colors.state.success },
+    stateHintPending: { color: colors.teacher.textSecondary },
+    loadingState: {
+      marginTop: 18,
+    },
     banner: {
       borderRadius: 10,
       paddingHorizontal: 12,
@@ -452,6 +626,7 @@ const createStyles = colors =>
     tileLabel: { marginTop: 3, color: colors.teacher.textSecondary, fontSize: 11.5, fontWeight: '700' },
     sectionTitle: { color: colors.teacher.textPrimary, fontSize: 13.5, fontWeight: '800', marginBottom: 8 },
     studentList: { flex: 1 },
+    studentListContent: { paddingBottom: 12 },
     studentRow: {
       borderRadius: 12,
       borderWidth: 1,
@@ -471,7 +646,8 @@ const createStyles = colors =>
     statusBadge: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1 },
     presentBadge: { backgroundColor: colors.teacher.successBg, borderColor: colors.teacher.successBorder },
     absentBadge: { backgroundColor: colors.teacher.dangerBg, borderColor: colors.teacher.dangerBorder },
-    statusBadgeText: { color: colors.teacher.textPrimary, fontSize: 10.5, fontWeight: '800' },
+    pendingBadge: { backgroundColor: colors.teacher.surfaceStrong, borderColor: colors.teacher.borderSoft },
+    statusBadgeText: { color: colors.teacher.textPrimary, fontSize: 10.5, fontWeight: '800', textTransform: 'capitalize' },
     emptyText: { marginTop: 20, textAlign: 'center', color: colors.teacher.textSecondary, fontSize: 12.5, fontWeight: '600' },
     modalOverlay: {
       flex: 1,
@@ -495,8 +671,20 @@ const createStyles = colors =>
       padding: 12,
     },
     pickerList: { maxHeight: 260 },
-    pickerItem: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.teacher.borderSubtle },
-    pickerItemText: { color: colors.teacher.textPrimary, fontSize: 12.5, fontWeight: '700' },
+    pickerItem: {
+      paddingVertical: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.teacher.borderSubtle,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
+    },
+    pickerItemActive: {
+      backgroundColor: colors.teacher.surfaceStrong,
+    },
+    pickerItemText: { color: colors.teacher.textPrimary, fontSize: 12.5, fontWeight: '700', flex: 1 },
+    pickerItemTextActive: { color: colors.brand.primary },
     closeBtn: {
       marginTop: 10,
       alignSelf: 'flex-end',
@@ -516,7 +704,7 @@ const createStyles = colors =>
       minHeight: '70%',
     },
     modalTitle: { color: colors.teacher.textPrimary, fontSize: 16, fontWeight: '800' },
-    modalHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+    modalHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10 },
     iconCloseBtn: {
       width: 30,
       height: 30,

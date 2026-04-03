@@ -2,6 +2,10 @@ import axios from 'axios';
 import { NativeModules, Platform } from 'react-native';
 import { API_BASE_URL } from '@env';
 
+const CLOUD_API_FALLBACK = 'https://school.blackossoftwaresolution.in/api/v1/';
+const DEV_DEFAULT_ANDROID_LOCAL_API = 'http://10.0.2.2:4000/api/v1/';
+const DEV_DEFAULT_IOS_LOCAL_API = 'http://127.0.0.1:4000/api/v1/';
+
 let authToken = '';
 let unauthorizedHandler = null;
 let isUnauthorizedHandlingInProgress = false;
@@ -44,33 +48,58 @@ function getDevServerHostCandidates() {
 }
 
 function buildBaseUrlCandidates(url) {
+  const isDevRuntime = typeof __DEV__ !== 'undefined' ? __DEV__ : false;
+  const includeCloudFallback = !isDevRuntime;
   const normalizedUrl = normalizeBaseUrl(url);
-  if (!normalizedUrl || Platform.OS !== 'android') {
-    return normalizedUrl ? [normalizedUrl] : [''];
+
+  if (!normalizedUrl && isDevRuntime) {
+    if (Platform.OS === 'android') {
+      return [DEV_DEFAULT_ANDROID_LOCAL_API, 'http://localhost:4000/api/v1/'];
+    }
+    return [DEV_DEFAULT_IOS_LOCAL_API, 'http://localhost:4000/api/v1/'];
+  }
+
+  if (!normalizedUrl) {
+    return includeCloudFallback ? [CLOUD_API_FALLBACK] : [];
+  }
+
+  if (Platform.OS !== 'android' && Platform.OS !== 'ios') {
+    return includeCloudFallback ? [normalizedUrl, CLOUD_API_FALLBACK] : [normalizedUrl];
   }
 
   try {
     const parsed = new URL(normalizedUrl);
     if (parsed.hostname !== 'localhost' && parsed.hostname !== '127.0.0.1') {
-      return [normalizedUrl];
+      return includeCloudFallback
+        ? [...new Set([normalizedUrl, CLOUD_API_FALLBACK])]
+        : [normalizedUrl];
     }
 
-    const hosts = [
-      ...getDevServerHostCandidates(),
-      'localhost',
-      '127.0.0.1',
-      '10.0.2.2',
-      '10.0.3.2',
-    ];
+    const hosts =
+      Platform.OS === 'android'
+        ? [
+            ...getDevServerHostCandidates(),
+            '10.0.2.2',
+            '10.0.3.2',
+            '127.0.0.1',
+            'localhost',
+          ]
+        : [
+            ...getDevServerHostCandidates(),
+            '127.0.0.1',
+            'localhost',
+          ];
     const candidates = hosts.map(host => {
       const clone = new URL(normalizedUrl);
       clone.hostname = host;
       return clone.toString();
     });
 
-    return [...new Set(candidates)];
+    return includeCloudFallback ? [...new Set([...candidates, CLOUD_API_FALLBACK])] : [...new Set(candidates)];
   } catch {
-    return [normalizedUrl];
+    return includeCloudFallback
+      ? [...new Set([normalizedUrl, CLOUD_API_FALLBACK])]
+      : [normalizedUrl];
   }
 }
 

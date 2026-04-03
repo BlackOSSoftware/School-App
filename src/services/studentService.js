@@ -73,17 +73,19 @@ export async function createStudent(payload) {
   return data;
 }
 
-export async function getAllStudents({ page = 1, limit = 10, search = '', classId = '', sessionId = '' }) {
+export async function getAllStudents({ page = 1, limit = 10, search = '', classId = '', sessionId = '', status = '' }) {
   const normalizedSessionId = normalizeEntityId(sessionId);
+  const normalizedStatus = String(status ?? '').trim().toLowerCase();
+  const statusParam = ['active', 'inactive', 'all'].includes(normalizedStatus) ? normalizedStatus : undefined;
   if (classId) {
     const normalizedClassId = normalizeEntityId(classId);
     const { data } = await apiClient.get(`/student/class/${normalizedClassId}`, {
-      params: { page, limit, search, sessionId: normalizedSessionId || undefined },
+      params: { page, limit, search, sessionId: normalizedSessionId || undefined, status: statusParam },
     });
     return data;
   }
   const { data } = await apiClient.get('/student/all', {
-    params: { page, limit, search, sessionId: normalizedSessionId || undefined },
+    params: { page, limit, search, sessionId: normalizedSessionId || undefined, status: statusParam },
   });
   return data;
 }

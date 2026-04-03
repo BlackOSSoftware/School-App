@@ -3,56 +3,14 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
-  Modal,
-  Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import AppIcon from '../common/AppIcon.js';
 import AnnouncementFeed from '../common/AnnouncementFeed';
 import { useMyAnnouncementsQuery } from '../../hooks/useAnnouncementQueries';
 import { useAppTheme } from '../../theme/ThemeContext';
-
-function formatAudienceLabel(item) {
-  const type = String(item?.announcementType ?? '').toLowerCase();
-  if (type === 'school_wide') {
-    return 'School Wide';
-  }
-
-  const classList = Array.isArray(item?.classIds) ? item.classIds : [];
-  if (!classList.length) {
-    return 'Class Notice';
-  }
-
-  const labels = classList
-    .map(classItem => {
-      const name = String(classItem?.name ?? '').trim();
-      const section = String(classItem?.section ?? '').trim();
-      return section ? `${name}-${section}` : name;
-    })
-    .filter(Boolean);
-
-  if (!labels.length) {
-    return 'Class Notice';
-  }
-
-  return labels.join(', ');
-}
-
-function formatDateLabel(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return 'Recent';
-  }
-
-  return date.toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
-}
+import NotificationDetailsModal from '../common/NotificationDetailsModal';
 
 export default function StudentAnnouncementScreen() {
   const { colors } = useAppTheme();
@@ -124,47 +82,12 @@ export default function StudentAnnouncementScreen() {
         />
       </View>
 
-      <Modal
+      <NotificationDetailsModal
         visible={Boolean(selectedAnnouncement)}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSelectedAnnouncement(null)}
-      >
-        <View style={styles.modalOverlay}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setSelectedAnnouncement(null)} />
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <View style={styles.modalTitleWrap}>
-                <AppIcon name="megaphone-outline" size={16} color={colors.student.textPrimary} />
-                <Text style={styles.modalTitle}>{selectedAnnouncement?.title || 'Announcement'}</Text>
-              </View>
-              <Pressable style={styles.modalCloseBtn} onPress={() => setSelectedAnnouncement(null)}>
-                <AppIcon name="close" size={16} color={colors.student.textPrimary} />
-              </Pressable>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <View style={styles.metaPillRow}>
-                <View style={styles.metaPill}>
-                  <Text style={styles.metaPillText}>{formatAudienceLabel(selectedAnnouncement)}</Text>
-                </View>
-                <View style={styles.metaPill}>
-                  <Text style={styles.metaPillText}>{formatDateLabel(selectedAnnouncement?.createdAt)}</Text>
-                </View>
-              </View>
-
-              <Text style={styles.modalDesc}>{selectedAnnouncement?.description || '-'}</Text>
-
-              <View style={styles.footerInfo}>
-                <AppIcon name="person-outline" size={14} color={colors.student.textSecondary} />
-                <Text style={styles.footerInfoText}>
-                  {selectedAnnouncement?.createdByName || selectedAnnouncement?.createdByRole || 'School Office'}
-                </Text>
-              </View>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+        item={selectedAnnouncement}
+        onClose={() => setSelectedAnnouncement(null)}
+        variant="student"
+      />
     </Animated.View>
   );
 }

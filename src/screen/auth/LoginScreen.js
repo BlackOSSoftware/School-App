@@ -3,17 +3,18 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppIcon from '../../components/common/AppIcon.js';
 import { useLoginMutation, getApiErrorMessage } from '../../hooks/useLoginMutation';
 import { getApiBaseUrl, getApiBaseUrlCandidates, setAuthToken } from '../../api/client';
@@ -23,12 +24,14 @@ import { useAppTheme } from '../../theme/ThemeContext';
 
 export default function LoginScreen({ onLoginSuccess }) {
   const { colors } = useAppTheme();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [hidePassword, setHidePassword] = useState(true);
   const [errorModal, setErrorModal] = useState({ visible: false, title: '', message: '' });
   const passwordInputRef = useRef(null);
+  const scrollRef = useRef(null);
 
   const loginMutation = useLoginMutation();
 
@@ -154,6 +157,12 @@ export default function LoginScreen({ onLoginSuccess }) {
   const showError = (title, message) =>
     setErrorModal({ visible: true, title, message });
 
+  const focusInput = targetY => {
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({ x: 0, y: targetY, animated: true });
+    });
+  };
+
   const submit = async () => {
     if (!identifier.trim() || !password.trim()) {
       showError('Missing fields', 'Please enter identifier and password.');
@@ -204,7 +213,7 @@ export default function LoginScreen({ onLoginSuccess }) {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
       <View style={styles.background}>
         <Animated.View style={[styles.blob, styles.blobTop, { transform: topBlobTransform }]} />
         <Animated.View
@@ -214,9 +223,16 @@ export default function LoginScreen({ onLoginSuccess }) {
 
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
       >
-        <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={[styles.scrollContainer, { paddingBottom: Math.max(28, insets.bottom + 12) }]}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          showsVerticalScrollIndicator={false}
+        >
           <Animated.View
             style={[
               styles.hero,
@@ -252,6 +268,7 @@ export default function LoginScreen({ onLoginSuccess }) {
                 autoCapitalize="none"
                 keyboardType="default"
                 returnKeyType="next"
+                onFocus={() => focusInput(40)}
                 onSubmitEditing={() => passwordInputRef.current?.focus()}
                 placeholder={identifierPlaceholder}
                 placeholderTextColor={colors.text.muted}
@@ -269,7 +286,11 @@ export default function LoginScreen({ onLoginSuccess }) {
                   style={styles.inputWithIcon}
                   secureTextEntry={hidePassword}
                   returnKeyType="go"
-                  onSubmitEditing={submit}
+                  onFocus={() => focusInput(180)}
+                  onSubmitEditing={() => {
+                    Keyboard.dismiss();
+                    submit();
+                  }}
                   placeholder="Enter your password"
                   placeholderTextColor={colors.text.muted}
                 />

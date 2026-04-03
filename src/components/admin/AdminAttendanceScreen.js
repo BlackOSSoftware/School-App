@@ -6,10 +6,30 @@ import {
   useAdminAttendanceSummaryByDateQuery,
   useAdminClassAttendanceByDateQuery,
   useAdminStudentAttendanceReportQuery,
+  useUpdateAdminStudentAttendanceByDateMutation,
 } from '../../hooks/useAttendanceQueries';
 import { getTodayIsoDate } from '../../services/attendanceService';
 import { useAppTheme } from '../../theme/ThemeContext';
 import AttendanceReportModal from '../common/AttendanceReportModal';
+
+function getEntityId(value) {
+  if (!value) {
+    return '';
+  }
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+  if (typeof value === 'object') {
+    const nested = value?._id ?? value?.id ?? value?.$oid ?? value?.toString?.() ?? '';
+    if (typeof nested === 'string') {
+      return nested.trim();
+    }
+    if (nested && typeof nested === 'object' && typeof nested.$oid === 'string') {
+      return nested.$oid.trim();
+    }
+  }
+  return '';
+}
 
 function toIsoDate(value) {
   const date = value instanceof Date ? value : new Date(value);
@@ -26,29 +46,71 @@ export default function AdminAttendanceScreen() {
 
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showPicker, setShowPicker] = useState(false);
-  const [classModal, setClassModal] = useState({ open: false, classId: '' });
+  const [classModal, setClassModal] = useState({
+    open: false,
+    classId: '',
+    className: '',
+    classSection: '',
+    attendanceTaken: false,
+  });
   const [studentReportState, setStudentReportState] = useState({
     open: false,
     classId: '',
     studentId: '',
     studentName: '',
+    useSessionRange: false,
   });
 
   const dateIso = toIsoDate(selectedDate);
   const summaryQuery = useAdminAttendanceSummaryByDateQuery({ date: dateIso });
+  const summarySessionId = getEntityId(summaryQuery.data?.data?.session?.id);
   const classDetailQuery = useAdminClassAttendanceByDateQuery({
     classId: classModal.classId,
     date: dateIso,
+    sessionId: summarySessionId,
     enabled: classModal.open && Boolean(classModal.classId),
   });
   const studentReportQuery = useAdminStudentAttendanceReportQuery({
     classId: studentReportState.classId,
     studentId: studentReportState.studentId,
+    from: studentReportState.useSessionRange ? undefined : dateIso,
+    to: studentReportState.useSessionRange ? undefined : dateIso,
+    sessionId: summarySessionId,
     enabled: studentReportState.open && Boolean(studentReportState.classId) && Boolean(studentReportState.studentId),
   });
+  const updateAttendanceMutation = useUpdateAdminStudentAttendanceByDateMutation();
 
-  const summaryData = summaryQuery.data?.data?.data || [];
+  const summaryData = useMemo(() => {
+    const rows = summaryQuery.data?.data?.data;
+    return Array.isArray(rows) ? rows : [];
+  }, [summaryQuery.data?.data?.data]);
   const detail = classDetailQuery.data?.data ?? null;
+  const selectedClassSummary = useMemo(
+    () => summaryData.find(item => getEntityId(item?.class?.id) === classModal.classId) ?? null,
+    [classModal.classId, summaryData],
+  );
+  const modalStudents = useMemo(() => {
+    const fromAll = Array.isArray(detail?.allStudents) ? detail.allStudents : [];
+    if (fromAll.length) {
+      return fromAll;
+    }
+    return [...(detail?.presentStudents || []), ...(detail?.absentStudents || [])];
+  }, [detail?.absentStudents, detail?.allStudents, detail?.presentStudents]);
+
+  const updateStudentAttendance = async (student, status) => {
+    const studentId = getEntityId(student?.studentId);
+    if (!studentId || !classModal.classId) return;
+    try {
+      await updateAttendanceMutation.mutateAsync({
+        classId: classModal.classId,
+        studentId,
+        date: dateIso,
+        status,
+      });
+    } catch {
+      // Mutation error is surfaced by existing query state in list refresh flow.
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -69,9 +131,17 @@ export default function AdminAttendanceScreen() {
         <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
           {summaryData.map(item => (
             <Pressable
-              key={item.class.id}
+              key={getEntityId(item?.class?.id) || `${item?.class?.name}-${item?.class?.section}`}
               style={styles.classCard}
-              onPress={() => setClassModal({ open: true, classId: item.class.id })}
+              onPress={() =>
+                setClassModal({
+                  open: true,
+                  classId: getEntityId(item?.class?.id),
+                  className: String(item?.class?.name ?? '').trim(),
+                  classSection: String(item?.class?.section ?? '').trim(),
+                  attendanceTaken: Boolean(item?.attendanceTaken),
+                })
+              }
             >
               <View style={styles.classHeader}>
                 <Text style={styles.classTitle}>{item.class.name} - {item.class.section}</Text>
@@ -90,10 +160,20 @@ export default function AdminAttendanceScreen() {
         </ScrollView>
       )}
 
-      <Modal visible={classModal.open} transparent animationType="fade" onRequestClose={() => setClassModal({ open: false, classId: '' })}>
+      <Modal
+        visible={classModal.open}
+        transparent
+        animationType="fade"
+        onRequestClose={() =>
+          setClassModal({ open: false, classId: '', className: '', classSection: '', attendanceTaken: false })
+        }
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Class Attendance Detail</Text>
+            <Text style={styles.modalTitle}>
+              Class Attendance Detail
+              {classModal.className ? ` (${classModal.className}${classModal.classSection ? ` - ${classModal.classSection}` : ''})` : ''}
+            </Text>
             {classDetailQuery.isLoading ? (
               <ActivityIndicator size="small" color={colors.brand.primary} />
             ) : detail ? (
@@ -104,16 +184,17 @@ export default function AdminAttendanceScreen() {
                   <Text style={styles.summaryText}>Total: {detail.totalStudents}</Text>
                 </View>
                 <ScrollView style={styles.modalList}>
-                  {[...(detail.presentStudents || []), ...(detail.absentStudents || [])].map(student => (
+                  {modalStudents.length ? modalStudents.map(student => (
                     <Pressable
-                      key={student.studentId}
+                      key={`${getEntityId(student?.studentId)}-${student?.scholarNumber || student?.studentName}`}
                       style={styles.studentRow}
                       onPress={() =>
                         setStudentReportState({
                           open: true,
-                          classId: detail?.class?.id || classModal.classId,
-                          studentId: student.studentId,
+                          classId: getEntityId(detail?.class?.id) || classModal.classId,
+                          studentId: getEntityId(student?.studentId),
                           studentName: student.studentName || 'Student',
+                          useSessionRange: !Boolean(detail?.attendanceTaken),
                         })
                       }
                     >
@@ -121,17 +202,53 @@ export default function AdminAttendanceScreen() {
                         <Text style={styles.studentName}>{student.studentName}</Text>
                         <Text style={styles.studentMeta}>Scholar #{student.scholarNumber || '-'}</Text>
                       </View>
-                      <Text style={[styles.studentStatus, student.status === 'present' ? styles.presentText : styles.absentText]}>
-                        {student.status}
-                      </Text>
+                      <View style={styles.studentActionCol}>
+                        <Text
+                          style={[
+                            styles.studentStatus,
+                            student.status === 'present'
+                              ? styles.presentText
+                              : student.status === 'absent'
+                                ? styles.absentText
+                                : styles.pendingText,
+                          ]}
+                        >
+                          {student.status === 'not_marked' ? 'pending' : student.status}
+                        </Text>
+                        <View style={styles.quickActionRow}>
+                          <Pressable
+                            style={[styles.quickActionBtn, styles.quickActionPresent]}
+                            onPress={() => updateStudentAttendance(student, 'present')}
+                          >
+                            <Text style={styles.quickActionText}>P</Text>
+                          </Pressable>
+                          <Pressable
+                            style={[styles.quickActionBtn, styles.quickActionAbsent]}
+                            onPress={() => updateStudentAttendance(student, 'absent')}
+                          >
+                            <Text style={styles.quickActionText}>A</Text>
+                          </Pressable>
+                        </View>
+                      </View>
                     </Pressable>
-                  ))}
+                  )) : (
+                    <Text style={styles.emptyText}>No students found for this class and session.</Text>
+                  )}
                 </ScrollView>
               </>
             ) : (
-              <Text style={styles.emptyText}>No details found.</Text>
+              <Text style={styles.emptyText}>
+                {selectedClassSummary?.attendanceTaken || classModal.attendanceTaken
+                  ? 'Details could not be loaded. Please retry.'
+                  : 'Attendance not taken for this class on selected date.'}
+              </Text>
             )}
-            <Pressable style={styles.closeBtn} onPress={() => setClassModal({ open: false, classId: '' })}>
+            <Pressable
+              style={styles.closeBtn}
+              onPress={() =>
+                setClassModal({ open: false, classId: '', className: '', classSection: '', attendanceTaken: false })
+              }
+            >
               <Text style={styles.closeBtnText}>Close</Text>
             </Pressable>
           </View>
@@ -154,7 +271,7 @@ export default function AdminAttendanceScreen() {
       <AttendanceReportModal
         visible={studentReportState.open}
         onClose={() =>
-          setStudentReportState({ open: false, classId: '', studentId: '', studentName: '' })
+          setStudentReportState({ open: false, classId: '', studentId: '', studentName: '', useSessionRange: false })
         }
         loading={studentReportQuery.isLoading}
         report={studentReportQuery.data?.data}
@@ -236,9 +353,29 @@ const createStyles = colors =>
     },
     studentName: { color: colors.admin.textPrimary, fontSize: 12.5, fontWeight: '800' },
     studentMeta: { color: colors.admin.textSecondary, fontSize: 11, marginTop: 1 },
+    studentActionCol: { alignItems: 'flex-end', gap: 6 },
     studentStatus: { fontSize: 11.5, fontWeight: '800', textTransform: 'capitalize' },
     presentText: { color: colors.state.success },
     absentText: { color: colors.state.error },
+    pendingText: { color: colors.admin.textSecondary },
+    quickActionRow: { flexDirection: 'row', gap: 6 },
+    quickActionBtn: {
+      width: 24,
+      height: 24,
+      borderRadius: 7,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+    },
+    quickActionPresent: {
+      backgroundColor: colors.admin.successBg,
+      borderColor: colors.admin.successBorder,
+    },
+    quickActionAbsent: {
+      backgroundColor: colors.admin.dangerBg,
+      borderColor: colors.admin.dangerBorder,
+    },
+    quickActionText: { color: colors.admin.textPrimary, fontSize: 11, fontWeight: '900' },
     emptyText: { textAlign: 'center', color: colors.admin.textSecondary, fontSize: 12.5 },
     closeBtn: {
       marginTop: 10,

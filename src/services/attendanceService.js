@@ -15,6 +15,12 @@ function normalizeEntityId(value) {
     if (nested && typeof nested === 'object' && typeof nested.$oid === 'string') {
       return nested.$oid.trim();
     }
+    if (typeof value?.toString === 'function') {
+      const stringified = value.toString();
+      if (typeof stringified === 'string' && stringified !== '[object Object]') {
+        return stringified.trim();
+      }
+    }
   }
   return '';
 }
@@ -63,6 +69,14 @@ function normalizeClassAttendanceResponse(data = {}) {
         : [],
       absentStudents: Array.isArray(payload?.absentStudents)
         ? payload.absentStudents.map(normalizeStudentAttendanceItem)
+        : [],
+      allStudents: Array.isArray(payload?.allStudents)
+        ? payload.allStudents.map(item => ({
+          ...normalizeStudentAttendanceItem(item),
+          status: ['present', 'absent'].includes(String(item?.status ?? '').toLowerCase())
+            ? String(item?.status ?? '').toLowerCase()
+            : 'not_marked',
+        }))
         : [],
     },
   };
@@ -171,18 +185,40 @@ export async function getAdminDashboardSummary() {
   };
 }
 
-export async function getAdminClassAttendanceByDate({ classId, date }) {
+export async function getAdminClassAttendanceByDate({ classId, date, sessionId }) {
   const normalizedClassId = normalizeEntityId(classId);
   if (!normalizedClassId) {
     throw new Error('Invalid class id.');
   }
+  const normalizedSessionId = normalizeEntityId(sessionId);
+  const params = { date: toIsoDate(date || new Date()) };
+  if (normalizedSessionId) {
+    params.sessionId = normalizedSessionId;
+  }
   const { data } = await apiClient.get(`/attendance/admin/class/${normalizedClassId}/date`, {
-    params: { date: toIsoDate(date || new Date()) },
+    params,
   });
   return normalizeClassAttendanceResponse(data);
 }
 
-export async function getAdminStudentAttendanceReport({ classId, studentId, from, to }) {
+export async function updateAdminStudentAttendanceByDate({ classId, studentId, date, status }) {
+  const normalizedClassId = normalizeEntityId(classId);
+  const normalizedStudentId = normalizeEntityId(studentId);
+  if (!normalizedClassId || !normalizedStudentId) {
+    throw new Error('Invalid class or student id.');
+  }
+  const normalizedStatus = String(status ?? '').trim().toLowerCase() === 'present' ? 'present' : 'absent';
+  const { data } = await apiClient.put(
+    `/attendance/admin/class/${normalizedClassId}/student/${normalizedStudentId}/date`,
+    {
+      date: toIsoDate(date || new Date()),
+      status: normalizedStatus,
+    },
+  );
+  return normalizeClassAttendanceResponse(data);
+}
+
+export async function getAdminStudentAttendanceReport({ classId, studentId, from, to, sessionId }) {
   const normalizedClassId = normalizeEntityId(classId);
   const normalizedStudentId = normalizeEntityId(studentId);
   if (!normalizedClassId || !normalizedStudentId) {
@@ -195,6 +231,10 @@ export async function getAdminStudentAttendanceReport({ classId, studentId, from
   }
   if (to) {
     params.to = toIsoDate(to);
+  }
+  const normalizedSessionId = normalizeEntityId(sessionId);
+  if (normalizedSessionId) {
+    params.sessionId = normalizedSessionId;
   }
 
   const { data } = await apiClient.get(

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, BackHandler, Easing, Modal, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { Animated, BackHandler, Easing, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AdminBottomNav from '../../components/admin/AdminBottomNav';
 import AdminClassScreen from '../../components/admin/AdminClassScreen';
 import AdminDashboardHome from '../../components/admin/AdminDashboardHome';
@@ -12,10 +13,12 @@ import AdminSessionUpgradeScreen from '../../components/admin/AdminSessionUpgrad
 import AdminStudentScreen from '../../components/admin/AdminStudentScreen';
 import AdminTeacherScreen from '../../components/admin/AdminTeacherScreen';
 import AdminTopBar from '../../components/admin/AdminTopBar';
+import AdminVideoScreen from '../../components/admin/AdminVideoScreen';
 import { useAppTheme } from '../../theme/ThemeContext';
 
 export default function AdminDashboard({ session, onLogout }) {
   const { colors } = useAppTheme();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [currentScreen, setCurrentScreen] = useState('root');
@@ -168,8 +171,10 @@ export default function AdminDashboard({ session, onLogout }) {
           ? 'Manage Student'
         : currentScreen === 'manage-teacher'
           ? 'Manage Teacher'
-          : currentScreen === 'manage-bus'
-            ? 'Manage Bus'
+        : currentScreen === 'manage-bus'
+          ? 'Manage Bus'
+          : activeTab === 'videos'
+            ? 'Videos'
         : 'Admin Dashboard';
 
   const handleGoBack = useCallback(() => setCurrentScreen('root'), []);
@@ -185,13 +190,16 @@ export default function AdminDashboard({ session, onLogout }) {
     if (activeTab === 'announcement') {
       return <AdminAnnouncementScreen />;
     }
+    if (activeTab === 'videos') {
+      return <AdminVideoScreen />;
+    }
     return (
       <AdminProfileScreen session={session} onLogout={onLogout} />
     );
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <Animated.View
         style={[
           styles.blob,
@@ -228,10 +236,11 @@ export default function AdminDashboard({ session, onLogout }) {
       currentScreen === 'manage-teacher' ||
       currentScreen === 'manage-bus' ||
       currentScreen === 'session-upgrade' ||
-      (currentScreen === 'root' && (activeTab === 'announcement' || activeTab === 'attendance')) ? (
+      (currentScreen === 'root' && (activeTab === 'announcement' || activeTab === 'attendance' || activeTab === 'videos')) ? (
         <Animated.View
           style={[
             styles.contentArea,
+            { paddingBottom: Math.max(8, insets.bottom * 0.25) },
             { opacity: pageOpacity, transform: [{ translateY: pageTranslate }] },
           ]}
         >
@@ -242,11 +251,13 @@ export default function AdminDashboard({ session, onLogout }) {
           {currentScreen === 'session-upgrade' ? <AdminSessionUpgradeScreen /> : null}
           {currentScreen === 'root' && activeTab === 'announcement' ? <AdminAnnouncementScreen /> : null}
           {currentScreen === 'root' && activeTab === 'attendance' ? <AdminAttendanceScreen /> : null}
+          {currentScreen === 'root' && activeTab === 'videos' ? <AdminVideoScreen /> : null}
         </Animated.View>
       ) : (
         <Animated.ScrollView
           style={[
             styles.contentArea,
+            { paddingBottom: Math.max(8, insets.bottom * 0.25) },
             { opacity: pageOpacity, transform: [{ translateY: pageTranslate }] },
           ]}
           contentContainerStyle={styles.contentContainer}
