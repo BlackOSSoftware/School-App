@@ -1,6 +1,8 @@
 import { apiClient, getAuthToken } from '../api/client';
 import RNFS from 'react-native-fs';
 
+const CHUNK_SIZE_BYTES = 384 * 1024;
+
 function normalizeEntityId(value) {
   if (!value) return '';
   if (typeof value === 'string') return value.trim();
@@ -67,6 +69,13 @@ function normalizeUploadUri(uri) {
   return raw;
 }
 
+function stripFileScheme(uri = '') {
+  const raw = String(uri ?? '').trim();
+  if (!raw) return '';
+  if (raw.startsWith('file://')) return decodeURIComponent(raw.slice('file://'.length));
+  return raw;
+}
+
 function guessVideoExtension({ name = '', uri = '' } = {}) {
   const fromName = String(name ?? '').trim();
   const fromUri = String(uri ?? '').trim();
@@ -85,28 +94,48 @@ async function normalizeVideoFileForUpload(videoFile = {}) {
     throw new Error('Invalid video file path.');
   }
 
-  if (!hasHttpScheme(originalUri)) {
+  if (hasHttpScheme(originalUri)) {
+    const extension = guessVideoExtension({ name: videoFile?.name, uri: originalUri });
+    const tempPath = `${RNFS.CachesDirectoryPath}/video-upload-${Date.now()}${extension}`;
+    const download = await RNFS.downloadFile({
+      fromUrl: originalUri.replace(/\s+/g, ''),
+      toFile: tempPath,
+      discretionary: true,
+      background: false,
+    }).promise;
+    if (Number(download?.statusCode) < 200 || Number(download?.statusCode) >= 300) {
+      throw new Error(`Unable to read selected video file (${download?.statusCode || 'network error'}).`);
+    }
+
     return {
-      uri: normalizeUploadUri(originalUri),
-      cleanupPath: '',
+      uri: `file://${tempPath}`,
+      localPath: tempPath,
+      cleanupPaths: [tempPath],
+    };
+  }
+
+  const normalizedUri = normalizeUploadUri(originalUri);
+  if (normalizedUri.startsWith('file://') || normalizedUri.startsWith('/')) {
+    const localPath = stripFileScheme(normalizedUri);
+    return {
+      uri: normalizedUri.startsWith('file://') ? normalizedUri : `file://${localPath}`,
+      localPath,
+      cleanupPaths: [],
     };
   }
 
   const extension = guessVideoExtension({ name: videoFile?.name, uri: originalUri });
-  const tempPath = `${RNFS.CachesDirectoryPath}/video-upload-${Date.now()}${extension}`;
-  const download = await RNFS.downloadFile({
-    fromUrl: originalUri.replace(/\s+/g, ''),
-    toFile: tempPath,
-    discretionary: true,
-    background: false,
-  }).promise;
-  if (Number(download?.statusCode) < 200 || Number(download?.statusCode) >= 300) {
-    throw new Error(`Unable to read selected video file (${download?.statusCode || 'network error'}).`);
+  const tempPath = `${RNFS.CachesDirectoryPath}/video-upload-copy-${Date.now()}${extension}`;
+  try {
+    await RNFS.copyFile(normalizedUri, tempPath);
+  } catch {
+    throw new Error('Unable to access selected video file. Please pick from local storage.');
   }
 
   return {
     uri: `file://${tempPath}`,
-    cleanupPath: tempPath,
+    localPath: tempPath,
+    cleanupPaths: [tempPath],
   };
 }
 
@@ -140,6 +169,46 @@ function normalizeListResponse(data = {}) {
   };
 }
 
+function isPayloadTooLargeStatus(statusCode) {
+  return Number(statusCode) === 413;
+}
+
+async function uploadVideoInChunks({ title, description, videoFile, localPath, totalSize }) {
+  const initResponse = await apiClient.post('/video/admin/create/chunk/init', {
+    title,
+    description,
+    fileName: String(videoFile?.name || 'video.mp4'),
+    mimeType: String(videoFile?.type || 'video/mp4'),
+    totalSize: Number(totalSize || 0),
+  });
+
+  const uploadId = String(initResponse?.data?.data?.uploadId || '').trim();
+  const chunkSize = Number(initResponse?.data?.data?.chunkSizeBytes || CHUNK_SIZE_BYTES);
+  if (!uploadId) {
+    throw new Error('Chunk upload session failed to initialize.');
+  }
+
+  let offset = 0;
+  let index = 0;
+  const fileSize = Number(totalSize || 0);
+  while (offset < fileSize) {
+    const length = Math.min(chunkSize, fileSize - offset);
+    const chunkBase64 = await RNFS.read(localPath, length, offset, 'base64');
+    await apiClient.post(`/video/admin/create/chunk/${uploadId}`, {
+      index,
+      chunkBase64,
+    });
+    offset += length;
+    index += 1;
+  }
+
+  const completeResponse = await apiClient.post(`/video/admin/create/chunk/${uploadId}/complete`);
+  return {
+    success: Boolean(completeResponse?.data?.success),
+    data: normalizeVideoItem(completeResponse?.data?.data),
+  };
+}
+
 async function uploadVideo({ endpoint, method = 'POST', payload = {}, videoFile }) {
   const title = String(payload?.title ?? '').trim();
   const description = String(payload?.description ?? '').trim();
@@ -150,6 +219,11 @@ async function uploadVideo({ endpoint, method = 'POST', payload = {}, videoFile 
   const authToken = getAuthToken();
   const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {};
   const normalizedFile = await normalizeVideoFileForUpload(videoFile);
+  const stat = await RNFS.stat(normalizedFile.localPath);
+  const totalSize = Number(stat?.size || videoFile?.size || 0);
+  if (!totalSize) {
+    throw new Error('Selected video is empty.');
+  }
 
   try {
     const response = await fetch(requestUrl, {
@@ -172,13 +246,29 @@ async function uploadVideo({ endpoint, method = 'POST', payload = {}, videoFile 
       };
     }
 
+    if (
+      method === 'POST' &&
+      endpoint === '/video/admin/create' &&
+      isPayloadTooLargeStatus(response.status)
+    ) {
+      return uploadVideoInChunks({
+        title,
+        description,
+        videoFile,
+        localPath: normalizedFile.localPath,
+        totalSize,
+      });
+    }
+
     throw new Error(String(data?.message || `Upload failed with status ${response.status}`));
   } finally {
-    if (normalizedFile.cleanupPath) {
-      try {
-        await RNFS.unlink(normalizedFile.cleanupPath);
-      } catch {
-        // Best effort cache cleanup.
+    if (Array.isArray(normalizedFile.cleanupPaths)) {
+      for (const target of normalizedFile.cleanupPaths) {
+        try {
+          await RNFS.unlink(target);
+        } catch {
+          // Best effort cache cleanup.
+        }
       }
     }
   }
