@@ -40,6 +40,7 @@ local.properties
 node_modules/
 npm-debug.log
 yarn-error.log
+metro*.log
 
 # fastlane
 #
@@ -75,3 +76,7 @@ android/app/src/main/assets/index.android.bundle.map
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# Environment files
+.env.local
+.env.*.local
