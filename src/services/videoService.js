@@ -34,18 +34,6 @@ function resolveApiUrl(path) {
   return `${base}${value.startsWith('/') ? value : `/${value}`}`.replace(/\s+/g, '');
 }
 
-function resolveUploadPath(uri) {
-  const raw = String(uri ?? '').trim();
-  if (!raw) return '';
-  if (raw.startsWith('file://')) {
-    return decodeURIComponent(raw.slice('file://'.length));
-  }
-  if (raw.startsWith('/')) {
-    return decodeURIComponent(raw);
-  }
-  return '';
-}
-
 function buildVideoUploadFormData({ title, description, videoFile }) {
   const formData = new FormData();
   formData.append('title', String(title ?? '').trim());
@@ -56,6 +44,70 @@ function buildVideoUploadFormData({ title, description, videoFile }) {
     type: String(videoFile?.type || 'video/mp4'),
   });
   return formData;
+}
+
+function hasHttpScheme(value = '') {
+  const raw = String(value ?? '').trim().toLowerCase();
+  return raw.startsWith('http://') || raw.startsWith('https://');
+}
+
+function normalizeUploadUri(uri) {
+  const raw = String(uri ?? '').trim();
+  if (!raw) return '';
+  if (
+    raw.startsWith('file://') ||
+    raw.startsWith('content://') ||
+    raw.startsWith('ph://')
+  ) {
+    return raw;
+  }
+  if (raw.startsWith('/')) {
+    return `file://${raw}`;
+  }
+  return raw;
+}
+
+function guessVideoExtension({ name = '', uri = '' } = {}) {
+  const fromName = String(name ?? '').trim();
+  const fromUri = String(uri ?? '').trim();
+  const source = fromName || fromUri;
+  const normalized = source.split('?')[0].split('#')[0];
+  const dotIndex = normalized.lastIndexOf('.');
+  if (dotIndex < 0) return '.mp4';
+  const ext = normalized.slice(dotIndex).toLowerCase();
+  if (!ext || ext.length > 6) return '.mp4';
+  return ext;
+}
+
+async function normalizeVideoFileForUpload(videoFile = {}) {
+  const originalUri = String(videoFile?.uri ?? '').trim();
+  if (!originalUri) {
+    throw new Error('Invalid video file path.');
+  }
+
+  if (!hasHttpScheme(originalUri)) {
+    return {
+      uri: normalizeUploadUri(originalUri),
+      cleanupPath: '',
+    };
+  }
+
+  const extension = guessVideoExtension({ name: videoFile?.name, uri: originalUri });
+  const tempPath = `${RNFS.CachesDirectoryPath}/video-upload-${Date.now()}${extension}`;
+  const download = await RNFS.downloadFile({
+    fromUrl: originalUri.replace(/\s+/g, ''),
+    toFile: tempPath,
+    discretionary: true,
+    background: false,
+  }).promise;
+  if (Number(download?.statusCode) < 200 || Number(download?.statusCode) >= 300) {
+    throw new Error(`Unable to read selected video file (${download?.statusCode || 'network error'}).`);
+  }
+
+  return {
+    uri: `file://${tempPath}`,
+    cleanupPath: tempPath,
+  };
 }
 
 function normalizeVideoItem(item) {
@@ -92,56 +144,44 @@ async function uploadVideo({ endpoint, method = 'POST', payload = {}, videoFile 
   const title = String(payload?.title ?? '').trim();
   const description = String(payload?.description ?? '').trim();
   const requestUrl = resolveApiUrl(endpoint);
-  const uploadPath = resolveUploadPath(videoFile?.uri);
   const fileUri = String(videoFile?.uri ?? '').trim();
   if (!fileUri) throw new Error('Invalid video file path.');
 
   const authToken = getAuthToken();
   const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+  const normalizedFile = await normalizeVideoFileForUpload(videoFile);
 
-  // Prefer native file-path upload when available.
-  if (uploadPath) {
-    const uploadResult = await RNFS.uploadFiles({
-      toUrl: requestUrl,
+  try {
+    const response = await fetch(requestUrl, {
       method,
       headers,
-      fields: { title, description },
-      files: [
-        {
-          name: 'video',
-          filename: String(videoFile?.name || 'video.mp4'),
-          filepath: uploadPath,
-          filetype: String(videoFile?.type || 'video/mp4'),
+      body: buildVideoUploadFormData({
+        title,
+        description,
+        videoFile: {
+          ...videoFile,
+          uri: normalizedFile.uri,
         },
-      ],
-    }).promise;
-
-    const data = parseJsonSafe(uploadResult?.body);
-    if (uploadResult.statusCode >= 200 && uploadResult.statusCode < 300) {
+      }),
+    });
+    const data = parseJsonSafe(await response.text());
+    if (response.ok) {
       return {
         success: Boolean(data?.success),
         data: normalizeVideoItem(data?.data),
       };
     }
 
-    throw new Error(String(data?.message || `Upload failed with status ${uploadResult.statusCode}`));
+    throw new Error(String(data?.message || `Upload failed with status ${response.status}`));
+  } finally {
+    if (normalizedFile.cleanupPath) {
+      try {
+        await RNFS.unlink(normalizedFile.cleanupPath);
+      } catch {
+        // Best effort cache cleanup.
+      }
+    }
   }
-
-  // Fallback for Android content:// URIs and providers where absolute file path is unavailable.
-  const response = await fetch(requestUrl, {
-    method,
-    headers,
-    body: buildVideoUploadFormData({ title, description, videoFile }),
-  });
-  const data = parseJsonSafe(await response.text());
-  if (response.ok) {
-    return {
-      success: Boolean(data?.success),
-      data: normalizeVideoItem(data?.data),
-    };
-  }
-
-  throw new Error(String(data?.message || `Upload failed with status ${response.status}`));
 }
 
 export async function getAdminVideos({ page = 1, limit = 10, search = '' } = {}) {
