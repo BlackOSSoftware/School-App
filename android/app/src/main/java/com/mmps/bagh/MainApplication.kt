@@ -1,4 +1,4 @@
-package com.schoolapp
+package com.mmps.bagh
 
 import android.app.Application
 import com.facebook.react.ReactHost

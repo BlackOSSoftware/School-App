@@ -1,4 +1,4 @@
-package com.schoolapp
+package com.mmps.bagh
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

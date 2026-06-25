@@ -24,10 +24,10 @@ import {
 } from '../../hooks/useStudentQueries';
 import { useAdminStudentAttendanceReportQuery } from '../../hooks/useAttendanceQueries';
 import { useAppTheme } from '../../theme/ThemeContext';
+import CustomDropdownSelector from '../common/CustomDropdownSelector';
 import PaginationControls from '../common/PaginationControls';
 import AttendanceReportModal from '../common/AttendanceReportModal';
 import KeyboardAwareModal from '../common/KeyboardAwareModal';
-import SelectorModal from '../common/SelectorModal';
 
 const PAGE_LIMIT = 10;
 
@@ -145,12 +145,6 @@ function StudentFormModal({
   setForm,
   classLabelById,
   busLabelById,
-  openClassPicker,
-  openBusPicker,
-  classPickerOpen,
-  busPickerOpen,
-  onCloseClassPicker,
-  onCloseBusPicker,
   onSelectClass,
   onSelectBus,
   classList,
@@ -223,23 +217,37 @@ function StudentFormModal({
               />
             </View>
 
-            <Text style={styles.inputLabel}>Class</Text>
-            <Pressable style={styles.selectBtn} onPress={() => openClassPicker('form')}>
-              <AppIcon name="business-outline" size={16} color={colors.admin.accent} />
-              <Text style={styles.selectBtnText}>
-                {form.classId ? classLabelById.get(form.classId) ?? form.classId : 'Select class'}
-              </Text>
-              <AppIcon name="chevron-down" size={16} color={colors.admin.textSecondary} />
-            </Pressable>
+            <CustomDropdownSelector
+              tone="admin"
+              label="Class"
+              value={form.classId ? classLabelById.get(form.classId) ?? form.classId : ''}
+              placeholder="Select class"
+              options={classList}
+              onSelect={onSelectClass}
+              includeNone
+              noneLabel="None"
+              valueExtractor={item => getEntityId(item)}
+              labelExtractor={item => `${item?.name ?? '-'} - ${item?.section ?? '-'}`}
+              searchPlaceholder="Search class or section"
+            />
 
-            <Text style={styles.inputLabel}>Bus (optional)</Text>
-            <Pressable style={styles.selectBtn} onPress={() => openBusPicker('form')}>
-              <AppIcon name="bus-outline" size={16} color={colors.admin.accent} />
-              <Text style={styles.selectBtnText}>
-                {form.busId ? busLabelById.get(form.busId) ?? form.busId : 'Select bus'}
-              </Text>
-              <AppIcon name="chevron-down" size={16} color={colors.admin.textSecondary} />
-            </Pressable>
+            <CustomDropdownSelector
+              tone="admin"
+              label="Bus (optional)"
+              value={form.busId ? busLabelById.get(form.busId) ?? form.busId : ''}
+              placeholder="Select bus"
+              options={busList}
+              onSelect={onSelectBus}
+              includeNone
+              noneLabel="No Bus"
+              valueExtractor={item => getEntityId(item)}
+              labelExtractor={item => {
+                const busNumber = String(item?.busNumber ?? '').trim();
+                const routeName = String(item?.routeName ?? '').trim();
+                return busNumber && routeName ? `${busNumber} - ${routeName}` : busNumber || routeName || '-';
+              }}
+              searchPlaceholder="Search bus number or route"
+            />
 
             {mode === 'edit' ? (
               <>
@@ -299,37 +307,6 @@ function StudentFormModal({
               </Pressable>
             </View>
 
-            <SelectorModal
-              visible={classPickerOpen}
-              onClose={onCloseClassPicker}
-              onSelect={onSelectClass}
-              title="Select Class"
-              searchPlaceholder="Search class or section"
-              items={classList}
-              selectedValue={form.classId}
-              includeNone
-              noneLabel="None"
-              valueExtractor={item => getEntityId(item)}
-              labelExtractor={item => `${item?.name ?? '-'} - ${item?.section ?? '-'}`}
-            />
-
-            <SelectorModal
-              visible={busPickerOpen}
-              onClose={onCloseBusPicker}
-              onSelect={onSelectBus}
-              title="Select Bus"
-              searchPlaceholder="Search bus number or route"
-              items={busList}
-              selectedValue={form.busId}
-              includeNone
-              noneLabel="No Bus"
-              valueExtractor={item => getEntityId(item)}
-              labelExtractor={item => {
-                const busNumber = String(item?.busNumber ?? '').trim();
-                const routeName = String(item?.routeName ?? '').trim();
-                return busNumber && routeName ? `${busNumber} - ${routeName}` : busNumber || routeName || '-';
-              }}
-            />
       </KeyboardAwareModal>
     </Modal>
   );
@@ -415,8 +392,6 @@ export default function AdminStudentScreen() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedClassId, setSelectedClassId] = useState('');
   const [message, setMessage] = useState({ type: '', text: '' });
-  const [classPickerState, setClassPickerState] = useState({ open: false, target: 'filter' });
-  const [busPickerState, setBusPickerState] = useState({ open: false, target: 'form' });
   const [modalState, setModalState] = useState({ visible: false, mode: 'create', studentId: '' });
   const [form, setForm] = useState(buildInitialForm());
   const [detailVisible, setDetailVisible] = useState(false);
@@ -526,20 +501,9 @@ export default function AdminStudentScreen() {
 
   const closeModal = () => setModalState({ visible: false, mode: 'create', studentId: '' });
 
-  const onSelectClass = classId => {
-    if (classPickerState.target === 'filter') {
-      setSelectedClassId(classId || '');
-      setPage(1);
-    } else {
-      setForm(prev => ({ ...prev, classId: classId || '' }));
-    }
-    setClassPickerState({ open: false, target: 'filter' });
-  };
+  const onSelectClass = classId => setForm(prev => ({ ...prev, classId: classId || '' }));
 
-  const onSelectBus = busId => {
-    setForm(prev => ({ ...prev, busId: busId || '' }));
-    setBusPickerState({ open: false, target: 'form' });
-  };
+  const onSelectBus = busId => setForm(prev => ({ ...prev, busId: busId || '' }));
 
   const saveStudent = async () => {
     if (!form.name.trim() || !form.scholarNumber.trim() || !form.parentName.trim() || !form.number.trim()) {
@@ -742,13 +706,22 @@ export default function AdminStudentScreen() {
           },
         ]}
       >
-        <Pressable style={styles.filterBtn} onPress={() => setClassPickerState({ open: true, target: 'filter' })}>
-          <AppIcon name="funnel-outline" size={16} color={colors.admin.accent} />
-          <Text style={styles.filterText}>
-            {selectedClassId ? classLabelById.get(selectedClassId) ?? 'Selected class' : 'All Classes'}
-          </Text>
-          <AppIcon name="chevron-down" size={16} color={colors.admin.textSecondary} />
-        </Pressable>
+        <CustomDropdownSelector
+          tone="admin"
+          value={selectedClassId ? classLabelById.get(selectedClassId) ?? 'Selected class' : ''}
+          placeholder="All Classes"
+          options={classList}
+          onSelect={classId => {
+            setSelectedClassId(classId || '');
+            setPage(1);
+          }}
+          includeNone
+          noneLabel="All Classes"
+          valueExtractor={item => getEntityId(item)}
+          labelExtractor={item => `${item?.name ?? '-'} - ${item?.section ?? '-'}`}
+          searchPlaceholder="Search class or section"
+          containerStyle={{ marginBottom: 0 }}
+        />
       </Animated.View>
 
       <Animated.View
@@ -864,30 +837,10 @@ export default function AdminStudentScreen() {
         setForm={setForm}
         classLabelById={classLabelById}
         busLabelById={busLabelById}
-        openClassPicker={() => setClassPickerState({ open: true, target: 'form' })}
-        openBusPicker={() => setBusPickerState({ open: true, target: 'form' })}
-        classPickerOpen={classPickerState.open && classPickerState.target === 'form'}
-        busPickerOpen={busPickerState.open && busPickerState.target === 'form'}
-        onCloseClassPicker={() => setClassPickerState({ open: false, target: 'form' })}
-        onCloseBusPicker={() => setBusPickerState({ open: false, target: 'form' })}
         onSelectClass={classId => onSelectClass(classId)}
         onSelectBus={onSelectBus}
         classList={classList}
         busList={busList}
-      />
-
-      <SelectorModal
-        visible={classPickerState.open && classPickerState.target === 'filter'}
-        onClose={() => setClassPickerState({ open: false, target: 'filter' })}
-        onSelect={onSelectClass}
-        title="Select Class"
-        searchPlaceholder="Search class or section"
-        items={classList}
-        selectedValue={classPickerState.target === 'filter' ? selectedClassId : form.classId}
-        includeNone
-        noneLabel={classPickerState.target === 'filter' ? 'All Classes' : 'None'}
-        valueExtractor={item => getEntityId(item)}
-        labelExtractor={item => `${item?.name ?? '-'} - ${item?.section ?? '-'}`}
       />
     </View>
   );
@@ -1356,11 +1309,30 @@ const createStyles = colors =>
       justifyContent: 'space-between',
       gap: 8,
     },
+    selectBtnActive: {
+      borderColor: colors.brand.primary,
+      backgroundColor: colors.admin.successBg,
+      shadowColor: '#194c89',
+      shadowOpacity: 0.12,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 2,
+    },
     selectBtnText: {
       color: colors.admin.textPrimary,
       fontSize: 13.5,
       fontWeight: '600',
       flex: 1,
+    },
+    selectBtnPlaceholderText: {
+      color: colors.admin.textSecondary,
+    },
+    filterBtnActive: {
+      borderColor: colors.brand.primary,
+      backgroundColor: colors.admin.successBg,
+    },
+    filterPlaceholderText: {
+      color: colors.admin.textSecondary,
     },
     segmentWrap: {
       flexDirection: 'row',

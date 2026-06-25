@@ -23,11 +23,33 @@ export async function createClass(payload) {
   const sectionValue = String(payload?.section ?? '').trim();
   const body = {
     name: String(payload?.name ?? '').trim(),
-    section: [sectionValue.toUpperCase()],
+    section: sectionValue.toUpperCase(),
+    subjects: Array.isArray(payload?.subjects)
+      ? payload.subjects.map(item => String(item ?? '').trim()).filter(Boolean)
+      : [],
   };
 
-  const { data } = await apiClient.post('/class/create', body);
-  return data;
+  const attempts = [
+    () => apiClient.post('/class/create', body),
+    () => apiClient.post('/class', body),
+    () => apiClient.put('/class/create', body),
+  ];
+
+  let lastError;
+  for (const run of attempts) {
+    try {
+      const { data } = await run();
+      return data;
+    } catch (error) {
+      const status = error?.response?.status;
+      if (status && status !== 404 && status !== 405) {
+        throw error;
+      }
+      lastError = error;
+    }
+  }
+
+  throw lastError;
 }
 
 export async function getAllClasses({ page = 1, limit = 5 }) {
@@ -46,7 +68,10 @@ export async function updateClass({ id, payload }) {
   const sectionValue = String(payload?.section ?? '').trim();
   const body = {
     name: String(payload?.name ?? '').trim(),
-    section: [sectionValue.toUpperCase()],
+    section: sectionValue.toUpperCase(),
+    subjects: Array.isArray(payload?.subjects)
+      ? payload.subjects.map(item => String(item ?? '').trim()).filter(Boolean)
+      : [],
   };
 
   const attempts = [
@@ -54,6 +79,7 @@ export async function updateClass({ id, payload }) {
     () => apiClient.put(`/class/${normalizedId}`, body),
     () => apiClient.patch(`/class/update/${normalizedId}`, body),
     () => apiClient.put(`/class/update/${normalizedId}`, body),
+    () => apiClient.post(`/class/update/${normalizedId}`, body),
   ];
 
   let lastError;

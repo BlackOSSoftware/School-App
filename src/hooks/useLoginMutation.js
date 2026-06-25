@@ -7,9 +7,13 @@ export function getApiErrorMessage(error) {
     error?.response?.data?.error ||
     error?.message;
 
+  if (!error?.response) {
+    return 'Something went wrong';
+  }
+
   return typeof message === 'string' && message.trim().length > 0
     ? message
-    : 'Login failed. Please check your credentials.';
+    : 'Something went wrong';
 }
 
 export function useLoginMutation() {

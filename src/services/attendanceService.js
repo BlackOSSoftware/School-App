@@ -25,13 +25,40 @@ function normalizeEntityId(value) {
   return '';
 }
 
-function toIsoDate(value = new Date()) {
+export function toIsoDate(value = new Date()) {
   const date = value instanceof Date ? value : new Date(value);
   const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;
   const year = safeDate.getFullYear();
   const month = String(safeDate.getMonth() + 1).padStart(2, '0');
   const day = String(safeDate.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+export function formatDisplayDate(value) {
+  const raw = String(value ?? '').trim();
+  if (!raw) {
+    return '-';
+  }
+
+  const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`;
+  }
+
+  const ddmmyyyyMatch = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (ddmmyyyyMatch) {
+    return raw;
+  }
+
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) {
+    return raw;
+  }
+
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
 }
 
 function normalizeStudentAttendanceItem(item) {
@@ -136,6 +163,19 @@ export async function getTeacherStudentAttendanceReport({ classId, studentId, fr
   };
 }
 
+export async function getTeacherAttendancePolicy() {
+  const { data } = await apiClient.get('/attendance/teacher/policy');
+
+  return {
+    success: Boolean(data?.success),
+    data: {
+      canMarkPastDates: Boolean(data?.data?.canMarkPastDates),
+      updatedAt: String(data?.data?.updatedAt ?? ''),
+      updatedByName: String(data?.data?.updatedByName ?? '').trim(),
+    },
+  };
+}
+
 export async function getAdminAttendanceSummaryByDate(date) {
   const { data } = await apiClient.get('/attendance/admin/date-summary', {
     params: { date: toIsoDate(date || new Date()) },
@@ -216,6 +256,35 @@ export async function updateAdminStudentAttendanceByDate({ classId, studentId, d
     },
   );
   return normalizeClassAttendanceResponse(data);
+}
+
+export async function getAdminTeacherAttendancePolicy() {
+  const { data } = await apiClient.get('/attendance/admin/teacher-policy');
+
+  return {
+    success: Boolean(data?.success),
+    data: {
+      canMarkPastDates: Boolean(data?.data?.canMarkPastDates),
+      updatedAt: String(data?.data?.updatedAt ?? ''),
+      updatedByName: String(data?.data?.updatedByName ?? '').trim(),
+    },
+  };
+}
+
+export async function updateAdminTeacherAttendancePolicy(canMarkPastDates) {
+  const { data } = await apiClient.put('/attendance/admin/teacher-policy', {
+    canMarkPastDates: Boolean(canMarkPastDates),
+  });
+
+  return {
+    success: Boolean(data?.success),
+    message: String(data?.message ?? ''),
+    data: {
+      canMarkPastDates: Boolean(data?.data?.canMarkPastDates),
+      updatedAt: String(data?.data?.updatedAt ?? ''),
+      updatedByName: String(data?.data?.updatedByName ?? '').trim(),
+    },
+  };
 }
 
 export async function getAdminStudentAttendanceReport({ classId, studentId, from, to, sessionId }) {

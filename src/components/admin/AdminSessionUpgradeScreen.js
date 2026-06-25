@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import AppIcon from '../common/AppIcon.js';
+import CustomDropdownSelector from '../common/CustomDropdownSelector';
 import { useClassesQuery } from '../../hooks/useClassQueries';
 import { useSessionsQuery } from '../../hooks/useSessionQueries';
 import { useSessionTransitionMutation, useStudentsQuery } from '../../hooks/useStudentQueries';
-import SelectorModal from '../common/SelectorModal';
 import { useAppTheme } from '../../theme/ThemeContext';
 
 function normalizeId(value) {
@@ -65,7 +65,6 @@ export default function AdminSessionUpgradeScreen() {
   const [selectedClassId, setSelectedClassId] = useState('');
   const [selectedSessionId, setSelectedSessionId] = useState('');
   const [updatesByStudentId, setUpdatesByStudentId] = useState({});
-  const [selectorState, setSelectorState] = useState({ open: false, mode: 'session', studentId: '' });
   const [message, setMessage] = useState({ type: '', text: '' });
 
   const classesQuery = useClassesQuery(1, 200);
@@ -188,75 +187,6 @@ export default function AdminSessionUpgradeScreen() {
     { id: 'transfer', label: 'Transfer' },
   ];
 
-  const openActionSelector = studentId => setSelectorState({ open: true, mode: 'action', studentId });
-  const openTargetSelector = studentId => setSelectorState({ open: true, mode: 'target', studentId });
-  const openSessionSelector = () => setSelectorState({ open: true, mode: 'session', studentId: '' });
-
-  const closeSelector = () => setSelectorState({ open: false, mode: 'session', studentId: '' });
-
-  const selectorItems = (() => {
-    if (selectorState.mode === 'session') return sessionItems;
-    if (selectorState.mode === 'action') return actionItems;
-    const studentState = updatesByStudentId[selectorState.studentId];
-    const targets = getTargetOptions(studentState?.action);
-    return targets
-      .map(item => ({ id: normalizeId(item), label: toClassLabel(item) }))
-      .filter(item => item.id);
-  })();
-
-  const selectorValue = (() => {
-    if (selectorState.mode === 'session') return selectedSessionId;
-    const state = updatesByStudentId[selectorState.studentId] || {};
-    if (selectorState.mode === 'action') return state.action || 'promote';
-    return state.targetClassId || '';
-  })();
-
-  const handleSelectorPick = value => {
-    if (selectorState.mode === 'session') {
-      setSelectedSessionId(value || '');
-      closeSelector();
-      return;
-    }
-    if (!selectorState.studentId) {
-      closeSelector();
-      return;
-    }
-
-    if (selectorState.mode === 'action') {
-      setUpdatesByStudentId(prev => {
-        const existing = prev[selectorState.studentId] || { action: 'promote', targetClassId: '' };
-        const nextAction = value || 'promote';
-        const targetOptions = getTargetOptions(nextAction);
-        const fallbackTargetId = nextAction === 'transfer'
-          ? ''
-          : normalizeId(targetOptions[0]) || selectedClassId;
-        return {
-          ...prev,
-          [selectorState.studentId]: {
-            action: nextAction,
-            targetClassId:
-              nextAction === 'transfer'
-                ? ''
-                : (targetOptions.some(item => normalizeId(item) === existing.targetClassId)
-                  ? existing.targetClassId
-                  : fallbackTargetId),
-          },
-        };
-      });
-      closeSelector();
-      return;
-    }
-
-    setUpdatesByStudentId(prev => ({
-      ...prev,
-      [selectorState.studentId]: {
-        ...(prev[selectorState.studentId] || { action: 'retain' }),
-        targetClassId: value || '',
-      },
-    }));
-    closeSelector();
-  };
-
   const selectedSessionLabel = sessionItems.find(item => item.id === selectedSessionId)?.label || 'Select session';
 
   const submitTransition = async () => {
@@ -328,11 +258,17 @@ export default function AdminSessionUpgradeScreen() {
       </Animated.View>
 
       <View style={styles.topControlsRow}>
-        <Pressable style={styles.sessionBtn} onPress={openSessionSelector}>
-          <AppIcon name="calendar-outline" size={16} color={colors.admin.accent} />
-          <Text style={styles.sessionBtnText} numberOfLines={1}>{selectedSessionLabel}</Text>
-          <AppIcon name="chevron-down" size={15} color={colors.admin.textSecondary} />
-        </Pressable>
+        <CustomDropdownSelector
+          tone="admin"
+          value={selectedSessionLabel}
+          placeholder="Select session"
+          options={sessionItems}
+          onSelect={value => setSelectedSessionId(value || '')}
+          valueExtractor={item => item?.id}
+          labelExtractor={item => item?.label}
+          searchPlaceholder="Search session"
+          containerStyle={{ marginBottom: 0 }}
+        />
       </View>
 
       {message.text ? (
@@ -424,20 +360,57 @@ export default function AdminSessionUpgradeScreen() {
                     </View>
 
                     <View style={styles.rowActions}>
-                      <Pressable style={styles.selectorBtn} onPress={() => openActionSelector(studentId)}>
-                        <AppIcon name="sync-outline" size={14} color={colors.admin.accent} />
-                        <Text style={styles.selectorBtnText}>{state.action}</Text>
-                        <AppIcon name="chevron-down" size={14} color={colors.admin.textSecondary} />
-                      </Pressable>
+                      <CustomDropdownSelector
+                        tone="admin"
+                        value={state.action}
+                        placeholder="Action"
+                        options={actionItems}
+                        onSelect={value => {
+                          const nextAction = value || 'promote';
+                          const targetOptions = getTargetOptions(nextAction);
+                          const fallbackTargetId = nextAction === 'transfer' ? '' : normalizeId(targetOptions[0]) || selectedClassId;
+                          setUpdatesByStudentId(prev => {
+                            const existing = prev[studentId] || { action: 'promote', targetClassId: '' };
+                            return {
+                              ...prev,
+                              [studentId]: {
+                                action: nextAction,
+                                targetClassId:
+                                  nextAction === 'transfer'
+                                    ? ''
+                                    : (targetOptions.some(item => normalizeId(item) === existing.targetClassId)
+                                      ? existing.targetClassId
+                                      : fallbackTargetId),
+                              },
+                            };
+                          });
+                        }}
+                        valueExtractor={item => item?.id}
+                        labelExtractor={item => item?.label}
+                        searchPlaceholder="Search action"
+                        containerStyle={{ marginBottom: 0 }}
+                      />
 
                       {state.action !== 'transfer' ? (
-                        <Pressable style={styles.selectorBtn} onPress={() => openTargetSelector(studentId)}>
-                          <AppIcon name="library-outline" size={14} color={colors.admin.accent} />
-                          <Text style={styles.selectorBtnText} numberOfLines={1}>
-                            {targetLabel ? toClassLabel(targetLabel) : 'Select class'}
-                          </Text>
-                          <AppIcon name="chevron-down" size={14} color={colors.admin.textSecondary} />
-                        </Pressable>
+                        <CustomDropdownSelector
+                          tone="admin"
+                          value={targetLabel ? toClassLabel(targetLabel) : ''}
+                          placeholder="Select class"
+                          options={targetOptions.map(item => ({ id: normalizeId(item), label: toClassLabel(item) })).filter(item => item.id)}
+                          onSelect={value =>
+                            setUpdatesByStudentId(prev => ({
+                              ...prev,
+                              [studentId]: {
+                                ...(prev[studentId] || { action: 'retain' }),
+                                targetClassId: value || '',
+                              },
+                            }))
+                          }
+                          valueExtractor={item => item?.id}
+                          labelExtractor={item => item?.label}
+                          searchPlaceholder="Search class"
+                          containerStyle={{ marginBottom: 0 }}
+                        />
                       ) : (
                         <View style={styles.transferChip}>
                           <Text style={styles.transferChipText}>Transfer: no target class needed</Text>
@@ -452,19 +425,6 @@ export default function AdminSessionUpgradeScreen() {
         </View>
       </View>
 
-      <SelectorModal
-        visible={selectorState.open}
-        onClose={closeSelector}
-        onSelect={handleSelectorPick}
-        title={selectorState.mode === 'session' ? 'Select Session' : selectorState.mode === 'action' ? 'Select Action' : 'Select Target Class'}
-        searchPlaceholder={selectorState.mode === 'action' ? 'Search action' : 'Search'}
-        items={selectorItems}
-        selectedValue={selectorValue}
-        includeNone={selectorState.mode !== 'action'}
-        noneLabel="None"
-        valueExtractor={item => item?.id}
-        labelExtractor={item => item?.label}
-      />
     </View>
   );
 }
@@ -494,17 +454,27 @@ const createStyles = colors =>
     heroSub: { marginTop: 5, color: colors.auth.subtitle, fontSize: 12.5, lineHeight: 18, fontWeight: '600' },
     topControlsRow: { marginBottom: 8 },
     sessionBtn: {
-      borderRadius: 12,
+      borderRadius: 14,
       borderWidth: 1,
       borderColor: colors.admin.borderStrong,
-      backgroundColor: colors.admin.surface,
+      backgroundColor: colors.admin.surfaceStrong,
       paddingHorizontal: 12,
       paddingVertical: 10,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
     },
+    sessionBtnActive: {
+      borderColor: colors.brand.primary,
+      backgroundColor: colors.admin.successBg,
+      shadowColor: '#194c89',
+      shadowOpacity: 0.12,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 2,
+    },
     sessionBtnText: { flex: 1, color: colors.admin.textPrimary, fontSize: 13, fontWeight: '700' },
+    sessionBtnPlaceholderText: { color: colors.admin.textSecondary },
     banner: {
       borderRadius: 12,
       paddingHorizontal: 12,
@@ -582,17 +552,27 @@ const createStyles = colors =>
     studentMeta: { marginTop: 2, color: colors.admin.textSecondary, fontSize: 11.5, fontWeight: '600' },
     rowActions: { gap: 7 },
     selectorBtn: {
-      borderRadius: 10,
+      borderRadius: 14,
       borderWidth: 1,
-      borderColor: colors.admin.border,
-      backgroundColor: colors.admin.surface,
-      paddingHorizontal: 10,
-      paddingVertical: 8,
+      borderColor: colors.admin.borderStrong,
+      backgroundColor: colors.admin.surfaceStrong,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
     },
+    selectorBtnActive: {
+      borderColor: colors.brand.primary,
+      backgroundColor: colors.admin.successBg,
+      shadowColor: '#194c89',
+      shadowOpacity: 0.12,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 2,
+    },
     selectorBtnText: { flex: 1, color: colors.admin.textPrimary, fontSize: 12, fontWeight: '700', textTransform: 'capitalize' },
+    selectorBtnPlaceholderText: { color: colors.admin.textSecondary },
     transferChip: {
       borderRadius: 10,
       borderWidth: 1,

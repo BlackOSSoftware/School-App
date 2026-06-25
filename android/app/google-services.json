@@ -7,9 +7,47 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:596648935510:android:7f477c086d0a5e6dce3bf7",
+        "android_client_info": {
+          "package_name": "com.mmps.bagh"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB_S1ViTgG9W_1Mw8G5Vu-8R0kRe-HwH7Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:596648935510:android:88d81ab1210e1322ce3bf7",
         "android_client_info": {
           "package_name": "com.schoolapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB_S1ViTgG9W_1Mw8G5Vu-8R0kRe-HwH7Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:596648935510:android:6e3b6e5785b41c38ce3bf7",
+        "android_client_info": {
+          "package_name": "com.schoolapp.mmps"
         }
       },
       "oauth_client": [],

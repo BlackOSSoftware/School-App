@@ -19,47 +19,20 @@ function normalizeEntityId(value) {
   return '';
 }
 
-function normalizeSubjects(subjects) {
-  if (!Array.isArray(subjects)) {
-    return [];
-  }
-  return subjects
-    .map(item => String(item ?? '').trim().toUpperCase())
-    .filter(Boolean);
-}
-
-function normalizeLectureAssignments(lectureAssignments) {
-  if (!Array.isArray(lectureAssignments)) {
-    return [];
-  }
-
-  return lectureAssignments
-    .map(item => ({
-      classId: normalizeEntityId(item?.classId),
-      subject: String(item?.subject ?? '').trim().toUpperCase(),
-    }))
-    .filter(item => item.subject && item.classId);
-}
-
 function normalizeTeacherPayload(payload) {
   const body = {
     name: String(payload?.name ?? '').trim(),
     email: payload?.email ? String(payload.email).trim().toLowerCase() : '',
-    subjects: normalizeSubjects(payload?.subjects),
   };
   const password = String(payload?.password ?? '').trim();
 
   const classTeacherOf = normalizeEntityId(payload?.classTeacherOf);
-  const lectureAssignments = normalizeLectureAssignments(payload?.lectureAssignments);
 
   if (password) {
     body.password = password;
   }
   if (classTeacherOf) {
     body.classTeacherOf = classTeacherOf;
-  }
-  if (lectureAssignments.length) {
-    body.lectureAssignments = lectureAssignments;
   }
 
   return body;
@@ -182,6 +155,9 @@ function normalizeClassItem(item) {
     id,
     name: String(item?.name ?? '').trim(),
     section: String(item?.section ?? '').trim(),
+    subjects: Array.isArray(item?.subjects)
+      ? item.subjects.map(subject => String(subject ?? '').trim().toUpperCase()).filter(Boolean)
+      : [],
     label: `${String(item?.name ?? '').trim()}${item?.section ? ` - ${String(item.section).trim()}` : ''}`.trim(),
   };
 }
@@ -205,14 +181,11 @@ export async function getTeacherClassesOverview() {
 
   const teacher = payload?.teacher ?? {};
   const classTeacherOf = teacher?.classTeacherOf ? normalizeClassItem(teacher.classTeacherOf) : null;
-  const lectureAssignments = Array.isArray(teacher?.lectureAssignments)
-    ? teacher.lectureAssignments
-      .map(item => ({
-        classInfo: normalizeClassItem(item?.classId),
-        subject: String(item?.subject ?? '').trim().toUpperCase(),
-      }))
-      .filter(item => item.classInfo.id && item.subject)
-    : [];
+  const classSubjects = Array.isArray(teacher?.classSubjects)
+    ? teacher.classSubjects.map(item => String(item ?? '').trim().toUpperCase()).filter(Boolean)
+    : Array.isArray(classTeacherOf?.subjects)
+      ? classTeacherOf.subjects.map(item => String(item ?? '').trim().toUpperCase()).filter(Boolean)
+      : [];
 
   const assignedClasses = Array.isArray(payload?.assignedClasses)
     ? payload.assignedClasses.map(normalizeClassItem).filter(item => item.id)
@@ -229,7 +202,7 @@ export async function getTeacherClassesOverview() {
       name: String(teacher?.name ?? '').trim(),
       email: String(teacher?.email ?? '').trim(),
       classTeacherOf,
-      lectureAssignments,
+      classSubjects,
     },
     assignedClasses,
     students,

@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import AppIcon from './AppIcon.js';
+import { formatDisplayDate } from '../../services/attendanceService';
 import { useAppTheme } from '../../theme/ThemeContext';
 
 function toPct(value) {
@@ -106,7 +107,7 @@ export default function AttendanceReportModal({
                     const present = String(item?.status ?? '').toLowerCase() === 'present';
                     return (
                       <View key={`${item?.date || 'date'}-${index}`} style={styles.dayRow}>
-                        <Text style={styles.dayDate}>{String(item?.date ?? '-')}</Text>
+                        <Text style={styles.dayDate}>{formatDisplayDate(String(item?.date ?? '-'))}</Text>
                         <View style={[styles.dayPill, present ? styles.presentPill : styles.absentPill]}>
                           <Text style={styles.dayPillText}>{present ? 'Present' : 'Absent'}</Text>
                         </View>

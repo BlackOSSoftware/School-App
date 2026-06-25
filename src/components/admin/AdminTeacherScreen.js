@@ -22,9 +22,9 @@ import {
 } from '../../hooks/useTeacherQueries';
 import { useClassesQuery } from '../../hooks/useClassQueries';
 import { useAppTheme } from '../../theme/ThemeContext';
+import CustomDropdownSelector from '../common/CustomDropdownSelector';
 import KeyboardAwareModal from '../common/KeyboardAwareModal';
 import PaginationControls from '../common/PaginationControls';
-import SelectorModal from '../common/SelectorModal';
 
 const PAGE_LIMIT = 10;
 
@@ -34,16 +34,6 @@ function getErrorMessage(error, fallback) {
     error?.response?.data?.error ||
     error?.message;
   return typeof message === 'string' && message.trim() ? message : fallback;
-}
-
-function normalizeSubjectsInput(value) {
-  if (Array.isArray(value)) {
-    return [...new Set(value.map(item => String(item ?? '').trim()).filter(Boolean))];
-  }
-  return String(value ?? '')
-    .split(',')
-    .map(item => item.trim())
-    .filter(Boolean);
 }
 
 function getEntityId(value) {
@@ -84,18 +74,6 @@ function getClassDisplay(value, classLabelById) {
   return String(value);
 }
 
-function normalizeAssignmentsInput(list) {
-  if (!Array.isArray(list)) {
-    return [];
-  }
-  return list
-    .map(item => ({
-      classId: getEntityId(item?.classId) || null,
-      subject: String(item?.subject ?? '').trim(),
-    }))
-    .filter(item => item.subject);
-}
-
 function MessageBanner({ text, type, onClose, styles }) {
   if (!text) {
     return null;
@@ -123,7 +101,6 @@ function TeacherFormModal({
   form,
   setForm,
 }) {
-  const [classPicker, setClassPicker] = useState({ open: false, target: '' });
 
   const classLabelById = useMemo(() => {
     const map = new Map();
@@ -136,70 +113,6 @@ function TeacherFormModal({
     return map;
   }, [classes]);
 
-  const subjects = useMemo(() => normalizeSubjectsInput(form.subjects), [form.subjects]);
-
-  const applyAssignmentSubjectRules = assignments =>
-    assignments.map(item => {
-      if (item.subject) {
-        return item;
-      }
-      if (subjects.length === 1) {
-        return { ...item, subject: subjects[0] };
-      }
-      return item;
-    });
-
-  const updateAssignments = updater => {
-    setForm(prev => {
-      const nextAssignments = updater(prev.assignments);
-      return {
-        ...prev,
-        assignments: applyAssignmentSubjectRules(nextAssignments),
-      };
-    });
-  };
-
-  const addSubject = () => {
-    const next = String(form.subjectDraft ?? '').trim();
-    if (!next) {
-      return;
-    }
-    if (subjects.some(item => item.toLowerCase() === next.toLowerCase())) {
-      setForm(prev => ({ ...prev, subjectDraft: '' }));
-      return;
-    }
-    setForm(prev => ({
-      ...prev,
-      subjects: [...prev.subjects, next],
-      subjectDraft: '',
-      assignments: applyAssignmentSubjectRules(prev.assignments),
-    }));
-  };
-
-  const removeSubject = subjectToRemove => {
-    setForm(prev => ({
-      ...prev,
-      subjects: prev.subjects.filter(item => item !== subjectToRemove),
-      assignments: prev.assignments.map(item =>
-        item.subject === subjectToRemove ? { ...item, subject: '' } : item,
-      ),
-    }));
-  };
-
-  const openPicker = target => setClassPicker({ open: true, target });
-  const closePicker = () => setClassPicker({ open: false, target: '' });
-
-  const onSelectClass = classId => {
-    if (classPicker.target === 'classTeacherOf') {
-      setForm(prev => ({ ...prev, classTeacherOf: classId || '' }));
-    } else if (classPicker.target.startsWith('assignment:')) {
-      const idx = Number(classPicker.target.split(':')[1]);
-      updateAssignments(prev =>
-        prev.map((item, index) => (index === idx ? { ...item, classId: classId || '' } : item)),
-      );
-    }
-    closePicker();
-  };
 
   return (
     <Modal visible={visible} transparent animationType="slide">
@@ -216,7 +129,7 @@ function TeacherFormModal({
               </Pressable>
             </View>
             <Text style={styles.formHint}>
-              Build a premium-grade faculty profile with subject mastery and lecture mapping.
+              Create class teacher profile with only required account details.
             </Text>
 
             <Text style={styles.inputLabel}>Name</Text>
@@ -261,151 +174,17 @@ function TeacherFormModal({
             </View>
             {mode === 'edit' ? <Text style={styles.inputNote}>Leave this field blank to keep the current password.</Text> : null}
 
-            <View style={styles.sectionCard}>
-              <View style={styles.sectionHeader}>
-                <View>
-                  <Text style={styles.sectionTitle}>Subjects</Text>
-                  <Text style={styles.sectionSubtitle}>Type a subject and press add.</Text>
-                </View>
-              </View>
-
-              <View style={styles.subjectEntryRow}>
-                <View style={[styles.inputRow, styles.subjectEntryInputWrap]}>
-                  <AppIcon name="reader-outline" size={17} style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.inputWithIcon}
-                    value={form.subjectDraft}
-                    onChangeText={value => setForm(prev => ({ ...prev, subjectDraft: value }))}
-                    onSubmitEditing={addSubject}
-                    placeholder="e.g. English"
-                    placeholderTextColor={colors.text.muted}
-                    returnKeyType="done"
-                  />
-                </View>
-                <Pressable style={styles.smallAddBtn} onPress={addSubject}>
-                  <View style={styles.inlineAction}>
-                    <AppIcon name="add" size={14} color={colors.text.inverse} />
-                    <Text style={styles.smallAddText}>Add</Text>
-                  </View>
-                </Pressable>
-              </View>
-
-              <View style={styles.chipsWrap}>
-                {subjects.length ? (
-                  subjects.map(subject => (
-                    <View key={subject} style={styles.subjectChip}>
-                      <Text style={styles.subjectChipText}>{subject}</Text>
-                      <Pressable onPress={() => removeSubject(subject)} hitSlop={6}>
-                        <AppIcon name="close" size={15} color={colors.admin.textSecondary} />
-                      </Pressable>
-                    </View>
-                  ))
-                ) : (
-                  <Text style={styles.sectionPlaceholder}>No subjects added yet.</Text>
-                )}
-              </View>
-            </View>
-
-            <Text style={styles.inputLabel}>Class Teacher Of (optional)</Text>
-            <Pressable style={styles.selectBtn} onPress={() => openPicker('classTeacherOf')}>
-              <Text style={styles.selectBtnText}>
-                {form.classTeacherOf
-                  ? getClassDisplay(form.classTeacherOf, classLabelById)
-                  : 'Select class (optional)'}
-              </Text>
-            </Pressable>
-
-            <View style={[styles.sectionCard, styles.assignmentSection]}>
-              <View style={styles.assignmentHeader}>
-                <View>
-                  <Text style={styles.sectionTitle}>Lecture Assignments</Text>
-                  <Text style={styles.sectionSubtitle}>Map class and subject to each lecture slot.</Text>
-                </View>
-                <Pressable
-                  style={styles.smallAddBtn}
-                  onPress={() =>
-                    updateAssignments(prev => [
-                      ...prev,
-                      { classId: '', subject: subjects.length === 1 ? subjects[0] : '' },
-                    ])
-                  }
-                >
-                  <View style={styles.inlineAction}>
-                    <AppIcon name="add" size={14} color={colors.text.inverse} />
-                    <Text style={styles.smallAddText}>Add</Text>
-                  </View>
-                </Pressable>
-              </View>
-
-              {form.assignments.length ? (
-                form.assignments.map((assignment, index) => (
-                  <View key={`${assignment.classId}-${index}`} style={styles.assignmentCard}>
-                    <View style={styles.assignmentTopRow}>
-                      <Text style={styles.assignmentLabel}>Assignment {index + 1}</Text>
-                      <Pressable
-                        style={styles.assignmentRemoveBtn}
-                        onPress={() => updateAssignments(prev => prev.filter((_, idx) => idx !== index))}
-                      >
-                        <AppIcon name="trash-outline" size={14} color={colors.state.error} />
-                        <Text style={styles.assignmentRemoveText}>Remove</Text>
-                      </Pressable>
-                    </View>
-
-                    <Text style={styles.fieldMiniLabel}>Class</Text>
-                    <Pressable
-                      style={[styles.selectBtn, styles.assignmentField]}
-                      onPress={() => openPicker(`assignment:${index}`)}
-                    >
-                      <AppIcon name="business-outline" size={16} color={colors.admin.accent} />
-                      <Text style={styles.selectBtnText}>
-                        {assignment.classId
-                          ? getClassDisplay(assignment.classId, classLabelById)
-                          : 'Select class (optional)'}
-                      </Text>
-                      <AppIcon name="chevron-down" size={16} color={colors.admin.textSecondary} />
-                    </Pressable>
-
-                    <Text style={styles.fieldMiniLabel}>Subject</Text>
-                    <View style={[styles.inputRow, styles.assignmentSubjectInput, styles.assignmentField]}>
-                      <AppIcon name="book-outline" size={16} style={styles.inputIcon} />
-                      <TextInput
-                        style={styles.inputWithIcon}
-                        value={assignment.subject}
-                        onChangeText={value =>
-                          updateAssignments(prev =>
-                            prev.map((item, idx) => (idx === index ? { ...item, subject: value } : item)),
-                          )
-                        }
-                        placeholder="Select or type subject"
-                        placeholderTextColor={colors.text.muted}
-                      />
-                    </View>
-
-                    {subjects.length ? (
-                      <View style={styles.assignmentSubjectChips}>
-                        {subjects.map(subject => (
-                          <Pressable
-                            key={`${subject}-${index}`}
-                            style={styles.assignmentSubjectChip}
-                            onPress={() =>
-                              updateAssignments(prev =>
-                                prev.map((item, idx) =>
-                                  idx === index ? { ...item, subject } : item,
-                                ),
-                              )
-                            }
-                          >
-                            <Text style={styles.assignmentSubjectChipText}>{subject}</Text>
-                          </Pressable>
-                        ))}
-                      </View>
-                    ) : null}
-                  </View>
-                ))
-              ) : (
-                <Text style={styles.sectionPlaceholder}>No assignments added yet.</Text>
-              )}
-            </View>
+            <CustomDropdownSelector
+              tone="admin"
+              label="Class Teacher Of"
+              value={form.classTeacherOf ? getClassDisplay(form.classTeacherOf, classLabelById) : ''}
+              placeholder="Select class"
+              options={classes}
+              onSelect={classId => setForm(prev => ({ ...prev, classTeacherOf: classId || '' }))}
+              valueExtractor={item => getEntityId(item)}
+              labelExtractor={item => `${item?.name ?? '-'} - ${item?.section ?? '-'}`}
+              searchPlaceholder="Search class or section"
+            />
 
             <View style={styles.modalActions}>
               <Pressable style={styles.cancelBtn} onPress={onClose}>
@@ -421,25 +200,6 @@ function TeacherFormModal({
             </View>
       </KeyboardAwareModal>
 
-      <SelectorModal
-        visible={classPicker.open}
-        onClose={closePicker}
-        onSelect={onSelectClass}
-        title="Select Class"
-        searchPlaceholder="Search class or section"
-        items={classes}
-        selectedValue={
-          classPicker.target === 'classTeacherOf'
-            ? String(form.classTeacherOf || '')
-            : classPicker.target.startsWith('assignment:')
-              ? String(form.assignments?.[Number(classPicker.target.split(':')[1])]?.classId || '')
-              : ''
-        }
-        includeNone
-        noneLabel="None"
-        valueExtractor={item => getEntityId(item)}
-        labelExtractor={item => `${item?.name ?? '-'} - ${item?.section ?? '-'}`}
-      />
     </Modal>
   );
 }
@@ -478,23 +238,11 @@ function TeacherDetailModal({ visible, onClose, detail, loading, styles, colors,
                 <Text style={styles.detailLine}>Status: {detail.status ?? '-'}</Text>
               </View>
               <View style={styles.detailLineRow}>
-                <AppIcon name="book-outline" size={15} color={colors.admin.accent} />
-                <Text style={styles.detailLine}>
-                Subjects: {Array.isArray(detail.subjects) ? detail.subjects.join(', ') : '-'}
-                </Text>
-              </View>
-              <View style={styles.detailLineRow}>
                 <AppIcon name="business-outline" size={15} color={colors.admin.accent} />
                 <Text style={styles.detailLine}>
                 Class Teacher Of: {getClassDisplay(detail.classTeacherOf, classLabelById)}
                 </Text>
               </View>
-              <Text style={styles.detailLine}>Assignments:</Text>
-              {(detail.lectureAssignments ?? []).map((item, idx) => (
-                <Text key={`la-${idx}`} style={styles.detailSubLine}>
-                  - {getClassDisplay(item?.classId, classLabelById)} | {item?.subject ?? '-'}
-                </Text>
-              ))}
             </ScrollView>
           ) : (
             <Text style={styles.placeholderText}>No details available.</Text>
@@ -514,14 +262,6 @@ function buildInitialForm(teacher) {
     email: teacher?.email ?? '',
     password: '',
     classTeacherOf: getEntityId(teacher?.classTeacherOf),
-    subjects: normalizeSubjectsInput(teacher?.subjects),
-    subjectDraft: '',
-    assignments: Array.isArray(teacher?.lectureAssignments)
-      ? teacher.lectureAssignments.map(item => ({
-          classId: getEntityId(item?.classId),
-          subject: String(item?.subject ?? ''),
-        }))
-      : [],
   };
 }
 
@@ -597,8 +337,6 @@ export default function AdminTeacherScreen() {
   const closeFormModal = () => setModalState({ visible: false, mode: 'create', teacherId: '' });
 
   const handleSave = async () => {
-    const subjects = normalizeSubjectsInput(form.subjects);
-    const assignments = normalizeAssignmentsInput(form.assignments);
     if (!form.name.trim()) {
       setMessage({ type: 'error', text: 'Teacher name is required.' });
       return;
@@ -611,8 +349,8 @@ export default function AdminTeacherScreen() {
       setMessage({ type: 'error', text: 'Password is required for new teacher.' });
       return;
     }
-    if (!subjects.length) {
-      setMessage({ type: 'error', text: 'Please add at least one subject.' });
+    if (!form.classTeacherOf) {
+      setMessage({ type: 'error', text: 'Class teacher assignment is required.' });
       return;
     }
 
@@ -621,9 +359,7 @@ export default function AdminTeacherScreen() {
         name: form.name.trim(),
         email: form.email.trim(),
         password: form.password.trim() || undefined,
-        classTeacherOf: form.classTeacherOf || null,
-        subjects,
-        lectureAssignments: assignments,
+        classTeacherOf: form.classTeacherOf,
       };
 
       if (modalState.mode === 'create') {
@@ -694,7 +430,7 @@ export default function AdminTeacherScreen() {
         <Text style={styles.heroOverline}>FACULTY OPERATIONS</Text>
         <Text style={styles.heroTitle}>Faculty Command Center</Text>
         <Text style={styles.heroSub}>
-          Orchestrate staffing, subjects, and lecture mappings with precision and speed.
+          Create and manage class teacher accounts with clean class mapping.
         </Text>
       </Animated.View>
 
@@ -720,7 +456,7 @@ export default function AdminTeacherScreen() {
             style={styles.searchInput}
             value={search}
             onChangeText={setSearch}
-            placeholder="Search by name, email, or subject"
+            placeholder="Search by name or email"
             placeholderTextColor={colors.text.muted}
           />
         </View>
@@ -768,7 +504,7 @@ export default function AdminTeacherScreen() {
                 <Text style={styles.teacherName}>{item.name}</Text>
                 <Text style={styles.teacherEmail}>{item.email}</Text>
                 <Text style={styles.teacherMeta}>
-                  Subjects: {Array.isArray(item.subjects) ? item.subjects.join(', ') : '-'}
+                  Class Teacher Of: {getClassDisplay(item.classTeacherOf)}
                 </Text>
               </View>
               <View style={styles.actionRow}>
@@ -1200,11 +936,23 @@ const createStyles = colors =>
       justifyContent: 'space-between',
       gap: 8,
     },
+    selectBtnActive: {
+      borderColor: colors.brand.primary,
+      backgroundColor: colors.admin.successBg,
+      shadowColor: '#194c89',
+      shadowOpacity: 0.12,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 2,
+    },
     selectBtnText: {
       color: colors.admin.textPrimary,
       fontSize: 13.5,
       fontWeight: '600',
       flex: 1,
+    },
+    selectBtnPlaceholderText: {
+      color: colors.admin.textSecondary,
     },
     assignmentSection: {
       marginTop: 2,

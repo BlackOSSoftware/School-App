@@ -8,15 +8,17 @@ import StudentHomeScreen from '../../components/student/StudentHomeScreen';
 import StudentHomeworkScreen from '../../components/student/StudentHomeworkScreen';
 import StudentNotesScreen from '../../components/student/StudentNotesScreen';
 import StudentProfileScreen from '../../components/student/StudentProfileScreen';
+import StudentResultsScreen from '../../components/student/StudentResultsScreen';
 import StudentTopBar from '../../components/student/StudentTopBar';
 import StudentVideoScreen from '../../components/student/StudentVideoScreen';
 import { useAppTheme } from '../../theme/ThemeContext';
 
-export default function StudentDashboard({ session, onLogout }) {
+export default function StudentDashboard({ session, onLogout, notificationIntent, onConsumeNotificationIntent }) {
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [currentScreen, setCurrentScreen] = useState('root');
   const [prefillHomework, setPrefillHomework] = useState(null);
   const [prefillNotes, setPrefillNotes] = useState(null);
   const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
@@ -27,6 +29,10 @@ export default function StudentDashboard({ session, onLogout }) {
         setExitConfirmOpen(false);
         return true;
       }
+      if (currentScreen !== 'root') {
+        setCurrentScreen('root');
+        return true;
+      }
       if (activeTab !== 'dashboard') {
         setActiveTab('dashboard');
         return true;
@@ -35,7 +41,24 @@ export default function StudentDashboard({ session, onLogout }) {
       return true;
     });
     return () => subscription.remove();
-  }, [activeTab, exitConfirmOpen]);
+  }, [activeTab, currentScreen, exitConfirmOpen]);
+
+  React.useEffect(() => {
+    if (!notificationIntent?.targetTab) {
+      return;
+    }
+    if (notificationIntent.targetTab === 'results') {
+      setActiveTab('profile');
+      setCurrentScreen('results');
+      onConsumeNotificationIntent?.();
+      return;
+    }
+    if (notificationIntent.targetTab === 'attendance') {
+      setCurrentScreen('root');
+      setActiveTab('attendance');
+      onConsumeNotificationIntent?.();
+    }
+  }, [notificationIntent, onConsumeNotificationIntent]);
 
   const title =
     activeTab === 'attendance'
@@ -49,7 +72,7 @@ export default function StudentDashboard({ session, onLogout }) {
           : activeTab === 'videos'
             ? 'Videos'
           : activeTab === 'profile'
-            ? 'Profile'
+            ? currentScreen === 'results' ? 'Result & Marksheet' : 'Profile'
             : 'Student Dashboard';
 
   const renderContent = () => {
@@ -87,7 +110,11 @@ export default function StudentDashboard({ session, onLogout }) {
     if (activeTab === 'profile') {
       return (
         <View style={styles.blockWrap}>
-          <StudentProfileScreen session={session} onLogout={onLogout} />
+          <StudentProfileScreen
+            session={session}
+            onLogout={onLogout}
+            onOpenResults={() => setCurrentScreen('results')}
+          />
         </View>
       );
     }
@@ -116,8 +143,19 @@ export default function StudentDashboard({ session, onLogout }) {
       <View style={[styles.blob, styles.blobA]} />
       <View style={[styles.blob, styles.blobB]} />
       <View style={styles.gridOverlay} />
-      <StudentTopBar title={title} />
-      <View style={[styles.contentArea, { paddingBottom: Math.max(8, insets.bottom * 0.25) }]}>{renderContent()}</View>
+      <StudentTopBar
+        title={title}
+        onBack={currentScreen !== 'root' ? () => setCurrentScreen('root') : undefined}
+      />
+      <View style={[styles.contentArea, { paddingBottom: Math.max(8, insets.bottom * 0.25) }]}>
+        {currentScreen === 'results' ? (
+          <View style={styles.blockWrap}>
+            <StudentResultsScreen />
+          </View>
+        ) : (
+          renderContent()
+        )}
+      </View>
       <StudentBottomNav activeTab={activeTab} onTabChange={setActiveTab} />
 
       <Modal

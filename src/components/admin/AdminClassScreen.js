@@ -80,6 +80,7 @@ export default function AdminClassScreen() {
   const [classId, setClassId] = useState('');
   const [name, setName] = useState('');
   const [section, setSection] = useState('');
+  const [subjectsText, setSubjectsText] = useState('');
   const [deleteId, setDeleteId] = useState('');
 
   const animation = useRef(new Animated.Value(0)).current;
@@ -116,6 +117,7 @@ export default function AdminClassScreen() {
     setClassId('');
     setName('');
     setSection('');
+    setSubjectsText('');
     setModalVisible(true);
     animation.setValue(0);
     Animated.timing(animation, {
@@ -136,6 +138,7 @@ export default function AdminClassScreen() {
     setClassId(itemId);
     setName(String(item.name ?? ''));
     setSection(String(item.section ?? ''));
+    setSubjectsText(Array.isArray(item.subjects) ? item.subjects.join(', ') : '');
     setModalVisible(true);
     animation.setValue(0);
     Animated.timing(animation, {
@@ -158,19 +161,28 @@ export default function AdminClassScreen() {
   };
 
   const saveClass = async () => {
+    const subjects = subjectsText
+      .split(',')
+      .map(item => item.trim())
+      .filter(Boolean);
+
     if (!name.trim() || !section.trim()) {
       setMessage({ type: 'error', text: 'Class name and section are required.' });
+      return;
+    }
+    if (!subjects.length) {
+      setMessage({ type: 'error', text: 'At least one subject is required.' });
       return;
     }
 
     try {
       if (modalMode === 'add') {
-        await createMutation.mutateAsync({ name, section });
+        await createMutation.mutateAsync({ name, section, subjects });
         setMessage({ type: 'success', text: 'Class created successfully.' });
       } else {
         await updateMutation.mutateAsync({
           id: classId,
-          payload: { name: name.trim(), section: section.trim().toUpperCase() },
+          payload: { name: name.trim(), section: section.trim().toUpperCase(), subjects },
         });
         setMessage({ type: 'success', text: 'Class updated successfully.' });
       }
@@ -282,6 +294,9 @@ export default function AdminClassScreen() {
             <View style={styles.cardLeft}>
               <Text style={[styles.cardTitle, { fontSize: 17 * textScale }]}>Class {item.name}</Text>
               <Text style={[styles.cardMeta, { fontSize: 13 * textScale }]}>Section: {item.section}</Text>
+              <Text style={[styles.cardMeta, { fontSize: 12 * textScale }]}>
+                Subjects: {Array.isArray(item.subjects) && item.subjects.length ? item.subjects.join(', ') : '-'}
+              </Text>
             </View>
             <View style={styles.cardActions}>
               <Pressable style={styles.editBtn} onPress={() => openEditModal(item)}>
@@ -353,6 +368,18 @@ export default function AdminClassScreen() {
                 onChangeText={setSection}
                 autoCapitalize="characters"
                 placeholder="e.g. A or SCIENCE"
+                placeholderTextColor={colors.text.muted}
+              />
+            </View>
+
+            <Text style={styles.inputLabel}>Subjects</Text>
+            <View style={styles.inputRow}>
+              <AppIcon name="book-outline" size={18} color={colors.admin.accent} style={styles.inputIcon} />
+              <TextInput
+                style={styles.inputWithIcon}
+                value={subjectsText}
+                onChangeText={setSubjectsText}
+                placeholder="English, Hindi, Sanskrit, Maths"
                 placeholderTextColor={colors.text.muted}
               />
             </View>

@@ -4,7 +4,7 @@ import AppIcon from '../common/AppIcon.js';
 import { useAppTheme } from '../../theme/ThemeContext';
 import ConfirmModal from '../common/ConfirmModal';
 
-export default function TeacherProfileScreen({ session, onLogout }) {
+export default function TeacherProfileScreen({ session, onLogout, onOpenResults }) {
   const { colors } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [logoutVisible, setLogoutVisible] = useState(false);
@@ -51,6 +51,17 @@ export default function TeacherProfileScreen({ session, onLogout }) {
 
       <View style={styles.actionCard}>
         <Text style={styles.actionTitle}>Session Action</Text>
+        <Pressable style={styles.actionRow} onPress={onOpenResults}>
+          <View style={styles.actionIconWrap}>
+            <AppIcon name="document-text-outline" size={16} color={colors.teacher.accent} />
+          </View>
+          <View style={styles.logoutBody}>
+            <Text style={styles.logoutTitle}>Result & Marksheet</Text>
+            <Text style={styles.logoutSub}>Create and submit student exam results</Text>
+          </View>
+          <AppIcon name="chevron-forward" size={15} color={colors.teacher.accent} />
+        </Pressable>
+
         <Pressable
           style={styles.logoutRow}
           onPress={() => {
@@ -199,6 +210,7 @@ const createStyles = colors =>
       marginBottom: 8,
     },
     logoutRow: {
+      marginTop: 8,
       borderRadius: 12,
       borderWidth: 1,
       borderColor: colors.teacher.dangerBorder,
@@ -207,6 +219,24 @@ const createStyles = colors =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 9,
+    },
+    actionRow: {
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.teacher.borderSoft,
+      backgroundColor: colors.teacher.surfaceStrong,
+      padding: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 9,
+    },
+    actionIconWrap: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.teacher.surface,
     },
     logoutIconWrap: {
       width: 32,

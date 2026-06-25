@@ -39,7 +39,7 @@ function MessageBanner({ text, type, onClose, styles }) {
   );
 }
 
-export default function StudentProfileScreen({ session, onLogout }) {
+export default function StudentProfileScreen({ session, onLogout, onOpenResults }) {
   const { colors } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -149,6 +149,17 @@ export default function StudentProfileScreen({ session, onLogout }) {
 
       <View style={styles.actionsCard}>
         <Text style={styles.actionsTitle}>Account Actions</Text>
+        <Pressable style={styles.actionRowPrimary} onPress={onOpenResults}>
+          <View style={styles.actionIconWrap}>
+            <AppIcon name="document-text-outline" size={16} color={colors.role.studentAccent} />
+          </View>
+          <View style={styles.actionBody}>
+            <Text style={styles.actionTitle}>Result & Marksheet</Text>
+            <Text style={styles.actionSub}>Open your submitted exam results</Text>
+          </View>
+          <AppIcon name="chevron-forward" size={15} color={colors.student.textSecondary} />
+        </Pressable>
+
         <Pressable style={styles.actionRowPrimary} onPress={() => setPasswordModalVisible(true)}>
           <View style={styles.actionIconWrap}>
             <AppIcon name="key-outline" size={16} color={colors.role.studentAccent} />

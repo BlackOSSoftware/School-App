@@ -2,6 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import AppIcon from '../common/AppIcon.js';
 import { changeAdminPassword } from '../../services/authService';
+import { setAuthToken } from '../../api/client';
+import { saveLocalSession } from '../../services/localSessionService';
+import {
+  useAdminTeacherAttendancePolicyQuery,
+  useUpdateAdminTeacherAttendancePolicyMutation,
+} from '../../hooks/useAttendanceQueries';
 import { useAppTheme } from '../../theme/ThemeContext';
 import ConfirmModal from '../common/ConfirmModal';
 
@@ -25,7 +31,7 @@ function MessageBanner({ text, type, onClose, styles }) {
   );
 }
 
-export default function AdminProfileScreen({ session, onLogout }) {
+export default function AdminProfileScreen({ session, onLogout, onOpenResults }) {
   const { colors } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -34,9 +40,13 @@ export default function AdminProfileScreen({ session, onLogout }) {
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ oldPassword: '', newPassword: '' });
+  const attendancePolicyQuery = useAdminTeacherAttendancePolicyQuery();
+  const updateAttendancePolicyMutation = useUpdateAdminTeacherAttendancePolicyMutation();
 
   const name = session?.user?.name || 'Super Admin';
   const role = String(session?.role || 'admin').toUpperCase();
+  const canMarkPastDates = Boolean(attendancePolicyQuery.data?.data?.canMarkPastDates);
+  const policyUpdatedBy = attendancePolicyQuery.data?.data?.updatedByName || 'Admin';
 
   useEffect(() => {
     if (!message.text) {
@@ -54,7 +64,15 @@ export default function AdminProfileScreen({ session, onLogout }) {
 
     setIsSavingPassword(true);
     try {
-      await changeAdminPassword(passwordForm);
+      const result = await changeAdminPassword(passwordForm);
+      if (result?.token) {
+        setAuthToken(result.token);
+        await saveLocalSession({
+          token: result.token,
+          role: session?.role || result.role || 'admin',
+          user: session?.user ?? result.user ?? null,
+        });
+      }
       setMessage({ type: 'success', text: 'Password changed successfully.' });
       setPasswordModalVisible(false);
       setPasswordForm({ oldPassword: '', newPassword: '' });
@@ -62,6 +80,20 @@ export default function AdminProfileScreen({ session, onLogout }) {
       setMessage({ type: 'error', text: getErrorMessage(error, 'Unable to change password.') });
     } finally {
       setIsSavingPassword(false);
+    }
+  };
+
+  const togglePastAttendance = async () => {
+    try {
+      await updateAttendancePolicyMutation.mutateAsync(!canMarkPastDates);
+      setMessage({
+        type: 'success',
+        text: !canMarkPastDates
+          ? 'Teachers can now mark attendance for old dates.'
+          : 'Past-date attendance has been locked for teachers.',
+      });
+    } catch (error) {
+      setMessage({ type: 'error', text: getErrorMessage(error, 'Unable to update attendance setting.') });
     }
   };
 
@@ -93,8 +125,57 @@ export default function AdminProfileScreen({ session, onLogout }) {
         </View>
       </View>
 
+      <View style={styles.settingsCard}>
+        <View style={styles.settingsHeader}>
+          <View style={styles.settingsIconWrap}>
+            <AppIcon name="time-outline" size={16} color={colors.brand.primary} />
+          </View>
+          <View style={styles.settingsBody}>
+            <Text style={styles.settingsTitle}>Teacher Attendance Control</Text>
+            <Text style={styles.settingsSub}>
+              Allow teachers to mark or edit attendance for past dates from their attendance screen.
+            </Text>
+          </View>
+        </View>
+
+        <Pressable
+          style={[styles.toggleCard, canMarkPastDates ? styles.toggleCardActive : null]}
+          onPress={togglePastAttendance}
+          disabled={attendancePolicyQuery.isLoading || updateAttendancePolicyMutation.isPending}
+        >
+          <View style={styles.toggleCardBody}>
+            <Text style={styles.toggleLabel}>Past-date attendance</Text>
+            <Text style={styles.toggleMeta}>
+              {canMarkPastDates ? 'Enabled for teachers' : 'Locked by admin'}
+            </Text>
+          </View>
+          <View style={[styles.toggleTrack, canMarkPastDates ? styles.toggleTrackActive : null]}>
+            {updateAttendancePolicyMutation.isPending ? (
+              <ActivityIndicator size="small" color={canMarkPastDates ? colors.text.inverse : colors.brand.primary} />
+            ) : (
+              <View style={[styles.toggleThumb, canMarkPastDates ? styles.toggleThumbActive : null]} />
+            )}
+          </View>
+        </Pressable>
+
+        <Text style={styles.settingsFootnote}>
+          Last control by {policyUpdatedBy}. Teachers still cannot mark future dates.
+        </Text>
+      </View>
+
       <View style={styles.actionsCard}>
         <Text style={styles.actionsTitle}>Account Actions</Text>
+        <Pressable style={styles.actionRowPrimary} onPress={onOpenResults}>
+          <View style={styles.actionIconWrap}>
+            <AppIcon name="document-text-outline" size={16} color={colors.brand.primary} />
+          </View>
+          <View style={styles.actionBody}>
+            <Text style={styles.actionTitle}>Result & Marksheet</Text>
+            <Text style={styles.actionSub}>Browse all student results class-wise</Text>
+          </View>
+          <AppIcon name="chevron-forward" size={15} color={colors.admin.textSecondary} />
+        </Pressable>
+
         <Pressable style={styles.actionRowPrimary} onPress={() => setPasswordModalVisible(true)}>
           <View style={styles.actionIconWrap}>
             <AppIcon name="key-outline" size={16} color={colors.brand.primary} />
@@ -278,6 +359,105 @@ const createStyles = colors =>
       borderColor: colors.admin.borderStrong,
       backgroundColor: colors.admin.surface,
       padding: 12,
+    },
+    settingsCard: {
+      marginTop: 10,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.admin.borderStrong,
+      backgroundColor: colors.admin.surface,
+      padding: 12,
+    },
+    settingsHeader: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 10,
+    },
+    settingsIconWrap: {
+      width: 34,
+      height: 34,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.admin.surfaceStrong,
+      borderWidth: 1,
+      borderColor: colors.admin.borderSoft,
+    },
+    settingsBody: {
+      flex: 1,
+    },
+    settingsTitle: {
+      color: colors.admin.textPrimary,
+      fontSize: 14,
+      fontWeight: '800',
+    },
+    settingsSub: {
+      marginTop: 3,
+      color: colors.admin.textSecondary,
+      fontSize: 11.5,
+      lineHeight: 17,
+    },
+    toggleCard: {
+      marginTop: 12,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.admin.borderSoft,
+      backgroundColor: colors.admin.surfaceStrong,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 10,
+    },
+    toggleCardActive: {
+      borderColor: colors.brand.primary,
+      backgroundColor: colors.admin.successBg,
+    },
+    toggleCardBody: {
+      flex: 1,
+    },
+    toggleLabel: {
+      color: colors.admin.textPrimary,
+      fontSize: 12.5,
+      fontWeight: '800',
+    },
+    toggleMeta: {
+      marginTop: 2,
+      color: colors.admin.textSecondary,
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    toggleTrack: {
+      width: 54,
+      height: 30,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.admin.borderSoft,
+      backgroundColor: colors.admin.surface,
+      padding: 3,
+      justifyContent: 'center',
+    },
+    toggleTrackActive: {
+      borderColor: colors.brand.primary,
+      backgroundColor: colors.brand.primary,
+    },
+    toggleThumb: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: colors.brand.primary,
+      alignSelf: 'flex-start',
+    },
+    toggleThumbActive: {
+      backgroundColor: colors.text.inverse,
+      alignSelf: 'flex-end',
+    },
+    settingsFootnote: {
+      marginTop: 9,
+      color: colors.admin.textSecondary,
+      fontSize: 11,
+      lineHeight: 16,
     },
     actionsTitle: {
       color: colors.admin.textPrimary,

@@ -79,8 +79,8 @@ export async function changeAdminPassword({ oldPassword, newPassword }) {
     oldPassword: String(oldPassword ?? ''),
     newPassword: String(newPassword ?? ''),
   };
-  const { data } = await apiClient.post('/auth/admin/change-password', payload);
-  return data;
+  const { data } = await apiClient.put('/auth/admin/change-password', payload);
+  return normalizeAuthResponse(data);
 }
 
 export async function getStudentMe() {

@@ -17,6 +17,7 @@ import { useTeacherClassesOverviewQuery } from '../../hooks/useTeacherQueries';
 import { useCreateTeacherContentMutation, useTeacherMyContentQuery } from '../../hooks/useContentQueries';
 import { openContentFile } from '../../services/fileService';
 import { useAppTheme } from '../../theme/ThemeContext';
+import CustomDropdownSelector from '../common/CustomDropdownSelector';
 import KeyboardAwareModal from '../common/KeyboardAwareModal';
 
 const PAGE_LIMIT = 10;
@@ -93,8 +94,6 @@ export default function TeacherContentScreen() {
   const [selectedSubject, setSelectedSubject] = useState('');
   const [message, setMessage] = useState({ type: '', text: '' });
   const [composeOpen, setComposeOpen] = useState(false);
-  const [showClassPicker, setShowClassPicker] = useState(false);
-  const [showSubjectPicker, setShowSubjectPicker] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [form, setForm] = useState({
     type: 'homework',
@@ -113,11 +112,11 @@ export default function TeacherContentScreen() {
     [overviewQuery.data?.assignedClasses],
   );
   const subjects = useMemo(() => {
-    const raw = Array.isArray(overviewQuery.data?.teacher?.lectureAssignments)
-      ? overviewQuery.data.teacher.lectureAssignments.map(item => item?.subject)
+    const raw = Array.isArray(overviewQuery.data?.teacher?.classSubjects)
+      ? overviewQuery.data.teacher.classSubjects
       : [];
     return [...new Set(raw.map(item => String(item ?? '').trim().toUpperCase()).filter(Boolean))];
-  }, [overviewQuery.data?.teacher?.lectureAssignments]);
+  }, [overviewQuery.data?.teacher?.classSubjects]);
 
   useEffect(() => {
     if (!selectedClassId && classList.length === 1) {
@@ -314,14 +313,42 @@ export default function TeacherContentScreen() {
       </View>
 
       <View style={styles.toolbarRow}>
-        <Pressable style={styles.filterBtn} onPress={() => setShowClassPicker(true)}>
-          <AppIcon name="business-outline" size={15} color={colors.teacher.accent} />
-          <Text style={styles.filterText}>{selectedClassLabel}</Text>
-        </Pressable>
-        <Pressable style={styles.filterBtn} onPress={() => setShowSubjectPicker(true)}>
-          <AppIcon name="book-outline" size={15} color={colors.teacher.accent} />
-          <Text style={styles.filterText}>{selectedSubject || 'All Subjects'}</Text>
-        </Pressable>
+        <View style={{ flex: 1 }}>
+          <CustomDropdownSelector
+            tone="teacher"
+            value={selectedClassLabel === 'All Classes' ? '' : selectedClassLabel}
+            placeholder="All Classes"
+            options={classList}
+            onSelect={value => {
+              setSelectedClassId(value || '');
+              setForm(prev => ({ ...prev, classId: value || '' }));
+            }}
+            includeNone
+            noneLabel="All / None"
+            valueExtractor={item => item?.id}
+            labelExtractor={item => item?.label}
+            searchPlaceholder="Search class or section"
+            containerStyle={{ marginBottom: 0 }}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <CustomDropdownSelector
+            tone="teacher"
+            value={selectedSubject}
+            placeholder="All Subjects"
+            options={subjects.map(item => ({ id: item, label: item }))}
+            onSelect={value => {
+              setSelectedSubject(value || '');
+              setForm(prev => ({ ...prev, subject: value || '' }));
+            }}
+            includeNone
+            noneLabel="All / None"
+            valueExtractor={item => item?.id}
+            labelExtractor={item => item?.label}
+            searchPlaceholder="Search subject"
+            containerStyle={{ marginBottom: 0 }}
+          />
+        </View>
         <Pressable style={styles.addBtn} onPress={openComposer}>
           <AppIcon name="add" size={14} color={colors.text.inverse} />
           <Text style={styles.addBtnText}>Post</Text>
@@ -373,14 +400,26 @@ export default function TeacherContentScreen() {
               </Pressable>
             </View>
 
-            <Pressable style={styles.inputSelect} onPress={() => setShowClassPicker(true)}>
-              <Text style={styles.inputSelectText}>
-                {form.classId ? classList.find(item => item.id === form.classId)?.label ?? form.classId : 'Select class'}
-              </Text>
-            </Pressable>
-            <Pressable style={styles.inputSelect} onPress={() => setShowSubjectPicker(true)}>
-              <Text style={styles.inputSelectText}>{form.subject || 'Select subject'}</Text>
-            </Pressable>
+            <CustomDropdownSelector
+              tone="teacher"
+              value={form.classId ? classList.find(item => item.id === form.classId)?.label ?? form.classId : ''}
+              placeholder="Select class"
+              options={classList}
+              onSelect={value => setForm(prev => ({ ...prev, classId: value || '' }))}
+              valueExtractor={item => item?.id}
+              labelExtractor={item => item?.label}
+              searchPlaceholder="Search class or section"
+            />
+            <CustomDropdownSelector
+              tone="teacher"
+              value={form.subject}
+              placeholder="Select subject"
+              options={subjects.map(item => ({ id: item, label: item }))}
+              onSelect={value => setForm(prev => ({ ...prev, subject: value || '' }))}
+              valueExtractor={item => item?.id}
+              labelExtractor={item => item?.label}
+              searchPlaceholder="Search subject"
+            />
 
             <View style={styles.inputRow}>
               <TextInput
@@ -463,47 +502,6 @@ export default function TeacherContentScreen() {
         </View>
       </Modal>
 
-      <Modal visible={showClassPicker} transparent animationType="fade">
-        <View style={styles.pickerOverlay}>
-          <View style={styles.pickerCard}>
-            <Text style={styles.modalTitle}>Select Class</Text>
-            <ScrollView style={styles.pickerList}>
-              <Pressable style={styles.pickerItem} onPress={() => { setSelectedClassId(''); setForm(prev => ({ ...prev, classId: '' })); setShowClassPicker(false); }}>
-                <Text style={styles.pickerText}>All / None</Text>
-              </Pressable>
-              {classList.map(item => (
-                <Pressable key={item.id} style={styles.pickerItem} onPress={() => { setSelectedClassId(item.id); setForm(prev => ({ ...prev, classId: item.id })); setShowClassPicker(false); }}>
-                  <Text style={styles.pickerText}>{item.label}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-            <Pressable style={styles.cancelBtn} onPress={() => setShowClassPicker(false)}>
-              <Text style={styles.cancelText}>Close</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal visible={showSubjectPicker} transparent animationType="fade">
-        <View style={styles.pickerOverlay}>
-          <View style={styles.pickerCard}>
-            <Text style={styles.modalTitle}>Select Subject</Text>
-            <ScrollView style={styles.pickerList}>
-              <Pressable style={styles.pickerItem} onPress={() => { setSelectedSubject(''); setForm(prev => ({ ...prev, subject: '' })); setShowSubjectPicker(false); }}>
-                <Text style={styles.pickerText}>All / None</Text>
-              </Pressable>
-              {subjects.map(subjectItem => (
-                <Pressable key={subjectItem} style={styles.pickerItem} onPress={() => { setSelectedSubject(subjectItem); setForm(prev => ({ ...prev, subject: subjectItem })); setShowSubjectPicker(false); }}>
-                  <Text style={styles.pickerText}>{subjectItem}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-            <Pressable style={styles.cancelBtn} onPress={() => setShowSubjectPicker(false)}>
-              <Text style={styles.cancelText}>Close</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -558,7 +556,12 @@ const createStyles = colors =>
       shadowOffset: { width: 0, height: 3 },
       elevation: 2,
     },
+    filterBtnActive: {
+      borderColor: colors.brand.primary,
+      backgroundColor: colors.teacher.successBg,
+    },
     filterText: { color: colors.teacher.textPrimary, fontSize: 11.5, fontWeight: '700', flex: 1 },
+    filterPlaceholderText: { color: colors.teacher.textSecondary },
     addBtn: {
       borderRadius: 11,
       backgroundColor: colors.teacher.navBg,
@@ -639,13 +642,27 @@ const createStyles = colors =>
     inputSelect: {
       borderWidth: 1,
       borderColor: colors.teacher.borderSoft,
-      borderRadius: 10,
+      borderRadius: 12,
       backgroundColor: colors.teacher.surfaceStrong,
       paddingHorizontal: 12,
-      paddingVertical: 10,
+      paddingVertical: 11,
       marginBottom: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
     },
-    inputSelectText: { color: colors.teacher.textPrimary, fontSize: 12.5, fontWeight: '600' },
+    inputSelectActive: {
+      borderColor: colors.brand.primary,
+      backgroundColor: colors.teacher.successBg,
+      shadowColor: '#194c89',
+      shadowOpacity: 0.12,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 2,
+    },
+    inputSelectText: { color: colors.teacher.textPrimary, fontSize: 12.5, fontWeight: '600', flex: 1 },
+    inputSelectPlaceholderText: { color: colors.teacher.textSecondary },
     inputLabel: {
       color: colors.teacher.textSecondary,
       fontSize: 12,
@@ -696,15 +713,6 @@ const createStyles = colors =>
     submitBtn: { borderRadius: 10, backgroundColor: colors.brand.primary, paddingHorizontal: 12, paddingVertical: 8, minWidth: 74, alignItems: 'center' },
     submitText: { color: colors.text.inverse, fontSize: 12, fontWeight: '800' },
     pickerOverlay: { flex: 1, backgroundColor: colors.teacher.modalBackdrop, justifyContent: 'center', paddingHorizontal: 16 },
-    pickerCard: {
-      width: '100%',
-      maxHeight: '68%',
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: colors.teacher.borderStrong,
-      backgroundColor: colors.teacher.surface,
-      padding: 12,
-    },
     detailCard: {
       width: '100%',
       maxHeight: '74%',
@@ -749,7 +757,4 @@ const createStyles = colors =>
     },
     filePillText: { color: colors.teacher.textSecondary, fontSize: 11.5, fontWeight: '700' },
     singleActionRow: { marginTop: 4, marginBottom: 2 },
-    pickerList: { maxHeight: 280 },
-    pickerItem: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.teacher.borderSubtle },
-    pickerText: { color: colors.teacher.textPrimary, fontSize: 12.5, fontWeight: '700' },
   });

@@ -8,7 +8,7 @@ import {
   useAdminStudentAttendanceReportQuery,
   useUpdateAdminStudentAttendanceByDateMutation,
 } from '../../hooks/useAttendanceQueries';
-import { getTodayIsoDate } from '../../services/attendanceService';
+import { formatDisplayDate, getTodayIsoDate } from '../../services/attendanceService';
 import { useAppTheme } from '../../theme/ThemeContext';
 import AttendanceReportModal from '../common/AttendanceReportModal';
 
@@ -116,13 +116,13 @@ export default function AdminAttendanceScreen() {
     <View style={styles.container}>
       <View style={styles.heroCard}>
         <Text style={styles.heroKicker}>ATTENDANCE CONTROL ROOM</Text>
-        <Text style={styles.heroTitle}>{dateIso}</Text>
+        <Text style={styles.heroTitle}>{formatDisplayDate(dateIso)}</Text>
         <Text style={styles.heroSub}>Review class wise status and open detailed student list.</Text>
       </View>
 
       <Pressable style={styles.dateBtn} onPress={() => setShowPicker(true)}>
         <AppIcon name="calendar-outline" size={16} color={colors.admin.accent} />
-        <Text style={styles.dateBtnText}>Change Date: {dateIso}</Text>
+        <Text style={styles.dateBtnText}>Change Date: {formatDisplayDate(dateIso)}</Text>
       </Pressable>
 
       {summaryQuery.isLoading ? (

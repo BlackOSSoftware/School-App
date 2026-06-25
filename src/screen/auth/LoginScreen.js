@@ -203,12 +203,25 @@ export default function LoginScreen({ onLoginSuccess }) {
       const message = getApiErrorMessage(error);
       const activeUrl = getApiBaseUrl();
       const availableUrls = getApiBaseUrlCandidates().join('\n');
+      const isNetworkError = !error?.response;
+      const isLocalhostTarget = /:\/\/(localhost|127\.0\.0\.1)(?::|\/)/i.test(activeUrl);
+      const networkHint = isNetworkError && isLocalhostTarget
+        ? '\n\nHint: if you are testing on Android, run the app using `npm run android` so `adb reverse` maps port 4000, or set `API_BASE_URL` to your PC LAN IP like `http://192.168.x.x:4000/api/v1/`.'
+        : '';
+      const normalizedMessage = String(message ?? '').trim().toLowerCase();
+      const errorTitle = isNetworkError
+        ? 'Server not reachable'
+        : normalizedMessage === 'invalid password'
+          ? 'Invalid password'
+          : normalizedMessage === 'invalid email or scholar number'
+            ? 'Invalid email or scholar number'
+            : 'Something went wrong';
       const extra = !error?.response
         ? `\n\nActive API URL: ${activeUrl}\n\nTried URLs:\n${availableUrls}`
         : error?.response?.status === 404
           ? `\n\nActive API URL: ${activeUrl}`
           : '';
-      showError('Invalid credentials', `${message}${extra}`);
+      showError(errorTitle, `${message}${extra}${networkHint}`);
     }
   };
 

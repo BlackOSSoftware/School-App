@@ -8,6 +8,7 @@ import TeacherAttendanceScreen from '../../components/teacher/TeacherAttendanceS
 import TeacherContentScreen from '../../components/teacher/TeacherContentScreen';
 import TeacherDashboardHome from '../../components/teacher/TeacherDashboardHome';
 import TeacherProfileScreen from '../../components/teacher/TeacherProfileScreen';
+import TeacherResultEntryScreen from '../../components/teacher/TeacherResultEntryScreen';
 import TeacherTopBar from '../../components/teacher/TeacherTopBar';
 import TeacherVideoScreen from '../../components/teacher/TeacherVideoScreen';
 import { useTeacherClassesOverviewQuery, useTeacherStudentsByClassQuery } from '../../hooks/useTeacherQueries';
@@ -176,8 +177,10 @@ export default function TeacherDashboard({ session, onLogout }) {
             ? 'Announcement'
             : activeTab === 'videos'
               ? 'Videos'
-            : activeTab === 'profile'
-              ? 'Profile'
+      : activeTab === 'profile'
+              ? currentScreen === 'result-entry'
+                ? 'Result Entry'
+                : 'Profile'
               : 'Teacher Dashboard';
 
   const renderRootScreen = () => {
@@ -204,7 +207,11 @@ export default function TeacherDashboard({ session, onLogout }) {
       return <TeacherVideoScreen />;
     }
     return (
-      <TeacherProfileScreen session={session} onLogout={onLogout} />
+      <TeacherProfileScreen
+        session={session}
+        onLogout={onLogout}
+        onOpenResults={() => setCurrentScreen('result-entry')}
+      />
     );
   };
 
@@ -257,6 +264,8 @@ export default function TeacherDashboard({ session, onLogout }) {
             onPageChange={setClassStudentsPage}
             onBackToDashboard={handleGoBack}
           />
+        ) : currentScreen === 'result-entry' ? (
+          <TeacherResultEntryScreen assignedClass={overviewQuery.data?.assignedClasses?.[0] || overviewQuery.data?.teacher?.classTeacherOf} />
         ) : activeTab === 'announcement' || activeTab === 'attendance' || activeTab === 'homework' || activeTab === 'videos' ? (
           renderRootScreen()
         ) : (

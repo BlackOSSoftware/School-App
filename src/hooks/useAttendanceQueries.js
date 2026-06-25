@@ -4,7 +4,10 @@ import {
   getAdminAttendanceSummaryByDate,
   getAdminClassAttendanceByDate,
   getAdminStudentAttendanceReport,
+  getAdminTeacherAttendancePolicy,
+  getTeacherAttendancePolicy,
   updateAdminStudentAttendanceByDate,
+  updateAdminTeacherAttendancePolicy,
   getStudentMyAttendanceReport,
   getTeacherClassAttendanceByDate,
   getTeacherStudentAttendanceReport,
@@ -19,6 +22,8 @@ export const ATTENDANCE_QUERY_KEYS = {
   adminDateSummary: date => ['attendance', 'admin', 'date-summary', date],
   adminClassDate: (classId, date, sessionId) => ['attendance', 'admin', 'class-date', classId, date, sessionId],
   adminStudentReport: (classId, studentId, from, to, sessionId) => ['attendance', 'admin', 'student-report', classId, studentId, from, to, sessionId],
+  adminTeacherPolicy: ['attendance', 'admin', 'teacher-policy'],
+  teacherPolicy: ['attendance', 'teacher', 'policy'],
   studentMeReport: (from, to) => ['attendance', 'student', 'me-report', from, to],
 };
 
@@ -52,6 +57,16 @@ export function useTeacherStudentAttendanceReportQuery({ classId, studentId, fro
   });
 }
 
+export function useTeacherAttendancePolicyQuery({ enabled = true } = {}) {
+  return useQuery({
+    queryKey: ATTENDANCE_QUERY_KEYS.teacherPolicy,
+    queryFn: getTeacherAttendancePolicy,
+    enabled,
+    staleTime: 20 * 1000,
+    placeholderData: previousData => previousData,
+  });
+}
+
 export function useAdminAttendanceSummaryByDateQuery({ date, enabled = true }) {
   return useQuery({
     queryKey: ATTENDANCE_QUERY_KEYS.adminDateSummary(date),
@@ -66,6 +81,16 @@ export function useAdminDashboardSummaryQuery({ enabled = true } = {}) {
   return useQuery({
     queryKey: ATTENDANCE_QUERY_KEYS.adminDashboardSummary,
     queryFn: getAdminDashboardSummary,
+    enabled,
+    staleTime: 20 * 1000,
+    placeholderData: previousData => previousData,
+  });
+}
+
+export function useAdminTeacherAttendancePolicyQuery({ enabled = true } = {}) {
+  return useQuery({
+    queryKey: ATTENDANCE_QUERY_KEYS.adminTeacherPolicy,
+    queryFn: getAdminTeacherAttendancePolicy,
     enabled,
     staleTime: 20 * 1000,
     placeholderData: previousData => previousData,
@@ -114,6 +139,18 @@ export function useUpdateAdminStudentAttendanceByDateMutation() {
   return useMutation({
     mutationFn: updateAdminStudentAttendanceByDate,
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ATTENDANCE_QUERY_KEYS.all });
+    },
+  });
+}
+
+export function useUpdateAdminTeacherAttendancePolicyMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: updateAdminTeacherAttendancePolicy,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ATTENDANCE_QUERY_KEYS.adminTeacherPolicy });
+      queryClient.invalidateQueries({ queryKey: ATTENDANCE_QUERY_KEYS.teacherPolicy });
       queryClient.invalidateQueries({ queryKey: ATTENDANCE_QUERY_KEYS.all });
     },
   });

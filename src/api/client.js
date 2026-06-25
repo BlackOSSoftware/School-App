@@ -25,6 +25,30 @@ function joinUrl(baseUrl, path = '') {
   return `${normalizedBase}${normalizedPath}`;
 }
 
+function parseUrlParts(rawUrl) {
+  const value = String(rawUrl ?? '').trim();
+  const match = value.match(/^(https?):\/\/([^/:?#]+)(:\d+)?(.*)$/i);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    protocol: match[1].toLowerCase(),
+    hostname: match[2],
+    port: match[3] ?? '',
+    suffix: match[4] ?? '',
+  };
+}
+
+function replaceUrlHostname(rawUrl, nextHost) {
+  const parts = parseUrlParts(rawUrl);
+  if (!parts || !nextHost) {
+    return String(rawUrl ?? '');
+  }
+
+  return `${parts.protocol}://${nextHost}${parts.port}${parts.suffix}`;
+}
+
 function getDevServerHostCandidates() {
   const scriptUrl =
     NativeModules?.SourceCode?.scriptURL ||
@@ -35,16 +59,13 @@ function getDevServerHostCandidates() {
     return [];
   }
 
-  try {
-    const parsed = new URL(String(scriptUrl));
-    const host = String(parsed.hostname ?? '').trim();
-    if (!host || host === 'localhost' || host === '127.0.0.1') {
-      return [];
-    }
-    return [host];
-  } catch {
+  const parts = parseUrlParts(scriptUrl);
+  const host = String(parts?.hostname ?? '').trim();
+  if (!host || host === 'localhost' || host === '127.0.0.1') {
     return [];
   }
+
+  return [host];
 }
 
 function buildBaseUrlCandidates(url) {
@@ -67,40 +88,36 @@ function buildBaseUrlCandidates(url) {
     return includeCloudFallback ? [normalizedUrl, CLOUD_API_FALLBACK] : [normalizedUrl];
   }
 
-  try {
-    const parsed = new URL(normalizedUrl);
-    if (parsed.hostname !== 'localhost' && parsed.hostname !== '127.0.0.1') {
-      return includeCloudFallback
-        ? [...new Set([normalizedUrl, CLOUD_API_FALLBACK])]
-        : [normalizedUrl];
-    }
-
-    const hosts =
-      Platform.OS === 'android'
-        ? [
-            ...getDevServerHostCandidates(),
-            '10.0.2.2',
-            '10.0.3.2',
-            '127.0.0.1',
-            'localhost',
-          ]
-        : [
-            ...getDevServerHostCandidates(),
-            '127.0.0.1',
-            'localhost',
-          ];
-    const candidates = hosts.map(host => {
-      const clone = new URL(normalizedUrl);
-      clone.hostname = host;
-      return clone.toString();
-    });
-
-    return includeCloudFallback ? [...new Set([...candidates, CLOUD_API_FALLBACK])] : [...new Set(candidates)];
-  } catch {
+  const parts = parseUrlParts(normalizedUrl);
+  if (!parts) {
     return includeCloudFallback
       ? [...new Set([normalizedUrl, CLOUD_API_FALLBACK])]
       : [normalizedUrl];
   }
+
+  if (parts.hostname !== 'localhost' && parts.hostname !== '127.0.0.1') {
+    return includeCloudFallback
+      ? [...new Set([normalizedUrl, CLOUD_API_FALLBACK])]
+      : [normalizedUrl];
+  }
+
+  const hosts =
+    Platform.OS === 'android'
+      ? [
+          ...getDevServerHostCandidates(),
+          '10.0.2.2',
+          '10.0.3.2',
+          '127.0.0.1',
+          'localhost',
+        ]
+      : [
+          ...getDevServerHostCandidates(),
+          '127.0.0.1',
+          'localhost',
+        ];
+  const candidates = hosts.map(host => replaceUrlHostname(normalizedUrl, host));
+
+  return includeCloudFallback ? [...new Set([...candidates, CLOUD_API_FALLBACK])] : [...new Set(candidates)];
 }
 
 const apiBaseUrlCandidates = buildBaseUrlCandidates(API_BASE_URL);

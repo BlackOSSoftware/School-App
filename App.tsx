@@ -58,7 +58,12 @@ export default function App() {
     visible: false,
     title: '',
     message: '',
+    data: null as null | Record<string, unknown>,
   });
+  const [notificationIntent, setNotificationIntent] = useState<null | {
+    targetTab: string;
+    receivedAt: number;
+  }>(null);
   const queryClient = useMemo(
     () =>
       new QueryClient({
@@ -78,6 +83,18 @@ export default function App() {
   );
 
   const role = normalizeRole(session?.role);
+
+  const parseNotificationIntent = useCallback((remoteMessage: any) => {
+    const data = remoteMessage?.data || {};
+    const targetTab = String(data?.targetTab || '').trim().toLowerCase();
+    if (!targetTab) {
+      return null;
+    }
+    return {
+      targetTab,
+      receivedAt: Date.now(),
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -130,17 +147,30 @@ export default function App() {
 
     const unsubscribeForeground = messagingInstance.onMessage(async remoteMessage => {
       const payload = await displayRemoteNotification(remoteMessage);
+      const parsedData = remoteMessage?.data ?? null;
       setNotificationModal({
         visible: true,
         title: payload?.title || 'MMPS',
         message: payload?.body || 'New notification received',
+        data: parsedData,
       });
     });
 
-    const unsubscribeOpen = messagingInstance.onNotificationOpenedApp(() => {});
+    const unsubscribeOpen = messagingInstance.onNotificationOpenedApp(remoteMessage => {
+      const intent = parseNotificationIntent(remoteMessage);
+      if (intent) {
+        setNotificationIntent(intent);
+      }
+    });
 
     messagingInstance
       .getInitialNotification()
+      .then(remoteMessage => {
+        const intent = parseNotificationIntent(remoteMessage);
+        if (intent) {
+          setNotificationIntent(intent);
+        }
+      })
       .catch(() => {});
 
     return () => {
@@ -148,7 +178,7 @@ export default function App() {
       unsubscribeForeground();
       unsubscribeOpen();
     };
-  }, []);
+  }, [parseNotificationIntent]);
 
   useEffect(() => {
     if (!session?.token || showSplash || restoringSession) {
@@ -197,7 +227,14 @@ export default function App() {
       return <TeacherDashboard session={session} onLogout={logout} />;
     }
 
-    return <StudentDashboard session={session} onLogout={logout} />;
+    return (
+      <StudentDashboard
+        session={session}
+        onLogout={logout}
+        notificationIntent={notificationIntent}
+        onConsumeNotificationIntent={() => setNotificationIntent(null)}
+      />
+    );
   };
 
   return (
@@ -219,9 +256,18 @@ export default function App() {
                 <Text style={styles.notificationText}>{notificationModal.message}</Text>
                 <Pressable
                   style={styles.notificationButton}
-                  onPress={() => setNotificationModal({ visible: false, title: '', message: '' })}
+                  onPress={() => {
+                    const targetTab = String(notificationModal?.data?.targetTab || '').trim().toLowerCase();
+                    if (targetTab) {
+                      setNotificationIntent({
+                        targetTab,
+                        receivedAt: Date.now(),
+                      });
+                    }
+                    setNotificationModal({ visible: false, title: '', message: '', data: null });
+                  }}
                 >
-                  <Text style={styles.notificationButtonText}>OK</Text>
+                  <Text style={styles.notificationButtonText}>Open</Text>
                 </Pressable>
               </View>
             </View>

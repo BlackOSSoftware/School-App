@@ -5,6 +5,7 @@ import { useCreateTeacherAnnouncementMutation, useMyAnnouncementsQuery } from '.
 import { useTeacherClassesOverviewQuery } from '../../hooks/useTeacherQueries';
 import { useAppTheme } from '../../theme/ThemeContext';
 import AnnouncementFeed from '../common/AnnouncementFeed';
+import CustomDropdownSelector from '../common/CustomDropdownSelector';
 import KeyboardAwareModal from '../common/KeyboardAwareModal';
 import NotificationDetailsModal from '../common/NotificationDetailsModal';
 
@@ -34,7 +35,6 @@ export default function TeacherAnnouncementScreen() {
 
   const [page, setPage] = useState(1);
   const [composeOpen, setComposeOpen] = useState(false);
-  const [classDropdownOpen, setClassDropdownOpen] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [form, setForm] = useState({ title: '', description: '', classIds: [] });
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
@@ -46,13 +46,18 @@ export default function TeacherAnnouncementScreen() {
     () => (Array.isArray(overviewQuery.data?.assignedClasses) ? overviewQuery.data.assignedClasses : []),
     [overviewQuery.data?.assignedClasses],
   );
-  const availableClassIds = useMemo(() => classes.map(item => item.id).filter(Boolean), [classes]);
-  const allClassesSelected = useMemo(() => {
-    if (!availableClassIds.length) {
-      return false;
+  const teacherClass = classes[0] ?? null;
+  const selectedClassId = form.classIds[0] || teacherClass?.id || '';
+  const selectedClassLabel = classes.find(item => item?.id === selectedClassId)?.label || teacherClass?.label || 'Class not assigned';
+
+  useEffect(() => {
+    if (teacherClass?.id) {
+      setForm(prev => ({
+        ...prev,
+        classIds: [teacherClass.id],
+      }));
     }
-    return availableClassIds.every(id => form.classIds.includes(id));
-  }, [availableClassIds, form.classIds]);
+  }, [teacherClass?.id]);
 
   useEffect(() => {
     if (!message.text) {
@@ -67,8 +72,8 @@ export default function TeacherAnnouncementScreen() {
       setMessage({ type: 'error', text: 'Title and description are required.' });
       return;
     }
-    if (!form.classIds.length) {
-      setMessage({ type: 'error', text: 'Please select at least one class.' });
+    if (!teacherClass?.id) {
+      setMessage({ type: 'error', text: 'Class teacher assignment not found.' });
       return;
     }
 
@@ -76,11 +81,10 @@ export default function TeacherAnnouncementScreen() {
       await createMutation.mutateAsync({
         title: form.title,
         description: form.description,
-        classIds: form.classIds,
+        classIds: [teacherClass.id],
       });
       setMessage({ type: 'success', text: 'Announcement published successfully.' });
       setForm({ title: '', description: '', classIds: [] });
-      setClassDropdownOpen(false);
       setComposeOpen(false);
       setPage(1);
     } catch (error) {
@@ -133,65 +137,18 @@ export default function TeacherAnnouncementScreen() {
               </Pressable>
             </View>
 
-            <Text style={styles.inputLabel}>Target Classes</Text>
-            <Pressable style={styles.selectBtn} onPress={() => setClassDropdownOpen(prev => !prev)}>
-              <AppIcon name="library-outline" size={16} color={colors.teacher.accent} />
-              <Text style={styles.selectText}>
-                {form.classIds.length
-                  ? `${form.classIds.length} class${form.classIds.length > 1 ? 'es' : ''} selected`
-                  : 'Select class(es)'}
-              </Text>
-              <AppIcon name={classDropdownOpen ? 'chevron-up' : 'chevron-down'} size={16} color={colors.teacher.textSecondary} />
-            </Pressable>
-            {classDropdownOpen ? (
-              <View style={styles.dropdownBox}>
-                <ScrollView nestedScrollEnabled style={styles.modalList}>
-                  <Pressable
-                    style={styles.modalItem}
-                    onPress={() => {
-                      if (!availableClassIds.length) {
-                        return;
-                      }
-                      setForm(prev => ({
-                        ...prev,
-                        classIds: allClassesSelected ? [] : availableClassIds,
-                      }));
-                    }}
-                  >
-                    <Text style={styles.modalItemText}>
-                      {allClassesSelected ? 'Clear All' : 'Select All'}
-                    </Text>
-                    {allClassesSelected ? (
-                      <AppIcon name="checkmark-circle" size={16} color={colors.brand.primary} />
-                    ) : (
-                      <AppIcon name="ellipse-outline" size={16} color={colors.teacher.textSecondary} />
-                    )}
-                  </Pressable>
-                  {classes.map(item => (
-                    <Pressable
-                      key={item.id}
-                      style={styles.modalItem}
-                      onPress={() => {
-                        setForm(prev => {
-                          const exists = prev.classIds.includes(item.id);
-                          return {
-                            ...prev,
-                            classIds: exists
-                              ? prev.classIds.filter(id => id !== item.id)
-                              : [...prev.classIds, item.id],
-                          };
-                        });
-                      }}
-                    >
-                      <Text style={styles.modalItemText}>{item.label}</Text>
-                      {form.classIds.includes(item.id) ? (
-                        <AppIcon name="checkmark-circle" size={16} color={colors.brand.primary} />
-                      ) : null}
-                    </Pressable>
-                  ))}
-                </ScrollView>
-              </View>
-            ) : null}
+            <CustomDropdownSelector
+              label="Target Classes"
+              tone="teacher"
+              value={selectedClassLabel}
+              placeholder="Select class"
+              options={teacherClass ? [teacherClass] : []}
+              onSelect={value => setForm(prev => ({ ...prev, classIds: value ? [value] : [] }))}
+              valueExtractor={item => item?.id}
+              labelExtractor={item => item?.label}
+              searchPlaceholder="Search class or section"
+              disabled={!teacherClass?.id}
+            />
 
             <Text style={styles.inputLabel}>Title</Text>
             <View style={styles.inputRow}>
@@ -421,19 +378,18 @@ const createStyles = colors =>
       alignItems: 'center',
       gap: 8,
     },
+    selectBtnActive: {
+      borderColor: colors.brand.primary,
+      backgroundColor: colors.teacher.successBg,
+    },
     selectText: {
       flex: 1,
       color: colors.teacher.textPrimary,
       fontSize: 12.5,
       fontWeight: '600',
     },
-    dropdownBox: {
-      borderWidth: 1,
-      borderColor: colors.teacher.borderSoft,
-      borderRadius: 10,
-      backgroundColor: colors.teacher.surfaceStrong,
-      marginBottom: 10,
-      overflow: 'hidden',
+    selectTextPlaceholder: {
+      color: colors.teacher.textSecondary,
     },
     inputRow: {
       borderWidth: 1,
@@ -493,22 +449,5 @@ const createStyles = colors =>
       color: colors.text.inverse,
       fontSize: 12,
       fontWeight: '800',
-    },
-    modalList: {
-      maxHeight: 260,
-    },
-    modalItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 8,
-      paddingVertical: 10,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.teacher.borderSubtle,
-    },
-    modalItemText: {
-      color: colors.teacher.textPrimary,
-      fontSize: 12.5,
-      fontWeight: '600',
     },
   });

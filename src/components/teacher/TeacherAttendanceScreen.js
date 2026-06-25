@@ -10,13 +10,15 @@ import {
   View,
 } from 'react-native';
 import AppIcon from '../common/AppIcon.js';
+import CustomDropdownSelector from '../common/CustomDropdownSelector';
 import {
   useMarkTeacherClassAttendanceMutation,
+  useTeacherAttendancePolicyQuery,
   useTeacherClassAttendanceByDateQuery,
   useTeacherStudentAttendanceReportQuery,
 } from '../../hooks/useAttendanceQueries';
 import { useTeacherClassesOverviewQuery, useTeacherStudentsByClassQuery } from '../../hooks/useTeacherQueries';
-import { getTodayIsoDate } from '../../services/attendanceService';
+import { formatDisplayDate, getTodayIsoDate } from '../../services/attendanceService';
 import { useAppTheme } from '../../theme/ThemeContext';
 
 function toIsoDate(value) {
@@ -125,12 +127,50 @@ function SummaryTile({ label, value, styles }) {
   );
 }
 
-function AttendanceStateHint({ attendanceTaken, styles, colors }) {
+function AttendanceStateHint({ attendanceTaken, selectedDateIso, todayIso, canMarkPastDates, styles, colors }) {
+  const isPastDate = selectedDateIso < todayIso;
+  const isFutureDate = selectedDateIso > todayIso;
+
+  if (isFutureDate) {
+    return (
+      <View style={styles.stateHintWrap}>
+        <AppIcon name="calendar-outline" size={14} color={colors.state.error} />
+        <Text style={[styles.stateHintText, styles.stateHintPending]}>
+          Future dates are locked. Choose today or an older date.
+        </Text>
+      </View>
+    );
+  }
+
+  if (isPastDate && !canMarkPastDates) {
+    return (
+      <View style={styles.stateHintWrap}>
+        <AppIcon name="lock-closed-outline" size={14} color={colors.state.error} />
+        <Text style={[styles.stateHintText, styles.stateHintPending]}>
+          Past attendance is locked. Admin must enable old-date attendance from settings.
+        </Text>
+      </View>
+    );
+  }
+
+  if (isPastDate) {
+    return (
+      <View style={styles.stateHintWrap}>
+        <AppIcon name="time-outline" size={14} color={colors.brand.primary} />
+        <Text style={[styles.stateHintText, styles.stateHintTaken]}>
+          Past-date attendance editing is enabled. You can update saved records for {formatDisplayDate(selectedDateIso)}.
+        </Text>
+      </View>
+    );
+  }
+
   if (attendanceTaken) {
     return (
       <View style={styles.stateHintWrap}>
         <AppIcon name="checkmark-circle-outline" size={14} color={colors.state.success} />
-        <Text style={[styles.stateHintText, styles.stateHintTaken]}>Today's attendance is already submitted. You can still edit and update it.</Text>
+        <Text style={[styles.stateHintText, styles.stateHintTaken]}>
+          Attendance for {formatDisplayDate(selectedDateIso)} is already submitted. You can still edit and update it.
+        </Text>
       </View>
     );
   }
@@ -138,7 +178,9 @@ function AttendanceStateHint({ attendanceTaken, styles, colors }) {
   return (
     <View style={styles.stateHintWrap}>
       <AppIcon name="create-outline" size={14} color={colors.teacher.textSecondary} />
-      <Text style={[styles.stateHintText, styles.stateHintPending]}>Attendance for today is pending. Tap mark to submit now.</Text>
+      <Text style={[styles.stateHintText, styles.stateHintPending]}>
+        Attendance for {formatDisplayDate(selectedDateIso)} is pending. Tap mark to submit now.
+      </Text>
     </View>
   );
 }
@@ -148,8 +190,8 @@ export default function TeacherAttendanceScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [today, setToday] = useState(getTodayIsoDate());
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedClassId, setSelectedClassId] = useState('');
-  const [classPickerVisible, setClassPickerVisible] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [markModalVisible, setMarkModalVisible] = useState(false);
   const [draftAttendance, setDraftAttendance] = useState({});
@@ -161,6 +203,7 @@ export default function TeacherAttendanceScreen() {
 
   const overviewQuery = useTeacherClassesOverviewQuery();
   const markMutation = useMarkTeacherClassAttendanceMutation();
+  const attendancePolicyQuery = useTeacherAttendancePolicyQuery();
 
   const classTeacherClass = useMemo(() => {
     const item = overviewQuery.data?.teacher?.classTeacherOf;
@@ -215,9 +258,14 @@ export default function TeacherAttendanceScreen() {
     return () => clearInterval(intervalId);
   }, []);
 
+  const selectedDateIso = toIsoDate(selectedDate);
+  const canMarkPastDates = Boolean(attendancePolicyQuery.data?.data?.canMarkPastDates);
+  const isFutureDate = selectedDateIso > today;
+  const isPastDateLocked = selectedDateIso < today && !canMarkPastDates;
+
   const attendanceQuery = useTeacherClassAttendanceByDateQuery({
     classId: selectedClassId,
-    date: today,
+    date: selectedDateIso,
     enabled: Boolean(selectedClassId),
   });
 
@@ -232,6 +280,7 @@ export default function TeacherAttendanceScreen() {
     const rows = Array.isArray(studentsQuery.data?.students) ? studentsQuery.data.students : [];
     return sortStudentsByName(rows);
   }, [studentsQuery.data?.students]);
+  const canSubmitAttendance = Boolean(selectedClassId) && !markMutation.isPending && !studentsQuery.isLoading && !isFutureDate && !isPastDateLocked;
 
   const summary = attendanceQuery.data?.data ?? null;
   const selectedClass = classes.find(item => item.id === selectedClassId) ?? null;
@@ -248,7 +297,7 @@ export default function TeacherAttendanceScreen() {
 
   const openMarkModal = () => {
     if (!classStudents.length) {
-      setMessage({ type: 'error', text: 'No students found in your assigned class for today.' });
+      setMessage({ type: 'error', text: `No students found in your assigned class for ${formatDisplayDate(selectedDateIso)}.` });
       return;
     }
 
@@ -275,7 +324,7 @@ export default function TeacherAttendanceScreen() {
     try {
       await markMutation.mutateAsync({
         classId: selectedClassId,
-        date: today,
+        date: selectedDateIso,
         attendance: payload,
       });
       setMessage({ type: 'success', text: summaryStats.attendanceTaken ? 'Attendance updated successfully.' : 'Attendance saved successfully.' });
@@ -285,7 +334,10 @@ export default function TeacherAttendanceScreen() {
       if (isAlreadySubmittedError(error)) {
         await attendanceQuery.refetch();
         setMarkModalVisible(false);
-        setMessage({ type: 'success', text: 'Attendance already exists for today. Loaded saved record for update.' });
+        setMessage({
+          type: 'success',
+          text: `Attendance already exists for ${formatDisplayDate(selectedDateIso)}. Loaded saved record for update.`,
+        });
         return;
       }
       setMessage({ type: 'error', text: getErrorMessage(error, 'Unable to save attendance.') });
@@ -297,32 +349,51 @@ export default function TeacherAttendanceScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.heroCard}>
-        <Text style={styles.heroKicker}>TODAY ATTENDANCE</Text>
-        <Text style={styles.heroTitle}>{today}</Text>
-        <Text style={styles.heroSub}>Your class: {selectedClass?.label || 'Not assigned'}.</Text>
+        <Text style={styles.heroKicker}>ATTENDANCE DESK</Text>
+        <Text style={styles.heroTitle}>{formatDisplayDate(selectedDateIso)}</Text>
+        <Text style={styles.heroSub}>
+          {selectedDateIso === today ? 'Manage today attendance.' : 'Review and update the selected attendance date.'} Your class: {selectedClass?.label || 'Not assigned'}.
+        </Text>
       </View>
 
       <View style={styles.controlRow}>
-        <Pressable
-          style={[styles.classSelectBtn, !showClassSelector ? styles.classSelectLocked : null]}
-          onPress={() => (showClassSelector ? setClassPickerVisible(true) : undefined)}
-          disabled={!showClassSelector}
-        >
-          <AppIcon name="library-outline" size={16} color={colors.teacher.accent} />
-          <Text style={styles.classSelectText}>{selectedClass?.label || 'Select class'}</Text>
-          {showClassSelector ? <AppIcon name="chevron-down" size={16} color={colors.teacher.textSecondary} /> : null}
+        <Pressable style={styles.dateSelectBtn} onPress={() => setPickerField('attendanceDate')}>
+          <AppIcon name="calendar-outline" size={16} color={colors.teacher.accent} />
+          <Text style={styles.dateSelectText}>{formatDisplayDate(selectedDateIso)}</Text>
         </Pressable>
+        <View style={{ flex: 1 }}>
+          <CustomDropdownSelector
+            tone="teacher"
+            label="Class"
+            value={selectedClass?.label || ''}
+            placeholder="Select class"
+            options={classes}
+            onSelect={value => setSelectedClassId(value || '')}
+            valueExtractor={item => item?.id}
+            labelExtractor={item => item?.label}
+            searchPlaceholder="Search class or section"
+            disabled={!showClassSelector}
+            containerStyle={{ marginBottom: 0 }}
+          />
+        </View>
         <Pressable
-          style={[styles.markBtn, (!selectedClassId || markMutation.isPending || studentsQuery.isLoading) ? styles.markBtnDisabled : null]}
+          style={[styles.markBtn, !canSubmitAttendance ? styles.markBtnDisabled : null]}
           onPress={openMarkModal}
-          disabled={!selectedClassId || markMutation.isPending || studentsQuery.isLoading}
+          disabled={!canSubmitAttendance}
         >
           <AppIcon name={summaryStats.attendanceTaken ? 'create-outline' : 'checkmark-circle-outline'} size={14} color={colors.text.inverse} />
           <Text style={styles.markBtnText}>{summaryStats.attendanceTaken ? 'Edit' : 'Mark'}</Text>
         </Pressable>
       </View>
 
-      <AttendanceStateHint attendanceTaken={summaryStats.attendanceTaken} styles={styles} colors={colors} />
+      <AttendanceStateHint
+        attendanceTaken={summaryStats.attendanceTaken}
+        selectedDateIso={selectedDateIso}
+        todayIso={today}
+        canMarkPastDates={canMarkPastDates}
+        styles={styles}
+        colors={colors}
+      />
 
       <MessageBanner
         message={message.text}
@@ -388,40 +459,11 @@ export default function TeacherAttendanceScreen() {
         </>
       )}
 
-      <Modal visible={classPickerVisible} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.pickerCard}>
-            <Text style={styles.modalTitle}>Select Class</Text>
-            <ScrollView style={styles.pickerList}>
-              {classes.map(item => {
-                const active = item.id === selectedClassId;
-                return (
-                  <Pressable
-                    key={item.id}
-                    style={[styles.pickerItem, active ? styles.pickerItemActive : null]}
-                    onPress={() => {
-                      setSelectedClassId(item.id);
-                      setClassPickerVisible(false);
-                    }}
-                  >
-                    <Text style={[styles.pickerItemText, active ? styles.pickerItemTextActive : null]}>{item.label}</Text>
-                    {active ? <AppIcon name="checkmark-circle" size={16} color={colors.brand.primary} /> : null}
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-            <Pressable style={styles.closeBtn} onPress={() => setClassPickerVisible(false)}>
-              <Text style={styles.closeBtnText}>Close</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-
       <Modal visible={markModalVisible} transparent animationType="slide" onRequestClose={() => setMarkModalVisible(false)}>
         <View style={styles.modalOverlayBottom}>
           <View style={styles.markModalCard}>
             <View style={styles.modalHeaderRow}>
-              <Text style={styles.modalTitle}>{summaryStats.attendanceTaken ? 'Edit Attendance' : 'Mark Attendance'} ({today})</Text>
+              <Text style={styles.modalTitle}>{summaryStats.attendanceTaken ? 'Edit Attendance' : 'Mark Attendance'} ({formatDisplayDate(selectedDateIso)})</Text>
               <Pressable style={styles.iconCloseBtn} onPress={() => setMarkModalVisible(false)}>
                 <AppIcon name="close" size={16} color={colors.teacher.textPrimary} />
               </Pressable>
@@ -480,10 +522,10 @@ export default function TeacherAttendanceScreen() {
 
             <View style={styles.dateRow}>
               <Pressable style={styles.dateBtn} onPress={() => setPickerField('from')}>
-                <Text style={styles.dateBtnText}>From: {toIsoDate(fromDate)}</Text>
+                <Text style={styles.dateBtnText}>From: {formatDisplayDate(toIsoDate(fromDate))}</Text>
               </Pressable>
               <Pressable style={styles.dateBtn} onPress={() => setPickerField('to')}>
-                <Text style={styles.dateBtnText}>To: {toIsoDate(toDate)}</Text>
+                <Text style={styles.dateBtnText}>To: {formatDisplayDate(toIsoDate(toDate))}</Text>
               </Pressable>
             </View>
 
@@ -500,7 +542,7 @@ export default function TeacherAttendanceScreen() {
                 <ScrollView style={styles.dailyList}>
                   {(reportQuery.data.data.daily || []).map((item, idx) => (
                     <View key={`${item.date}-${idx}`} style={styles.dailyRow}>
-                      <Text style={styles.dailyDate}>{item.date}</Text>
+                      <Text style={styles.dailyDate}>{formatDisplayDate(item.date)}</Text>
                       <Text style={[styles.dailyStatus, item.status === 'present' ? styles.dailyPresent : styles.dailyAbsent]}>
                         {item.status}
                       </Text>
@@ -521,14 +563,22 @@ export default function TeacherAttendanceScreen() {
 
       {pickerField ? (
         <DateTimePicker
-          value={pickerField === 'from' ? fromDate : toDate}
+          value={
+            pickerField === 'from'
+              ? fromDate
+              : pickerField === 'to'
+                ? toDate
+                : selectedDate
+          }
           mode="date"
           onChange={(_, date) => {
             setPickerField('');
             if (!date) {
               return;
             }
-            if (pickerField === 'from') {
+            if (pickerField === 'attendanceDate') {
+              setSelectedDate(date);
+            } else if (pickerField === 'from') {
               setFromDate(date);
             } else {
               setToDate(date);
@@ -552,7 +602,24 @@ const createStyles = colors =>
     heroKicker: { color: colors.auth.subtitle, fontSize: 10.5, letterSpacing: 1.4, fontWeight: '800' },
     heroTitle: { marginTop: 6, color: colors.text.inverse, fontSize: 23, fontWeight: '900' },
     heroSub: { marginTop: 4, color: colors.auth.subtitle, fontSize: 12, lineHeight: 17 },
-    controlRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+    controlRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' },
+    dateSelectBtn: {
+      width: '100%',
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.teacher.borderStrong,
+      backgroundColor: colors.teacher.surface,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    dateSelectText: {
+      color: colors.teacher.textPrimary,
+      fontSize: 12.5,
+      fontWeight: '700',
+    },
     classSelectBtn: {
       flex: 1,
       borderRadius: 10,
@@ -565,10 +632,20 @@ const createStyles = colors =>
       alignItems: 'center',
       gap: 8,
     },
+    classSelectBtnActive: {
+      borderColor: colors.brand.primary,
+      backgroundColor: colors.teacher.successBg,
+      shadowColor: '#0c5a85',
+      shadowOpacity: 0.12,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 2,
+    },
     classSelectLocked: {
       opacity: 0.95,
     },
     classSelectText: { flex: 1, color: colors.teacher.textPrimary, fontSize: 12.5, fontWeight: '700' },
+    classSelectPlaceholderText: { color: colors.teacher.textSecondary },
     markBtn: {
       borderRadius: 10,
       backgroundColor: colors.brand.primary,
@@ -661,30 +738,6 @@ const createStyles = colors =>
       backgroundColor: colors.teacher.modalBackdrop,
       justifyContent: 'flex-end',
     },
-    pickerCard: {
-      width: '100%',
-      maxHeight: '70%',
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: colors.teacher.borderStrong,
-      backgroundColor: colors.teacher.surface,
-      padding: 12,
-    },
-    pickerList: { maxHeight: 260 },
-    pickerItem: {
-      paddingVertical: 10,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.teacher.borderSubtle,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 8,
-    },
-    pickerItemActive: {
-      backgroundColor: colors.teacher.surfaceStrong,
-    },
-    pickerItemText: { color: colors.teacher.textPrimary, fontSize: 12.5, fontWeight: '700', flex: 1 },
-    pickerItemTextActive: { color: colors.brand.primary },
     closeBtn: {
       marginTop: 10,
       alignSelf: 'flex-end',

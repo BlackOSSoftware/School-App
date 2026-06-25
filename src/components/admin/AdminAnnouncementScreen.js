@@ -14,6 +14,7 @@ import { useCreateAdminAnnouncementMutation, useMyAnnouncementsQuery } from '../
 import { useClassesQuery } from '../../hooks/useClassQueries';
 import { useAppTheme } from '../../theme/ThemeContext';
 import AnnouncementFeed from '../common/AnnouncementFeed';
+import CustomDropdownSelector from '../common/CustomDropdownSelector';
 import KeyboardAwareModal from '../common/KeyboardAwareModal';
 import NotificationDetailsModal from '../common/NotificationDetailsModal';
 
@@ -59,7 +60,6 @@ export default function AdminAnnouncementScreen() {
 
   const [page, setPage] = useState(1);
   const [composeOpen, setComposeOpen] = useState(false);
-  const [classDropdownOpen, setClassDropdownOpen] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [form, setForm] = useState({
     title: '',
@@ -120,7 +120,6 @@ export default function AdminAnnouncementScreen() {
       });
       setMessage({ type: 'success', text: 'Announcement published successfully.' });
       setForm({ title: '', description: '', announcementType: 'school_wide', targetAudience: 'all', classIds: [] });
-      setClassDropdownOpen(false);
       setComposeOpen(false);
       setPage(1);
     } catch (error) {
@@ -148,7 +147,6 @@ export default function AdminAnnouncementScreen() {
           style={styles.composeBtn}
           onPress={() => {
             setSelectedAnnouncement(null);
-            setClassDropdownOpen(false);
             setComposeOpen(true);
           }}
         >
@@ -191,7 +189,6 @@ export default function AdminAnnouncementScreen() {
                 ]}
                 onPress={() => {
                   setForm(prev => ({ ...prev, announcementType: 'school_wide', targetAudience: 'all', classIds: [] }));
-                  setClassDropdownOpen(false);
                 }}
               >
                 <Text
@@ -229,7 +226,6 @@ export default function AdminAnnouncementScreen() {
                 style={[styles.segmentBtn, form.targetAudience === 'teacher_only' ? styles.segmentBtnActive : null]}
                 onPress={() => {
                   setForm(prev => ({ ...prev, targetAudience: 'teacher_only', announcementType: 'teacher_only', classIds: [] }));
-                  setClassDropdownOpen(false);
                 }}
               >
                 <Text style={[styles.segmentText, form.targetAudience === 'teacher_only' ? styles.segmentTextActive : null]}>
@@ -239,77 +235,26 @@ export default function AdminAnnouncementScreen() {
             </View>
 
             {form.targetAudience === 'all' && form.announcementType === 'class_wise' ? (
-              <>
-                <Text style={styles.inputLabel}>Target Classes</Text>
-                <Pressable style={styles.selectBtn} onPress={() => setClassDropdownOpen(prev => !prev)}>
-                  <AppIcon name="library-outline" size={16} color={colors.admin.accent} />
-                  <Text style={styles.selectText}>
-                    {form.classIds.length
-                      ? `${form.classIds.length} class${form.classIds.length > 1 ? 'es' : ''} selected`
-                      : 'Select class(es)'}
-                  </Text>
-                  <AppIcon
-                    name={classDropdownOpen ? 'chevron-up' : 'chevron-down'}
-                    size={16}
-                    color={colors.admin.textSecondary}
-                  />
-                </Pressable>
-                {classDropdownOpen ? (
-                  <View style={styles.dropdownBox}>
-                    <ScrollView nestedScrollEnabled style={styles.modalList}>
-                      <Pressable
-                        style={styles.modalItem}
-                        onPress={() => {
-                          if (!availableClassIds.length) {
-                            return;
-                          }
-                          setForm(prev => ({
-                            ...prev,
-                            classIds: allClassesSelected ? [] : availableClassIds,
-                          }));
-                        }}
-                      >
-                        <Text style={styles.modalItemText}>
-                          {allClassesSelected ? 'Clear All' : 'Select All'}
-                        </Text>
-                        {allClassesSelected ? (
-                          <AppIcon name="checkmark-circle" size={16} color={colors.brand.primary} />
-                        ) : (
-                          <AppIcon name="ellipse-outline" size={16} color={colors.admin.textSecondary} />
-                        )}
-                      </Pressable>
-                      {classList.map(item => {
-                        const classId = getEntityId(item);
-                        if (!classId) {
-                          return null;
-                        }
-                        return (
-                          <Pressable
-                            key={classId}
-                            style={styles.modalItem}
-                            onPress={() => {
-                              setForm(prev => {
-                                const exists = prev.classIds.includes(classId);
-                                return {
-                                  ...prev,
-                                  classIds: exists
-                                    ? prev.classIds.filter(id => id !== classId)
-                                    : [...prev.classIds, classId],
-                                };
-                              });
-                            }}
-                          >
-                            <Text style={styles.modalItemText}>{item.name} - {item.section}</Text>
-                            {form.classIds.includes(classId) ? (
-                              <AppIcon name="checkmark-circle" size={16} color={colors.brand.primary} />
-                            ) : null}
-                          </Pressable>
-                        );
-                      })}
-                    </ScrollView>
-                  </View>
-                ) : null}
-              </>
+              <CustomDropdownSelector
+                label="Target Classes"
+                tone="admin"
+                value={
+                  form.classIds.length
+                    ? `${form.classIds.length} class${form.classIds.length > 1 ? 'es' : ''} selected`
+                    : ''
+                }
+                placeholder="Select class(es)"
+                options={classList}
+                multiSelect
+                selectedValues={form.classIds}
+                onChangeSelectedValues={values => setForm(prev => ({ ...prev, classIds: values }))}
+                showSelectAll
+                selectAllLabel="Select All"
+                clearAllLabel="Clear All"
+                valueExtractor={item => getEntityId(item)}
+                labelExtractor={item => `${item?.name ?? '-'} - ${item?.section ?? '-'}`}
+                searchPlaceholder="Search class or section"
+              />
             ) : null}
 
             <Text style={styles.inputLabel}>Title</Text>
@@ -567,19 +512,23 @@ const createStyles = colors =>
       alignItems: 'center',
       gap: 8,
     },
+    selectBtnActive: {
+      borderColor: colors.brand.primary,
+      backgroundColor: colors.admin.successBg,
+      shadowColor: '#194c89',
+      shadowOpacity: 0.12,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 2,
+    },
     selectText: {
       flex: 1,
       color: colors.admin.textPrimary,
       fontSize: 12.5,
       fontWeight: '600',
     },
-    dropdownBox: {
-      borderWidth: 1,
-      borderColor: colors.admin.borderSoft,
-      borderRadius: 10,
-      backgroundColor: colors.admin.surfaceStrong,
-      marginBottom: 10,
-      overflow: 'hidden',
+    selectTextPlaceholder: {
+      color: colors.admin.textSecondary,
     },
     inputRow: {
       borderWidth: 1,
@@ -639,22 +588,5 @@ const createStyles = colors =>
       color: colors.text.inverse,
       fontSize: 12,
       fontWeight: '800',
-    },
-    modalList: {
-      maxHeight: 260,
-    },
-    modalItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 8,
-      paddingVertical: 10,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.admin.borderSubtle,
-    },
-    modalItemText: {
-      color: colors.admin.textPrimary,
-      fontSize: 12.5,
-      fontWeight: '600',
     },
   });

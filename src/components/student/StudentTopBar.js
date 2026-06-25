@@ -4,16 +4,23 @@ import AppIcon from '../common/AppIcon.js';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppTheme } from '../../theme/ThemeContext';
 
-function StudentTopBar({ title }) {
+function StudentTopBar({ title, onBack }) {
   const insets = useSafeAreaInsets();
   const { colors, isDark, toggleTheme } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
     <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 8) + 6 }]}>
-      <View>
-        <Text style={styles.kicker}>MMPS STUDENT PANEL</Text>
-        <Text style={styles.title}>{title}</Text>
+      <View style={styles.leftWrap}>
+        {onBack ? (
+          <Pressable style={styles.backBtn} onPress={onBack}>
+            <AppIcon name="chevron-back" size={20} color={colors.role.studentAccent} />
+          </Pressable>
+        ) : null}
+        <View>
+          <Text style={styles.kicker}>MMPS STUDENT PANEL</Text>
+          <Text style={styles.title}>{title}</Text>
+        </View>
       </View>
       <Pressable style={styles.iconBtn} onPress={toggleTheme}>
         <AppIcon name={isDark ? 'sunny-outline' : 'moon-outline'} size={18} color={colors.role.studentAccent} />
@@ -37,6 +44,22 @@ const createStyles = colors =>
       borderBottomRightRadius: 24,
       borderBottomWidth: 1,
       borderBottomColor: colors.student.borderSoft,
+    },
+    leftWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      flex: 1,
+    },
+    backBtn: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.student.surface,
+      borderWidth: 1,
+      borderColor: colors.student.borderSoft,
     },
     kicker: {
       color: colors.auth.subtitle,
