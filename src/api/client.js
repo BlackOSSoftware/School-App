@@ -61,7 +61,9 @@ function getDevServerHostCandidates() {
 
   const parts = parseUrlParts(scriptUrl);
   const host = String(parts?.hostname ?? '').trim();
-  if (!host || host === 'localhost' || host === '127.0.0.1') {
+  // A USB-connected phone reaches Metro and the API through adb reverse.
+  // Prefer that working loopback host before trying emulator-only addresses.
+  if (!host) {
     return [];
   }
 

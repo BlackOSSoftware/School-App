@@ -73,6 +73,8 @@ function normalizeContentItem(item, { viewerRole = 'student' } = {}) {
         }
       : null,
     createdAt: String(item?.createdAt ?? '').trim(),
+    teacherName: String(item?.teacher?.name ?? '').trim(),
+    sessionName: String(item?.session?.name ?? '').trim(),
   };
 }
 
@@ -318,6 +320,31 @@ export async function getTeacherMyContent({ type = 'all', page = 1, limit = 10, 
   });
 
   return normalizePaginatedResponse(data, { viewerRole: 'teacher' });
+}
+
+export async function getAdminHomework({ page = 1, limit = 10, search = '' } = {}) {
+  const { data } = await apiClient.get('/admin/homework', { params: { page, limit, search } });
+  return normalizePaginatedResponse(data);
+}
+
+export async function updateAdminHomework({ id, ...payload }) {
+  const { data } = await apiClient.patch(`/admin/homework/${id}`, payload);
+  return data;
+}
+
+export async function deleteAdminHomework(id) {
+  const { data } = await apiClient.delete(`/admin/homework/${id}`, { timeout: 25000 });
+  return data;
+}
+
+export async function updateTeacherHomework({ id, ...payload }) {
+  const { data } = await apiClient.patch(`/teacher/me/homework/${id}`, payload);
+  return data;
+}
+
+export async function deleteTeacherHomework(id) {
+  const { data } = await apiClient.delete(`/teacher/me/homework/${id}`, { timeout: 25000 });
+  return data;
 }
 
 export async function getStudentMyContent({ type = 'all', page = 1, limit = 10, subject = '' } = {}) {

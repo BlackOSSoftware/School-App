@@ -11,6 +11,7 @@ const ACTIONS = [
   { key: 'manage-teacher', title: 'Teachers', desc: 'Manage teacher records', icon: 'school-outline' },
   { key: 'manage-class', title: 'Classes', desc: 'Class and section setup', icon: 'library-outline' },
   { key: 'attendance', title: 'Attendance', desc: 'Track daily attendance', icon: 'checkmark-circle-outline' },
+  { key: 'homework', title: 'Homework', desc: 'View all class homework', icon: 'book-outline' },
   { key: 'announcement', title: 'Announcements', desc: 'Post school updates', icon: 'megaphone-outline' },
   { key: 'manage-bus', title: 'Bus', desc: 'Routes & tracking access', icon: 'bus-outline' },
 ];

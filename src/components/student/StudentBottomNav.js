@@ -19,7 +19,7 @@ function StudentBottomNav({ activeTab, onTabChange }) {
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
-    <View style={[styles.navbar, { marginBottom: Math.max(4, insets.bottom * 0.2) + 5 }]}>
+    <View style={[styles.navbar, { marginBottom: insets.bottom + 5 }]}>
       {TABS.map(tab => {
         const isActive = activeTab === tab.key;
         return (
@@ -126,12 +126,15 @@ const createStyles = colors =>
   StyleSheet.create({
     navbar: {
       width: '95%',
+      height: 64,
+      minHeight: 64,
+      flexShrink: 0,
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingHorizontal: 7,
-      paddingTop: 8,
-      paddingBottom: 8,
+      paddingTop: 5,
+      paddingBottom: 6,
       alignSelf: 'center',
       borderRadius: 28,
       shadowColor: '#11283d',
@@ -147,7 +150,7 @@ const createStyles = colors =>
       minWidth: 0,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: 9,
+      paddingVertical: 6,
       paddingHorizontal: 4,
       borderRadius: 16,
     },
@@ -172,10 +175,12 @@ const createStyles = colors =>
       color: colors.text.inverse,
     },
     navLabel: {
-      marginTop: 4,
+      marginTop: 1,
+      position: 'relative',
+      top: -2,
       color: colors.student.textPrimary,
-      fontSize: 11.5,
-      lineHeight: 15,
+      fontSize: 10,
+      lineHeight: 12,
       fontWeight: '800',
       textAlign: 'center',
       flexShrink: 1,
@@ -187,7 +192,7 @@ const createStyles = colors =>
     activeDot: {
       marginTop: 4,
       width: 12,
-      height: 3,
+      height: 2,
       borderRadius: 999,
       backgroundColor: colors.text.inverse,
     },

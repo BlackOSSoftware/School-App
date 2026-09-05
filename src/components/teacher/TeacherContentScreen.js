@@ -1,11 +1,11 @@
 import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Modal,
   NativeModules,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -14,7 +14,7 @@ import {
 import AppIcon from '../common/AppIcon.js';
 import { errorCodes, isErrorWithCode, keepLocalCopy, pick, types } from '@react-native-documents/picker';
 import { useTeacherClassesOverviewQuery } from '../../hooks/useTeacherQueries';
-import { useCreateTeacherContentMutation, useTeacherMyContentQuery } from '../../hooks/useContentQueries';
+import { useCreateTeacherContentMutation, useTeacherMyContentQuery, useTeacherHomeworkMutations } from '../../hooks/useContentQueries';
 import { openContentFile } from '../../services/fileService';
 import { useAppTheme } from '../../theme/ThemeContext';
 import CustomDropdownSelector from '../common/CustomDropdownSelector';
@@ -67,9 +67,10 @@ function MessageBanner({ text, type, onClose, styles }) {
   );
 }
 
-const ContentListItem = memo(function ContentListItem({ item, styles, onPress }) {
+const ContentListItem = memo(function ContentListItem({ item, styles, onPress, onEdit, onDelete, busy, deletingId }) {
   return (
-    <Pressable style={styles.card} onPress={() => onPress(item)}>
+    <View style={styles.card}>
+      <Pressable onPress={() => onPress(item)}>
       <View style={styles.cardHead}>
         <Text style={styles.cardType}>{item.type.toUpperCase()}</Text>
         <Text style={styles.cardDate}>{formatDate(item.createdAt)}</Text>
@@ -80,7 +81,14 @@ const ContentListItem = memo(function ContentListItem({ item, styles, onPress })
       </Text>
       <Text style={styles.cardDesc}>{item.description}</Text>
       <Text style={styles.fileLink}>{item.file?.url ? 'Tap to view details' : 'No attachment'}</Text>
-    </Pressable>
+      </Pressable>
+      {item.type === 'homework' ? (
+        <View style={styles.modalActions}>
+          <Pressable accessibilityRole="button" accessibilityLabel={`Edit ${item.title}`} style={[styles.submitBtn, busy && styles.pageBtnDisabled]} disabled={busy} onPress={() => onEdit(item)}><Text style={styles.submitText}>Edit</Text></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel={`Delete ${item.title}`} style={[styles.submitBtn, styles.deleteHomeworkBtn, busy && styles.pageBtnDisabled]} disabled={busy} onPress={() => onDelete(item)}><Text style={styles.submitText}>{deletingId === item.id ? 'Deleting...' : 'Delete'}</Text></Pressable>
+        </View>
+      ) : null}
+    </View>
   );
 });
 
@@ -95,6 +103,10 @@ export default function TeacherContentScreen() {
   const [message, setMessage] = useState({ type: '', text: '' });
   const [composeOpen, setComposeOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [editError, setEditError] = useState('');
+  const { update, remove } = useTeacherHomeworkMutations();
+  const busy = update.isPending || remove.isPending;
   const [form, setForm] = useState({
     type: 'homework',
     classId: '',
@@ -139,15 +151,55 @@ export default function TeacherContentScreen() {
   });
 
   const rows = Array.isArray(listQuery.data?.data) ? listQuery.data.data : [];
-  const totalPages = Number(listQuery.data?.totalPages ?? 1);
+  const totalPages = Math.max(1, Number(listQuery.data?.totalPages ?? 1));
 
   useEffect(() => {
-    if (!message.text) {
+    if (listQuery.data && !listQuery.isPlaceholderData && page > totalPages) setPage(totalPages);
+  }, [listQuery.data, listQuery.isPlaceholderData, page, totalPages]);
+
+  useEffect(() => {
+    if (!message.text || message.type === 'error') {
       return undefined;
     }
     const timer = setTimeout(() => setMessage({ type: '', text: '' }), 2600);
     return () => clearTimeout(timer);
-  }, [message.text]);
+  }, [message.text, message.type]);
+
+  const editHomework = useCallback(item => {
+    setEditError('');
+    setEditing({ id: item.id, title: item.title, subject: item.subject, description: item.description });
+  }, []);
+
+  const deleteHomework = useCallback(item => {
+    Alert.alert('Delete homework?', `Delete "${item.title}" and its attachment permanently?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+        try {
+          await remove.mutateAsync(item.id);
+          setSelectedItem(null);
+          setMessage({ type: 'success', text: 'Homework deleted successfully.' });
+        } catch (error) {
+          setMessage({ type: 'error', text: getErrorMessage(error, 'Unable to delete homework.') });
+        }
+      } },
+    ]);
+  }, [remove]);
+
+  const saveHomework = async () => {
+    if (!editing.title.trim() || !editing.description.trim() || !editing.subject.trim()) {
+      setEditError('Title, subject and description are required.');
+      return;
+    }
+    setEditError('');
+    try {
+      await update.mutateAsync(editing);
+      setEditing(null);
+      setSelectedItem(null);
+      setMessage({ type: 'success', text: 'Homework updated successfully.' });
+    } catch (error) {
+      setEditError(getErrorMessage(error, 'Unable to update homework.'));
+    }
+  };
 
   const openComposer = () => {
     setForm({
@@ -274,8 +326,8 @@ export default function TeacherContentScreen() {
   const openDetails = useCallback(item => setSelectedItem(item), []);
   const keyExtractor = useCallback(item => item.id, []);
   const renderItem = useCallback(
-    ({ item }) => <ContentListItem item={item} styles={styles} onPress={openDetails} />,
-    [openDetails, styles],
+    ({ item }) => <ContentListItem item={item} styles={styles} onPress={openDetails} onEdit={editHomework} onDelete={deleteHomework} busy={busy} deletingId={remove.isPending ? remove.variables : ''} />,
+    [openDetails, styles, editHomework, deleteHomework, busy, remove.isPending, remove.variables],
   );
   const listFooter = useMemo(
     () => (
@@ -313,13 +365,14 @@ export default function TeacherContentScreen() {
       </View>
 
       <View style={styles.toolbarRow}>
-        <View style={{ flex: 1 }}>
+        <View style={styles.toolbarField}>
           <CustomDropdownSelector
             tone="teacher"
             value={selectedClassLabel === 'All Classes' ? '' : selectedClassLabel}
             placeholder="All Classes"
             options={classList}
             onSelect={value => {
+              setPage(1);
               setSelectedClassId(value || '');
               setForm(prev => ({ ...prev, classId: value || '' }));
             }}
@@ -328,16 +381,17 @@ export default function TeacherContentScreen() {
             valueExtractor={item => item?.id}
             labelExtractor={item => item?.label}
             searchPlaceholder="Search class or section"
-            containerStyle={{ marginBottom: 0 }}
+            containerStyle={styles.toolbarDropdown}
           />
         </View>
-        <View style={{ flex: 1 }}>
+        <View style={styles.toolbarField}>
           <CustomDropdownSelector
             tone="teacher"
             value={selectedSubject}
             placeholder="All Subjects"
             options={subjects.map(item => ({ id: item, label: item }))}
             onSelect={value => {
+              setPage(1);
               setSelectedSubject(value || '');
               setForm(prev => ({ ...prev, subject: value || '' }));
             }}
@@ -346,7 +400,7 @@ export default function TeacherContentScreen() {
             valueExtractor={item => item?.id}
             labelExtractor={item => item?.label}
             searchPlaceholder="Search subject"
-            containerStyle={{ marginBottom: 0 }}
+            containerStyle={styles.toolbarDropdown}
           />
         </View>
         <Pressable style={styles.addBtn} onPress={openComposer}>
@@ -382,6 +436,25 @@ export default function TeacherContentScreen() {
           updateCellsBatchingPeriod={40}
         />
       )}
+
+      <Modal visible={Boolean(editing)} transparent animationType="slide" onRequestClose={() => { if (!update.isPending) setEditing(null); }}>
+        <KeyboardAwareModal overlayStyle={styles.modalOverlay} scrollContentStyle={styles.modalScrollContent} contentContainerStyle={styles.modalCard} dismissKeyboardOnBackdrop>
+          <Text style={styles.modalTitle}>Edit Homework</Text>
+          <MessageBanner text={editError} type="error" onClose={() => setEditError('')} styles={styles} />
+          {['title', 'subject', 'description'].map(field => (
+            <View key={field}>
+              <Text style={styles.inputLabel}>{field === 'title' ? 'Title' : field === 'subject' ? 'Subject' : 'Description'}</Text>
+              <View style={[styles.inputRow, field === 'description' && styles.inputRowMulti]}>
+                <TextInput accessibilityLabel={`Homework ${field}`} style={[styles.input, field === 'description' && styles.inputMulti]} value={editing?.[field] || ''} editable={!update.isPending} maxLength={field === 'description' ? 10000 : field === 'title' ? 200 : 100} multiline={field === 'description'} onChangeText={value => setEditing(current => ({ ...current, [field]: value }))} />
+              </View>
+            </View>
+          ))}
+          <View style={styles.modalActions}>
+            <Pressable style={styles.cancelBtn} disabled={update.isPending} onPress={() => setEditing(null)}><Text style={styles.cancelText}>Cancel</Text></Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="Save homework" style={styles.submitBtn} disabled={update.isPending} onPress={saveHomework}><Text style={styles.submitText}>{update.isPending ? 'Saving...' : 'Save'}</Text></Pressable>
+          </View>
+        </KeyboardAwareModal>
+      </Modal>
 
       <Modal visible={composeOpen} transparent animationType="slide" onRequestClose={() => setComposeOpen(false)}>
         <KeyboardAwareModal
@@ -509,6 +582,9 @@ export default function TeacherContentScreen() {
 const createStyles = colors =>
   StyleSheet.create({
     container: { flex: 1, paddingHorizontal: 14, paddingTop: 10 },
+    deleteHomeworkBtn: { backgroundColor: colors.state.error },
+    toolbarField: { flex: 1 },
+    toolbarDropdown: { marginBottom: 0 },
     heroCard: {
       borderRadius: 22,
       backgroundColor: colors.teacher.heroBgAlt,

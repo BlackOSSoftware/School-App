@@ -4,6 +4,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import AdminBottomNav from '../../components/admin/AdminBottomNav';
 import AdminClassScreen from '../../components/admin/AdminClassScreen';
 import AdminDashboardHome from '../../components/admin/AdminDashboardHome';
+import AdminHomeworkScreen from '../../components/admin/AdminHomeworkScreen';
 import AdminAnnouncementScreen from '../../components/admin/AdminAnnouncementScreen';
 import AdminAttendanceScreen from '../../components/admin/AdminAttendanceScreen';
 import AdminBusScreen from '../../components/admin/AdminBusScreen';
@@ -126,6 +127,10 @@ export default function AdminDashboard({ session, onLogout }) {
   }, []);
 
   const onQuickActionPress = useCallback(key => {
+    if (key === 'homework') {
+      setCurrentScreen('homework');
+      return;
+    }
     if (key === 'session') {
       setCurrentScreen('session');
       return;
@@ -162,7 +167,7 @@ export default function AdminDashboard({ session, onLogout }) {
   }, [onTabChange]);
 
   const title =
-    currentScreen === 'session'
+    currentScreen === 'homework' ? 'Homework' : currentScreen === 'session'
       ? 'Session Management'
       : currentScreen === 'session-upgrade'
         ? 'Session Upgrade'
@@ -239,6 +244,7 @@ export default function AdminDashboard({ session, onLogout }) {
       />
 
       {currentScreen === 'manage-class' ||
+      currentScreen === 'homework' ||
       currentScreen === 'manage-student' ||
       currentScreen === 'manage-teacher' ||
       currentScreen === 'manage-bus' ||
@@ -253,6 +259,7 @@ export default function AdminDashboard({ session, onLogout }) {
           ]}
         >
           {currentScreen === 'manage-class' ? <AdminClassScreen /> : null}
+          {currentScreen === 'homework' ? <AdminHomeworkScreen /> : null}
           {currentScreen === 'manage-student' ? <AdminStudentScreen /> : null}
           {currentScreen === 'manage-teacher' ? <AdminTeacherScreen /> : null}
           {currentScreen === 'manage-bus' ? <AdminBusScreen /> : null}
