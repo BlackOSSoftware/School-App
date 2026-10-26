@@ -1,12 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import AppIcon from '../common/AppIcon.js';
 import ResultEditModal from '../common/ResultEditModal';
 import ResultDetailModal from '../common/ResultDetailModal';
 import CustomDropdownSelector from '../common/CustomDropdownSelector';
 import { useClassesQuery } from '../../hooks/useClassQueries';
-import { useAdminStudentResultsQuery, useAdminUpdateResultMutation } from '../../hooks/useResultQueries';
+import {
+  useAdminDeleteResultMutation,
+  useAdminGoLiveClassResultsMutation,
+  useAdminStudentResultsQuery,
+  useAdminUpdateResultMutation,
+  useClassResultLiveStatusQuery,
+} from '../../hooks/useResultQueries';
 import { useStudentsQuery } from '../../hooks/useStudentQueries';
+import { getResultTotalOutOf } from '../../constants/resultConstants';
 import { useAppTheme } from '../../theme/ThemeContext';
 
 function getEntityId(value) {
@@ -52,6 +59,7 @@ export default function AdminStudentResultsScreen() {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedResult, setSelectedResult] = useState(null);
   const [editingResult, setEditingResult] = useState(null);
+  const [banner, setBanner] = useState({ type: '', text: '' });
 
   const classesQuery = useClassesQuery(1, 200);
   const studentsQuery = useStudentsQuery({
@@ -62,7 +70,10 @@ export default function AdminStudentResultsScreen() {
     status: 'all',
   });
   const studentResultsQuery = useAdminStudentResultsQuery(selectedStudent?.id, Boolean(selectedStudent?.id));
+  const liveStatusQuery = useClassResultLiveStatusQuery(selectedClassId, Boolean(selectedClassId));
   const updateMutation = useAdminUpdateResultMutation();
+  const deleteMutation = useAdminDeleteResultMutation();
+  const goLiveMutation = useAdminGoLiveClassResultsMutation();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -72,10 +83,54 @@ export default function AdminStudentResultsScreen() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  useEffect(() => {
+    if (!banner.text) return undefined;
+    const timer = setTimeout(() => setBanner({ type: '', text: '' }), 2800);
+    return () => clearTimeout(timer);
+  }, [banner.text]);
+
   const classList = Array.isArray(classesQuery.data?.data) ? classesQuery.data.data : [];
   const studentList = Array.isArray(studentsQuery.data?.data) ? studentsQuery.data.data : [];
   const resultList = Array.isArray(studentResultsQuery.data?.data) ? studentResultsQuery.data.data : [];
   const totalPages = Number(studentsQuery.data?.totalPages ?? 1);
+  const pendingCount = Number(liveStatusQuery.data?.pending ?? 0);
+  const liveCount = Number(liveStatusQuery.data?.live ?? 0);
+
+  const handleGoLive = () => {
+    if (!selectedClassId) {
+      setBanner({ type: 'error', text: 'Select a class first.' });
+      return;
+    }
+    if (!pendingCount) {
+      setBanner({ type: 'error', text: 'No pending results for this class.' });
+      return;
+    }
+
+    Alert.alert(
+      'Go Live Results',
+      `Make ${pendingCount} pending result(s) visible to students of this class?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Go Live',
+          onPress: async () => {
+            try {
+              const response = await goLiveMutation.mutateAsync(selectedClassId);
+              setBanner({
+                type: 'success',
+                text: response?.message || 'Results are now live for students.',
+              });
+            } catch (error) {
+              setBanner({
+                type: 'error',
+                text: error?.response?.data?.message || error?.message || 'Unable to go live.',
+              });
+            }
+          },
+        },
+      ],
+    );
+  };
 
   const handleAdminEditSave = async payload => {
     if (!editingResult?.id) return;
@@ -89,6 +144,26 @@ export default function AdminStudentResultsScreen() {
     } catch (_error) {}
   };
 
+  const handleAdminDelete = item => {
+    Alert.alert('Delete Result', `Delete "${item.examTitle || 'this result'}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteMutation.mutateAsync({
+              resultId: item.id,
+              studentId: selectedStudent?.id,
+            });
+            if (selectedResult?.id === item.id) setSelectedResult(null);
+            if (editingResult?.id === item.id) setEditingResult(null);
+          } catch (_error) {}
+        },
+      },
+    ]);
+  };
+
   return (
     <View style={styles.container}>
       {!selectedStudent ? (
@@ -96,7 +171,9 @@ export default function AdminStudentResultsScreen() {
           <View style={styles.heroCard}>
             <Text style={styles.heroOverline}>ADMIN RESULT ACCESS</Text>
             <Text style={styles.heroTitle}>Student Result Explorer</Text>
-            <Text style={styles.heroSub}>Filter by class, open any student, and review complete marksheets in one premium flow.</Text>
+            <Text style={styles.heroSub}>
+              Teachers can prepare marksheets. Use Go Live after selecting a class to show pending results to students.
+            </Text>
           </View>
 
           <CustomDropdownSelector
@@ -115,6 +192,34 @@ export default function AdminStudentResultsScreen() {
             labelExtractor={item => getClassLabel(item)}
             searchPlaceholder="Search class or section"
           />
+
+          {selectedClassId ? (
+            <View style={styles.liveCard}>
+              <View style={styles.liveCopy}>
+                <Text style={styles.liveTitle}>Class Result Publish</Text>
+                <Text style={styles.liveSub}>
+                  Pending: {pendingCount} • Already live: {liveCount}
+                </Text>
+              </View>
+              <Pressable
+                style={[styles.goLiveBtn, (!pendingCount || goLiveMutation.isPending) && styles.goLiveBtnDisabled]}
+                onPress={handleGoLive}
+                disabled={!pendingCount || goLiveMutation.isPending}
+              >
+                {goLiveMutation.isPending ? (
+                  <ActivityIndicator size="small" color={colors.text.inverse} />
+                ) : (
+                  <Text style={styles.goLiveBtnText}>Go Live</Text>
+                )}
+              </Pressable>
+            </View>
+          ) : null}
+
+          {banner.text ? (
+            <View style={[styles.banner, banner.type === 'error' ? styles.bannerError : styles.bannerSuccess]}>
+              <Text style={styles.bannerText}>{banner.text}</Text>
+            </View>
+          ) : null}
 
           <View style={styles.searchRow}>
             <AppIcon name="search-outline" size={16} style={styles.searchIcon} />
@@ -207,22 +312,41 @@ export default function AdminStudentResultsScreen() {
             renderItem={({ item }) => (
               <Pressable style={styles.resultCard} onPress={() => setSelectedResult(item)}>
                 <View style={styles.resultTopRow}>
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={styles.resultTitle}>{item.examTitle || 'Exam Result'}</Text>
                     <Text style={styles.resultSub}>
                       {item.examType || '-'}{item.month ? ` • ${item.month}` : ''} • {formatDate(item.updatedAt)}
                     </Text>
+                    <Text style={[styles.statusPill, item.isLive ? styles.statusLive : styles.statusPending]}>
+                      {item.isLive ? 'Live' : 'Pending'}
+                    </Text>
                   </View>
                   <View style={styles.resultScorePill}>
                     <Text style={styles.resultScoreText}>
-                      {item.totalMarks ?? 0} / {(item.outOf ?? 0) * (item.subjectMarks?.length ?? 0)}
+                      {item.totalMarks ?? 0} / {getResultTotalOutOf(item)}
                     </Text>
                   </View>
                 </View>
                 <View style={styles.resultActions}>
                   <Text style={styles.resultHint}>Tap to open full marksheet.</Text>
-                  <Pressable style={styles.editBtn} onPress={() => setEditingResult(item)}>
+                  <Pressable
+                    style={styles.editBtn}
+                    onPress={event => {
+                      event?.stopPropagation?.();
+                      setSelectedResult(null);
+                      setEditingResult(item);
+                    }}
+                  >
                     <Text style={styles.editBtnText}>Edit</Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.deleteBtn}
+                    onPress={event => {
+                      event?.stopPropagation?.();
+                      handleAdminDelete(item);
+                    }}
+                  >
+                    <Text style={styles.deleteBtnText}>Delete</Text>
                   </Pressable>
                 </View>
               </Pressable>
@@ -293,6 +417,63 @@ const createStyles = colors =>
       color: colors.auth.subtitle,
       fontSize: 12.5,
       lineHeight: 18,
+    },
+    liveCard: {
+      marginBottom: 10,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.admin.borderStrong,
+      backgroundColor: colors.admin.surface,
+      padding: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    liveCopy: { flex: 1 },
+    liveTitle: {
+      color: colors.admin.textPrimary,
+      fontSize: 13.5,
+      fontWeight: '900',
+    },
+    liveSub: {
+      marginTop: 4,
+      color: colors.admin.textSecondary,
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    goLiveBtn: {
+      borderRadius: 12,
+      backgroundColor: colors.admin.navBg || colors.admin.accent,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      minWidth: 88,
+      alignItems: 'center',
+    },
+    goLiveBtnDisabled: { opacity: 0.55 },
+    goLiveBtnText: {
+      color: colors.text.inverse,
+      fontSize: 12.5,
+      fontWeight: '900',
+    },
+    banner: {
+      borderRadius: 12,
+      borderWidth: 1,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      marginBottom: 10,
+    },
+    bannerError: {
+      backgroundColor: colors.admin.dangerBg,
+      borderColor: colors.admin.dangerBorder,
+    },
+    bannerSuccess: {
+      backgroundColor: colors.admin.successBg,
+      borderColor: colors.admin.successBorder,
+    },
+    bannerText: {
+      color: colors.admin.textPrimary,
+      fontSize: 12.5,
+      fontWeight: '700',
     },
     searchRow: {
       borderRadius: 14,
@@ -436,6 +617,27 @@ const createStyles = colors =>
       fontSize: 12,
       fontWeight: '700',
     },
+    statusPill: {
+      alignSelf: 'flex-start',
+      marginTop: 8,
+      borderRadius: 999,
+      borderWidth: 1,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      overflow: 'hidden',
+      fontSize: 11,
+      fontWeight: '800',
+    },
+    statusLive: {
+      color: colors.admin.accent,
+      borderColor: colors.admin.borderStrong,
+      backgroundColor: colors.admin.surfaceStrong,
+    },
+    statusPending: {
+      color: colors.state.warning || colors.admin.textSecondary,
+      borderColor: colors.admin.borderSubtle,
+      backgroundColor: colors.admin.surfaceStrong,
+    },
     resultScorePill: {
       minWidth: 62,
       alignItems: 'center',
@@ -462,6 +664,7 @@ const createStyles = colors =>
       justifyContent: 'space-between',
       alignItems: 'center',
       gap: 8,
+      flexWrap: 'wrap',
     },
     editBtn: {
       borderRadius: 10,
@@ -473,6 +676,19 @@ const createStyles = colors =>
     },
     editBtnText: {
       color: colors.admin.textPrimary,
+      fontSize: 11.5,
+      fontWeight: '800',
+    },
+    deleteBtn: {
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.admin.dangerBorder,
+      backgroundColor: colors.admin.dangerBg,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+    },
+    deleteBtnText: {
+      color: colors.state.error,
       fontSize: 11.5,
       fontWeight: '800',
     },

@@ -46,7 +46,9 @@ export default function AdminProfileScreen({ session, onLogout, onOpenResults })
   const name = session?.user?.name || 'Super Admin';
   const role = String(session?.role || 'admin').toUpperCase();
   const canMarkPastDates = Boolean(attendancePolicyQuery.data?.data?.canMarkPastDates);
+  const allowTeacherHolidayMark = Boolean(attendancePolicyQuery.data?.data?.allowTeacherHolidayMark);
   const policyUpdatedBy = attendancePolicyQuery.data?.data?.updatedByName || 'Admin';
+  const holidayUpdatedBy = attendancePolicyQuery.data?.data?.holidayUpdatedByName || 'Admin';
 
   useEffect(() => {
     if (!message.text) {
@@ -85,7 +87,7 @@ export default function AdminProfileScreen({ session, onLogout, onOpenResults })
 
   const togglePastAttendance = async () => {
     try {
-      await updateAttendancePolicyMutation.mutateAsync(!canMarkPastDates);
+      await updateAttendancePolicyMutation.mutateAsync({ canMarkPastDates: !canMarkPastDates });
       setMessage({
         type: 'success',
         text: !canMarkPastDates
@@ -94,6 +96,22 @@ export default function AdminProfileScreen({ session, onLogout, onOpenResults })
       });
     } catch (error) {
       setMessage({ type: 'error', text: getErrorMessage(error, 'Unable to update attendance setting.') });
+    }
+  };
+
+  const toggleHolidayMark = async () => {
+    try {
+      await updateAttendancePolicyMutation.mutateAsync({
+        allowTeacherHolidayMark: !allowTeacherHolidayMark,
+      });
+      setMessage({
+        type: 'success',
+        text: !allowTeacherHolidayMark
+          ? 'Teachers can now mark holidays and clear that day attendance.'
+          : 'Holiday marking has been locked for teachers.',
+      });
+    } catch (error) {
+      setMessage({ type: 'error', text: getErrorMessage(error, 'Unable to update holiday setting.') });
     }
   };
 
@@ -161,6 +179,33 @@ export default function AdminProfileScreen({ session, onLogout, onOpenResults })
         <Text style={styles.settingsFootnote}>
           Last control by {policyUpdatedBy}. Teachers still cannot mark future dates.
         </Text>
+
+        <Pressable
+          style={[styles.toggleCard, allowTeacherHolidayMark ? styles.toggleCardActive : null]}
+          onPress={toggleHolidayMark}
+          disabled={attendancePolicyQuery.isLoading || updateAttendancePolicyMutation.isPending}
+        >
+          <View style={styles.toggleCardBody}>
+            <Text style={styles.toggleLabel}>Allow holiday mark</Text>
+            <Text style={styles.toggleMeta}>
+              {allowTeacherHolidayMark
+                ? 'Teachers can mark a day holiday and clear attendance'
+                : 'Locked by admin'}
+            </Text>
+          </View>
+          <View style={[styles.toggleTrack, allowTeacherHolidayMark ? styles.toggleTrackActive : null]}>
+            {updateAttendancePolicyMutation.isPending ? (
+              <ActivityIndicator
+                size="small"
+                color={allowTeacherHolidayMark ? colors.text.inverse : colors.brand.primary}
+              />
+            ) : (
+              <View style={[styles.toggleThumb, allowTeacherHolidayMark ? styles.toggleThumbActive : null]} />
+            )}
+          </View>
+        </Pressable>
+
+        <Text style={styles.settingsFootnote}>Holiday control last updated by {holidayUpdatedBy}.</Text>
       </View>
 
       <View style={styles.actionsCard}>

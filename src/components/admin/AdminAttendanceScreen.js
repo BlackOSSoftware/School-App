@@ -8,7 +8,7 @@ import {
   useAdminStudentAttendanceReportQuery,
   useUpdateAdminStudentAttendanceByDateMutation,
 } from '../../hooks/useAttendanceQueries';
-import { formatDisplayDate, getTodayIsoDate } from '../../services/attendanceService';
+import { formatDisplayDate, toIsoDate } from '../../services/attendanceService';
 import { useAppTheme } from '../../theme/ThemeContext';
 import AttendanceReportModal from '../common/AttendanceReportModal';
 
@@ -29,15 +29,6 @@ function getEntityId(value) {
     }
   }
   return '';
-}
-
-function toIsoDate(value) {
-  const date = value instanceof Date ? value : new Date(value);
-  const safeDate = Number.isNaN(date.getTime()) ? new Date(getTodayIsoDate()) : date;
-  const year = safeDate.getFullYear();
-  const month = String(safeDate.getMonth() + 1).padStart(2, '0');
-  const day = String(safeDate.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
 }
 
 export default function AdminAttendanceScreen() {
@@ -63,7 +54,10 @@ export default function AdminAttendanceScreen() {
 
   const dateIso = toIsoDate(selectedDate);
   const summaryQuery = useAdminAttendanceSummaryByDateQuery({ date: dateIso });
-  const summarySessionId = getEntityId(summaryQuery.data?.data?.session?.id);
+  const summarySession = summaryQuery.data?.data?.session ?? null;
+  const summarySessionId = getEntityId(summarySession?.id ?? summarySession?._id);
+  const sessionReportFrom = summarySession?.startDate ? toIsoDate(summarySession.startDate) : '2020-01-01';
+  const sessionReportTo = toIsoDate(new Date());
   const classDetailQuery = useAdminClassAttendanceByDateQuery({
     classId: classModal.classId,
     date: dateIso,
@@ -73,8 +67,8 @@ export default function AdminAttendanceScreen() {
   const studentReportQuery = useAdminStudentAttendanceReportQuery({
     classId: studentReportState.classId,
     studentId: studentReportState.studentId,
-    from: studentReportState.useSessionRange ? undefined : dateIso,
-    to: studentReportState.useSessionRange ? undefined : dateIso,
+    from: studentReportState.useSessionRange ? sessionReportFrom : dateIso,
+    to: studentReportState.useSessionRange ? sessionReportTo : dateIso,
     sessionId: summarySessionId,
     enabled: studentReportState.open && Boolean(studentReportState.classId) && Boolean(studentReportState.studentId),
   });
@@ -273,8 +267,13 @@ export default function AdminAttendanceScreen() {
         onClose={() =>
           setStudentReportState({ open: false, classId: '', studentId: '', studentName: '', useSessionRange: false })
         }
-        loading={studentReportQuery.isLoading}
-        report={studentReportQuery.data?.data}
+        loading={studentReportQuery.isLoading || studentReportQuery.isFetching}
+        report={studentReportQuery.data?.data ?? studentReportQuery.data}
+        error={
+          studentReportQuery.isError
+            ? String(studentReportQuery.error?.message || 'Unable to load attendance report.')
+            : ''
+        }
         studentName={studentReportState.studentName}
       />
     </View>

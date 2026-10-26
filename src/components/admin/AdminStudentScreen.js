@@ -23,6 +23,7 @@ import {
   useUpdateStudentMutation,
 } from '../../hooks/useStudentQueries';
 import { useAdminStudentAttendanceReportQuery } from '../../hooks/useAttendanceQueries';
+import { useActiveSessionQuery } from '../../hooks/useSessionQueries';
 import { useAppTheme } from '../../theme/ThemeContext';
 import CustomDropdownSelector from '../common/CustomDropdownSelector';
 import PaginationControls from '../common/PaginationControls';
@@ -54,6 +55,12 @@ function getEntityId(value) {
     if (nested && typeof nested === 'object' && typeof nested.$oid === 'string') {
       return nested.$oid.trim();
     }
+    if (nested && typeof nested.toString === 'function') {
+      const stringified = nested.toString();
+      if (typeof stringified === 'string' && stringified !== '[object Object]') {
+        return stringified.trim();
+      }
+    }
   }
   return '';
 }
@@ -78,12 +85,6 @@ function getClassLabel(value, classLabelById) {
 }
 
 function getClassIdForReport(value) {
-  if (!value) {
-    return '';
-  }
-  if (typeof value === 'string') {
-    return value.trim();
-  }
   return getEntityId(value);
 }
 
@@ -413,13 +414,50 @@ export default function AdminStudentScreen() {
   const updateMutation = useUpdateStudentMutation();
   const deleteMutation = useDeleteStudentMutation();
   const detailQuery = useStudentDetailQuery(selectedStudentId, detailVisible);
+  const activeSessionQuery = useActiveSessionQuery();
   const selectedStudentDetail = detailQuery.data?.data ?? null;
   const reportClassId = getClassIdForReport(selectedStudentDetail?.classId);
+  const activeSession = activeSessionQuery.data?.data ?? null;
+  const studentSessionId = getEntityId(selectedStudentDetail?.sessionId);
+  const reportSessionId = getEntityId(activeSession) || studentSessionId;
   const reportQuery = useAdminStudentAttendanceReportQuery({
     classId: reportClassId,
     studentId: selectedStudentId,
-    enabled: reportOpen && Boolean(reportClassId) && Boolean(selectedStudentId),
+    sessionId: reportSessionId || undefined,
+    enabled:
+      reportOpen &&
+      Boolean(selectedStudentId) &&
+      Boolean(reportClassId) &&
+      !activeSessionQuery.isLoading,
   });
+  const attendanceReport = useMemo(() => {
+    const payload = reportQuery.data;
+    if (!payload || typeof payload !== 'object') {
+      return null;
+    }
+    if (payload.data && typeof payload.data === 'object' && !Array.isArray(payload.data)) {
+      return payload.data;
+    }
+    if (
+      Array.isArray(payload.daily) ||
+      payload.totalDays != null ||
+      payload.presentDays != null
+    ) {
+      return payload;
+    }
+    return null;
+  }, [reportQuery.data]);
+  const reportLoading =
+    reportOpen &&
+    (activeSessionQuery.isLoading ||
+      reportQuery.isLoading ||
+      reportQuery.isFetching ||
+      (reportQuery.isPending && !reportQuery.isError && !attendanceReport));
+  const reportError = reportQuery.isError
+    ? getErrorMessage(reportQuery.error, 'Unable to load attendance report.')
+    : activeSessionQuery.isError && !reportSessionId
+      ? getErrorMessage(activeSessionQuery.error, 'Unable to load active session.')
+      : '';
 
   const classList = useMemo(
     () => (Array.isArray(classesQuery.data?.data) ? classesQuery.data.data : []),
@@ -643,7 +681,13 @@ export default function AdminStudentScreen() {
 
             <Pressable
               style={styles.attendanceReportBtn}
-              onPress={() => setReportOpen(true)}
+              onPress={() => {
+                if (!reportClassId) {
+                  setMessage({ type: 'error', text: 'Student class is not assigned. Cannot load attendance report.' });
+                  return;
+                }
+                setReportOpen(true);
+              }}
               disabled={!reportClassId}
             >
               <AppIcon name="bar-chart-outline" size={16} color={colors.text.inverse} />
@@ -657,8 +701,9 @@ export default function AdminStudentScreen() {
         <AttendanceReportModal
           visible={reportOpen}
           onClose={() => setReportOpen(false)}
-          loading={reportQuery.isLoading}
-          report={reportQuery.data?.data}
+          loading={reportLoading}
+          report={attendanceReport}
+          error={reportError}
           studentName={selectedStudentDetail?.name || 'Student'}
         />
       </View>

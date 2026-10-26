@@ -27,6 +27,7 @@ export default function AttendanceReportModal({
   onClose,
   loading,
   report,
+  error = '',
   studentName = 'Student',
 }) {
   const { colors } = useAppTheme();
@@ -52,8 +53,27 @@ export default function AttendanceReportModal({
   });
 
   const normalizedReport = useMemo(() => {
-    const candidate = report?.data && typeof report.data === 'object' ? report.data : report;
-    return candidate && typeof candidate === 'object' ? candidate : null;
+    if (!report || typeof report !== 'object') {
+      return null;
+    }
+    // Support both `{ data: report }` wrappers and flat report objects.
+    const candidate =
+      report.data && typeof report.data === 'object' && !Array.isArray(report.data)
+        ? report.data
+        : report;
+    if (!candidate || typeof candidate !== 'object') {
+      return null;
+    }
+    if (
+      Array.isArray(candidate.daily) ||
+      candidate.totalDays != null ||
+      candidate.presentDays != null ||
+      candidate.absentDays != null ||
+      candidate.student
+    ) {
+      return candidate;
+    }
+    return candidate;
   }, [report]);
   const daily = Array.isArray(normalizedReport?.daily) ? normalizedReport.daily : [];
 
@@ -84,6 +104,8 @@ export default function AttendanceReportModal({
             <View style={styles.loaderWrap}>
               <ActivityIndicator size="small" color={colors.brand.primary} />
             </View>
+          ) : error ? (
+            <Text style={styles.errorText}>{error}</Text>
           ) : normalizedReport ? (
             <>
               <View style={styles.statsRow}>
@@ -255,5 +277,12 @@ const createStyles = colors =>
       marginTop: 16,
       fontSize: 12.5,
       fontWeight: '600',
+    },
+    errorText: {
+      color: colors.state.error,
+      textAlign: 'center',
+      marginTop: 16,
+      fontSize: 12.5,
+      fontWeight: '700',
     },
   });

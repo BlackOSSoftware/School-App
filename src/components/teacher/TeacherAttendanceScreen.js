@@ -10,12 +10,15 @@ import {
   View,
 } from 'react-native';
 import AppIcon from '../common/AppIcon.js';
+import ConfirmModal from '../common/ConfirmModal';
 import CustomDropdownSelector from '../common/CustomDropdownSelector';
 import {
   useMarkTeacherClassAttendanceMutation,
+  useMarkTeacherClassHolidayMutation,
   useTeacherAttendancePolicyQuery,
   useTeacherClassAttendanceByDateQuery,
   useTeacherStudentAttendanceReportQuery,
+  useUnmarkTeacherClassHolidayMutation,
 } from '../../hooks/useAttendanceQueries';
 import { useTeacherClassesOverviewQuery, useTeacherStudentsByClassQuery } from '../../hooks/useTeacherQueries';
 import { formatDisplayDate, getTodayIsoDate } from '../../services/attendanceService';
@@ -127,9 +130,28 @@ function SummaryTile({ label, value, styles }) {
   );
 }
 
-function AttendanceStateHint({ attendanceTaken, selectedDateIso, todayIso, canMarkPastDates, styles, colors }) {
+function AttendanceStateHint({
+  isHoliday,
+  attendanceTaken,
+  selectedDateIso,
+  todayIso,
+  canMarkPastDates,
+  styles,
+  colors,
+}) {
   const isPastDate = selectedDateIso < todayIso;
   const isFutureDate = selectedDateIso > todayIso;
+
+  if (isHoliday) {
+    return (
+      <View style={styles.stateHintWrap}>
+        <AppIcon name="sunny-outline" size={14} color={colors.brand.primary} />
+        <Text style={[styles.stateHintText, styles.stateHintTaken]}>
+          {formatDisplayDate(selectedDateIso)} is marked as holiday. Present/Absent records are cleared.
+        </Text>
+      </View>
+    );
+  }
 
   if (isFutureDate) {
     return (
@@ -200,9 +222,12 @@ export default function TeacherAttendanceScreen() {
   const [fromDate, setFromDate] = useState(new Date());
   const [toDate, setToDate] = useState(new Date());
   const [pickerField, setPickerField] = useState('');
+  const [holidayConfirmVisible, setHolidayConfirmVisible] = useState(false);
 
   const overviewQuery = useTeacherClassesOverviewQuery();
   const markMutation = useMarkTeacherClassAttendanceMutation();
+  const markHolidayMutation = useMarkTeacherClassHolidayMutation();
+  const unmarkHolidayMutation = useUnmarkTeacherClassHolidayMutation();
   const attendancePolicyQuery = useTeacherAttendancePolicyQuery();
 
   const classTeacherClass = useMemo(() => {
@@ -260,6 +285,7 @@ export default function TeacherAttendanceScreen() {
 
   const selectedDateIso = toIsoDate(selectedDate);
   const canMarkPastDates = Boolean(attendancePolicyQuery.data?.data?.canMarkPastDates);
+  const allowTeacherHolidayMark = Boolean(attendancePolicyQuery.data?.data?.allowTeacherHolidayMark);
   const isFutureDate = selectedDateIso > today;
   const isPastDateLocked = selectedDateIso < today && !canMarkPastDates;
 
@@ -280,9 +306,19 @@ export default function TeacherAttendanceScreen() {
     const rows = Array.isArray(studentsQuery.data?.students) ? studentsQuery.data.students : [];
     return sortStudentsByName(rows);
   }, [studentsQuery.data?.students]);
-  const canSubmitAttendance = Boolean(selectedClassId) && !markMutation.isPending && !studentsQuery.isLoading && !isFutureDate && !isPastDateLocked;
 
   const summary = attendanceQuery.data?.data ?? null;
+  const isHoliday = Boolean(summary?.isHoliday);
+  const holidayBusy = markHolidayMutation.isPending || unmarkHolidayMutation.isPending;
+  const canSubmitAttendance =
+    Boolean(selectedClassId) &&
+    !markMutation.isPending &&
+    !studentsQuery.isLoading &&
+    !isFutureDate &&
+    !isPastDateLocked &&
+    !isHoliday;
+  const canToggleHoliday =
+    Boolean(selectedClassId) && allowTeacherHolidayMark && !isFutureDate && !holidayBusy;
   const selectedClass = classes.find(item => item.id === selectedClassId) ?? null;
   const summaryStats = useMemo(() => computeSummary(summary, classStudents), [summary, classStudents]);
   const attendanceRows = useMemo(() => normalizeAttendanceRows(summary, classStudents), [summary, classStudents]);
@@ -344,6 +380,23 @@ export default function TeacherAttendanceScreen() {
     }
   };
 
+  const confirmHolidayToggle = async () => {
+    try {
+      if (isHoliday) {
+        await unmarkHolidayMutation.mutateAsync({ classId: selectedClassId, date: selectedDateIso });
+        setMessage({ type: 'success', text: 'Holiday removed. You can mark attendance again.' });
+      } else {
+        await markHolidayMutation.mutateAsync({ classId: selectedClassId, date: selectedDateIso });
+        setMessage({ type: 'success', text: 'Day marked as holiday. Present/Absent cleared.' });
+      }
+      setHolidayConfirmVisible(false);
+      await attendanceQuery.refetch();
+    } catch (error) {
+      setMessage({ type: 'error', text: getErrorMessage(error, 'Unable to update holiday.') });
+      setHolidayConfirmVisible(false);
+    }
+  };
+
   const showClassSelector = classes.length > 1;
 
   return (
@@ -386,7 +439,19 @@ export default function TeacherAttendanceScreen() {
         </Pressable>
       </View>
 
+      {allowTeacherHolidayMark ? (
+        <Pressable
+          style={[styles.holidayBtn, !canToggleHoliday ? styles.markBtnDisabled : null]}
+          onPress={() => setHolidayConfirmVisible(true)}
+          disabled={!canToggleHoliday}
+        >
+          <AppIcon name={isHoliday ? 'close-circle-outline' : 'sunny-outline'} size={14} color={colors.teacher.accent} />
+          <Text style={styles.holidayBtnText}>{isHoliday ? 'Remove Holiday' : 'Mark Holiday'}</Text>
+        </Pressable>
+      ) : null}
+
       <AttendanceStateHint
+        isHoliday={isHoliday}
         attendanceTaken={summaryStats.attendanceTaken}
         selectedDateIso={selectedDateIso}
         todayIso={today}
@@ -417,7 +482,12 @@ export default function TeacherAttendanceScreen() {
 
           <Text style={styles.sectionTitle}>Students</Text>
           <ScrollView style={styles.studentList} contentContainerStyle={styles.studentListContent} showsVerticalScrollIndicator={false}>
-            {summaryStats.attendanceTaken ? (
+            {isHoliday ? (
+              <View style={styles.emptyHolidayCard}>
+                <Text style={styles.emptyHolidayTitle}>Holiday</Text>
+                <Text style={styles.emptyText}>No present/absent records for this date.</Text>
+              </View>
+            ) : summaryStats.attendanceTaken ? (
               attendanceRows.map(student => (
                 <Pressable
                   key={student.studentId}
@@ -586,6 +656,19 @@ export default function TeacherAttendanceScreen() {
           }}
         />
       ) : null}
+      <ConfirmModal
+        visible={holidayConfirmVisible}
+        title={isHoliday ? 'Remove Holiday' : 'Mark Holiday'}
+        message={
+          isHoliday
+            ? `Remove holiday for ${formatDisplayDate(selectedDateIso)}? You can mark attendance again after this.`
+            : `Mark ${formatDisplayDate(selectedDateIso)} as holiday? Present/Absent for this day will be removed.`
+        }
+        confirmText={isHoliday ? 'Remove' : 'Mark Holiday'}
+        danger={!isHoliday}
+        onCancel={() => setHolidayConfirmVisible(false)}
+        onConfirm={confirmHolidayToggle}
+      />
     </View>
   );
 }
@@ -659,6 +742,20 @@ const createStyles = colors =>
       opacity: 0.5,
     },
     markBtnText: { color: colors.text.inverse, fontSize: 12, fontWeight: '800' },
+    holidayBtn: {
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.teacher.borderStrong,
+      backgroundColor: colors.teacher.surface,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      marginBottom: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+    },
+    holidayBtnText: { color: colors.teacher.accent, fontSize: 12.5, fontWeight: '800' },
     stateHintWrap: {
       borderRadius: 10,
       borderWidth: 1,
@@ -702,6 +799,20 @@ const createStyles = colors =>
     tileValue: { color: colors.teacher.textPrimary, fontSize: 18, fontWeight: '900' },
     tileLabel: { marginTop: 3, color: colors.teacher.textSecondary, fontSize: 11.5, fontWeight: '700' },
     sectionTitle: { color: colors.teacher.textPrimary, fontSize: 13.5, fontWeight: '800', marginBottom: 8 },
+    emptyHolidayCard: {
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.teacher.borderSoft,
+      backgroundColor: colors.teacher.surfaceStrong,
+      padding: 14,
+      marginBottom: 8,
+    },
+    emptyHolidayTitle: {
+      color: colors.teacher.textPrimary,
+      fontSize: 14,
+      fontWeight: '900',
+      marginBottom: 4,
+    },
     studentList: { flex: 1 },
     studentListContent: { paddingBottom: 12 },
     studentRow: {

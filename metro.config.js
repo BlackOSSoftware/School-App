@@ -10,6 +10,9 @@ module.exports = mergeConfig(defaultConfig, {
     blockList: [
       /node_modules[\/\\].+[\/\\](android|ios)[\/\\]build[\/\\].*/,
       /node_modules[\/\\]@react-native[\/\\]gradle-plugin[\/\\]react-native-gradle-plugin[\/\\]build[\/\\].*/,
+      /android[\/\\]app[\/\\]\.cxx[\/\\].*/,
+      /android[\/\\]app[\/\\]build[\/\\].*/,
+      /android[\/\\]build[\/\\].*/,
     ],
     resolveRequest(context, moduleName, platform) {
       if (moduleName === 'axios') {

@@ -180,9 +180,12 @@ apiClient.interceptors.response.use(
   (error) => {
     const currentConfig = error?.config;
     const status = Number(error?.response?.status ?? 0);
+    const requestAuthHeader = String(currentConfig?.headers?.Authorization || currentConfig?.headers?.authorization || '');
+    const currentAuthHeader = authToken ? `Bearer ${authToken}` : '';
+    const isCurrentSessionRequest = Boolean(authToken) && requestAuthHeader === currentAuthHeader;
     const shouldHandleUnauthorized =
       (status === 401 || status === 403) &&
-      Boolean(authToken) &&
+      isCurrentSessionRequest &&
       typeof unauthorizedHandler === 'function';
 
     const nextBaseUrlIndex = Number(currentConfig?.__retryBaseUrlIndex ?? baseUrlIndex) + 1;

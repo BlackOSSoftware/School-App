@@ -1,15 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import AppIcon from '../common/AppIcon.js';
-import { changeStudentPassword, getStudentMe } from '../../services/authService';
+import { getStudentMe } from '../../services/authService';
 import { useAppTheme } from '../../theme/ThemeContext';
 import ConfirmModal from '../common/ConfirmModal';
-
-function getErrorMessage(error, fallback) {
-  const message = error?.response?.data?.message || error?.response?.data?.error || error?.message;
-  return typeof message === 'string' && message.trim() ? message : fallback;
-}
 
 function formatDate(value) {
   if (!value) {
@@ -25,29 +20,10 @@ function formatDate(value) {
   return `${year}-${month}-${day}`;
 }
 
-function MessageBanner({ text, type, onClose, styles }) {
-  if (!text) {
-    return null;
-  }
-  return (
-    <View style={[styles.banner, type === 'error' ? styles.bannerError : styles.bannerSuccess]}>
-      <Text style={styles.bannerText}>{text}</Text>
-      <Pressable onPress={onClose}>
-        <Text style={styles.bannerClose}>x</Text>
-      </Pressable>
-    </View>
-  );
-}
-
 export default function StudentProfileScreen({ session, onLogout, onOpenResults }) {
   const { colors } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-
-  const [message, setMessage] = useState({ type: '', text: '' });
   const [logoutVisible, setLogoutVisible] = useState(false);
-  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
-  const [isSavingPassword, setIsSavingPassword] = useState(false);
-  const [passwordForm, setPasswordForm] = useState({ oldPassword: '', newPassword: '' });
 
   const studentMeQuery = useQuery({
     queryKey: ['student', 'me'],
@@ -65,33 +41,6 @@ export default function StudentProfileScreen({ session, onLogout, onOpenResults 
   const classLabel = classInfo?.name ? `${classInfo.name}${classInfo.section ? `-${classInfo.section}` : ''}` : '-';
   const status = String(profile?.status || '-').toUpperCase();
   const sessionName = sessionInfo?.name || '-';
-
-  useEffect(() => {
-    if (!message.text) {
-      return undefined;
-    }
-    const timer = setTimeout(() => setMessage({ type: '', text: '' }), 2500);
-    return () => clearTimeout(timer);
-  }, [message.text]);
-
-  const submitPasswordChange = async () => {
-    if (!passwordForm.oldPassword.trim() || !passwordForm.newPassword.trim()) {
-      setMessage({ type: 'error', text: 'Old and new password are required.' });
-      return;
-    }
-
-    setIsSavingPassword(true);
-    try {
-      await changeStudentPassword(passwordForm);
-      setMessage({ type: 'success', text: 'Password changed successfully.' });
-      setPasswordModalVisible(false);
-      setPasswordForm({ oldPassword: '', newPassword: '' });
-    } catch (error) {
-      setMessage({ type: 'error', text: getErrorMessage(error, 'Unable to change password.') });
-    } finally {
-      setIsSavingPassword(false);
-    }
-  };
 
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
@@ -160,17 +109,6 @@ export default function StudentProfileScreen({ session, onLogout, onOpenResults 
           <AppIcon name="chevron-forward" size={15} color={colors.student.textSecondary} />
         </Pressable>
 
-        <Pressable style={styles.actionRowPrimary} onPress={() => setPasswordModalVisible(true)}>
-          <View style={styles.actionIconWrap}>
-            <AppIcon name="key-outline" size={16} color={colors.role.studentAccent} />
-          </View>
-          <View style={styles.actionBody}>
-            <Text style={styles.actionTitle}>Change Password</Text>
-            <Text style={styles.actionSub}>Update your login password</Text>
-          </View>
-          <AppIcon name="chevron-forward" size={15} color={colors.student.textSecondary} />
-        </Pressable>
-
         <Pressable style={styles.actionRowDanger} onPress={() => setLogoutVisible(true)}>
           <View style={styles.actionIconWrap}>
             <AppIcon name="log-out-outline" size={16} color={colors.state.error} />
@@ -182,13 +120,6 @@ export default function StudentProfileScreen({ session, onLogout, onOpenResults 
           <AppIcon name="chevron-forward" size={15} color={colors.state.error} />
         </Pressable>
       </View>
-
-      <MessageBanner
-        text={message.text}
-        type={message.type}
-        onClose={() => setMessage({ type: '', text: '' })}
-        styles={styles}
-      />
 
       <ConfirmModal
         visible={logoutVisible}
@@ -202,48 +133,6 @@ export default function StudentProfileScreen({ session, onLogout, onOpenResults 
           onLogout?.();
         }}
       />
-
-      <Modal visible={passwordModalVisible} transparent animationType="fade" onRequestClose={() => setPasswordModalVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Change Password</Text>
-            <View style={styles.inputRow}>
-              <AppIcon name="lock-closed-outline" size={16} style={styles.inputIcon} />
-              <TextInput
-                style={styles.inputWithIcon}
-                value={passwordForm.oldPassword}
-                onChangeText={value => setPasswordForm(prev => ({ ...prev, oldPassword: value }))}
-                placeholder="Old password"
-                placeholderTextColor={colors.text.muted}
-                secureTextEntry
-              />
-            </View>
-            <View style={styles.inputRow}>
-              <AppIcon name="key-outline" size={16} style={styles.inputIcon} />
-              <TextInput
-                style={styles.inputWithIcon}
-                value={passwordForm.newPassword}
-                onChangeText={value => setPasswordForm(prev => ({ ...prev, newPassword: value }))}
-                placeholder="New password"
-                placeholderTextColor={colors.text.muted}
-                secureTextEntry
-              />
-            </View>
-            <View style={styles.rowActions}>
-              <Pressable style={styles.cancelButton} onPress={() => setPasswordModalVisible(false)}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </Pressable>
-              <Pressable style={styles.saveButton} onPress={submitPasswordChange}>
-                {isSavingPassword ? (
-                  <ActivityIndicator size="small" color={colors.text.inverse} />
-                ) : (
-                  <Text style={styles.saveButtonText}>Save</Text>
-                )}
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </ScrollView>
   );
 }

@@ -1,18 +1,13 @@
 import React, { useMemo } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import AppIcon from './AppIcon.js';
+import { formatSubjectScore, getResultTotalOutOf } from '../../constants/resultConstants';
 import { useAppTheme } from '../../theme/ThemeContext';
 
 function formatDateTime(value) {
-  if (!value) {
-    return '-';
-  }
-
+  if (!value) return '-';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return String(value);
-  }
-
+  if (Number.isNaN(date.getTime())) return String(value);
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
@@ -21,30 +16,20 @@ function formatDateTime(value) {
 }
 
 function resolvePalette(colors, tone) {
-  if (tone === 'teacher') {
-    return colors.teacher;
-  }
-  if (tone === 'student') {
-    return colors.student;
-  }
+  if (tone === 'teacher') return colors.teacher;
+  if (tone === 'student') return colors.student;
   return colors.admin;
 }
 
-export default function ResultDetailModal({
-  visible,
-  onClose,
-  result,
-  tone = 'admin',
-}) {
+export default function ResultDetailModal({ visible, onClose, result, tone = 'admin' }) {
   const { colors } = useAppTheme();
   const palette = resolvePalette(colors, tone);
   const styles = useMemo(() => createStyles(colors, palette), [colors, palette]);
 
-  if (!visible || !result) {
-    return null;
-  }
+  if (!visible || !result) return null;
 
   const subjectCount = Array.isArray(result.subjectMarks) ? result.subjectMarks.length : 0;
+  const totalOutOf = getResultTotalOutOf(result);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -75,7 +60,7 @@ export default function ResultDetailModal({
               <View style={styles.metricCard}>
                 <Text style={styles.metricLabel}>Total Marks</Text>
                 <Text style={styles.metricValue}>
-                  {result.totalMarks ?? 0} / {(result.outOf ?? 0) * subjectCount}
+                  {result.totalMarks ?? 0} / {totalOutOf}
                 </Text>
               </View>
               <View style={styles.metricCard}>
@@ -102,14 +87,20 @@ export default function ResultDetailModal({
             <View style={styles.subjectCard}>
               <Text style={styles.sectionTitle}>Subject Wise Marks</Text>
               {Array.isArray(result.subjectMarks) && result.subjectMarks.length ? (
-                result.subjectMarks.map(item => (
-                  <View key={`${item.subject}-${item.marks}`} style={styles.subjectRow}>
-                    <Text style={styles.subjectName}>{item.subject}</Text>
-                    <View style={styles.subjectMarksPill}>
-                      <Text style={styles.subjectMarksText}>{item.marks} / {result.outOf ?? 0}</Text>
+                result.subjectMarks.map(item => {
+                  const score = formatSubjectScore(item);
+                  const outOf = item?.outOf ?? result.outOf ?? 0;
+                  return (
+                    <View key={`${item.subject}-${score}-${outOf}`} style={styles.subjectRow}>
+                      <Text style={styles.subjectName}>{item.subject}</Text>
+                      <View style={[styles.subjectMarksPill, item?.isAbsent ? styles.absentPill : null]}>
+                        <Text style={[styles.subjectMarksText, item?.isAbsent ? styles.absentText : null]}>
+                          {item?.isAbsent ? 'A' : `${score} / ${outOf}`}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
-                ))
+                  );
+                })
               ) : (
                 <Text style={styles.emptyText}>No subject marks available.</Text>
               )}
@@ -123,16 +114,8 @@ export default function ResultDetailModal({
 
 const createStyles = (colors, palette) =>
   StyleSheet.create({
-    overlay: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      paddingHorizontal: 16,
-    },
-    backdrop: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: palette.modalBackdrop,
-    },
+    overlay: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16 },
+    backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: palette.modalBackdrop },
     card: {
       width: '100%',
       maxHeight: '84%',
@@ -164,11 +147,7 @@ const createStyles = (colors, palette) =>
       paddingVertical: 6,
       backgroundColor: 'rgba(255,255,255,0.18)',
     },
-    heroBadgeText: {
-      color: colors.text.inverse,
-      fontSize: 11,
-      fontWeight: '800',
-    },
+    heroBadgeText: { color: colors.text.inverse, fontSize: 11, fontWeight: '800' },
     closeBtn: {
       width: 32,
       height: 32,
@@ -179,32 +158,11 @@ const createStyles = (colors, palette) =>
       borderWidth: 1,
       borderColor: palette.borderSoft,
     },
-    heroTitle: {
-      color: colors.text.inverse,
-      fontSize: 21,
-      fontWeight: '900',
-    },
-    heroSub: {
-      marginTop: 5,
-      color: colors.auth.subtitle,
-      fontSize: 12.5,
-      fontWeight: '600',
-    },
-    heroMeta: {
-      marginTop: 4,
-      color: colors.auth.subtitle,
-      fontSize: 11.5,
-      fontWeight: '700',
-    },
-    body: {
-      paddingHorizontal: 16,
-      paddingTop: 16,
-    },
-    metricsRow: {
-      flexDirection: 'row',
-      gap: 10,
-      marginBottom: 12,
-    },
+    heroTitle: { color: colors.text.inverse, fontSize: 21, fontWeight: '900' },
+    heroSub: { marginTop: 5, color: colors.auth.subtitle, fontSize: 12.5, fontWeight: '600' },
+    heroMeta: { marginTop: 4, color: colors.auth.subtitle, fontSize: 11.5, fontWeight: '700' },
+    body: { paddingHorizontal: 16, paddingTop: 16 },
+    metricsRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
     metricCard: {
       flex: 1,
       borderRadius: 16,
@@ -213,17 +171,8 @@ const createStyles = (colors, palette) =>
       backgroundColor: palette.surfaceStrong,
       padding: 12,
     },
-    metricLabel: {
-      color: palette.textSecondary,
-      fontSize: 11.5,
-      fontWeight: '700',
-    },
-    metricValue: {
-      marginTop: 6,
-      color: palette.textPrimary,
-      fontSize: 22,
-      fontWeight: '900',
-    },
+    metricLabel: { color: palette.textSecondary, fontSize: 11.5, fontWeight: '700' },
+    metricValue: { marginTop: 6, color: palette.textPrimary, fontSize: 22, fontWeight: '900' },
     infoCard: {
       borderRadius: 16,
       borderWidth: 1,
@@ -241,16 +190,8 @@ const createStyles = (colors, palette) =>
       borderBottomWidth: 1,
       borderBottomColor: palette.borderSubtle,
     },
-    infoRowLast: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      gap: 10,
-    },
-    infoLabel: {
-      color: palette.textSecondary,
-      fontSize: 12,
-      fontWeight: '700',
-    },
+    infoRowLast: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
+    infoLabel: { color: palette.textSecondary, fontSize: 12, fontWeight: '700' },
     infoValue: {
       color: palette.textPrimary,
       fontSize: 12.5,
@@ -266,12 +207,7 @@ const createStyles = (colors, palette) =>
       padding: 12,
       marginBottom: 16,
     },
-    sectionTitle: {
-      color: palette.textPrimary,
-      fontSize: 14,
-      fontWeight: '900',
-      marginBottom: 10,
-    },
+    sectionTitle: { color: palette.textPrimary, fontSize: 14, fontWeight: '900', marginBottom: 10 },
     subjectRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -281,12 +217,7 @@ const createStyles = (colors, palette) =>
       borderBottomWidth: 1,
       borderBottomColor: palette.borderSubtle,
     },
-    subjectName: {
-      color: palette.textPrimary,
-      fontSize: 12.5,
-      fontWeight: '800',
-      flex: 1,
-    },
+    subjectName: { color: palette.textPrimary, fontSize: 12.5, fontWeight: '800', flex: 1 },
     subjectMarksPill: {
       minWidth: 58,
       borderRadius: 999,
@@ -297,15 +228,8 @@ const createStyles = (colors, palette) =>
       borderWidth: 1,
       borderColor: palette.successBorder,
     },
-    subjectMarksText: {
-      color: palette.textPrimary,
-      fontSize: 12,
-      fontWeight: '900',
-    },
-    emptyText: {
-      color: palette.textSecondary,
-      fontSize: 12.5,
-      textAlign: 'center',
-      paddingVertical: 12,
-    },
+    absentPill: { backgroundColor: palette.dangerBg, borderColor: palette.dangerBorder },
+    subjectMarksText: { color: palette.textPrimary, fontSize: 12, fontWeight: '900' },
+    absentText: { color: colors.state.error },
+    emptyText: { color: palette.textSecondary, fontSize: 12.5, textAlign: 'center', paddingVertical: 12 },
   });

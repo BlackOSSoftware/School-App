@@ -9,6 +9,7 @@ import StudentHomeworkScreen from '../../components/student/StudentHomeworkScree
 import StudentNotesScreen from '../../components/student/StudentNotesScreen';
 import StudentProfileScreen from '../../components/student/StudentProfileScreen';
 import StudentResultsScreen from '../../components/student/StudentResultsScreen';
+import StudentTimetableScreen from '../../components/student/StudentTimetableScreen';
 import StudentTopBar from '../../components/student/StudentTopBar';
 import StudentVideoScreen from '../../components/student/StudentVideoScreen';
 import { useAppTheme } from '../../theme/ThemeContext';
@@ -53,6 +54,12 @@ export default function StudentDashboard({ session, onLogout, notificationIntent
       onConsumeNotificationIntent?.();
       return;
     }
+    if (notificationIntent.targetTab === 'timetable') {
+      setActiveTab('dashboard');
+      setCurrentScreen('timetable');
+      onConsumeNotificationIntent?.();
+      return;
+    }
     if (notificationIntent.targetTab === 'attendance') {
       setCurrentScreen('root');
       setActiveTab('attendance');
@@ -61,7 +68,11 @@ export default function StudentDashboard({ session, onLogout, notificationIntent
   }, [notificationIntent, onConsumeNotificationIntent]);
 
   const title =
-    activeTab === 'attendance'
+    currentScreen === 'results'
+      ? 'Result & Marksheet'
+      : currentScreen === 'timetable'
+        ? 'Exam Timetable'
+      : activeTab === 'attendance'
       ? 'Attendance'
       : activeTab === 'notes'
         ? 'Notes'
@@ -72,7 +83,7 @@ export default function StudentDashboard({ session, onLogout, notificationIntent
           : activeTab === 'videos'
             ? 'Videos'
           : activeTab === 'profile'
-            ? currentScreen === 'results' ? 'Result & Marksheet' : 'Profile'
+            ? 'Profile'
             : 'Student Dashboard';
 
   const renderContent = () => {
@@ -133,6 +144,7 @@ export default function StudentDashboard({ session, onLogout, notificationIntent
             setActiveTab('notes');
           }}
           onOpenAnnouncements={() => setActiveTab('announcements')}
+          onOpenTimetable={() => setCurrentScreen('timetable')}
         />
       </View>
     );
@@ -152,11 +164,19 @@ export default function StudentDashboard({ session, onLogout, notificationIntent
           <View style={styles.blockWrap}>
             <StudentResultsScreen />
           </View>
+        ) : currentScreen === 'timetable' ? (
+          <StudentTimetableScreen />
         ) : (
           renderContent()
         )}
       </View>
-      <StudentBottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      <StudentBottomNav
+        activeTab={activeTab}
+        onTabChange={tab => {
+          setActiveTab(tab);
+          setCurrentScreen('root');
+        }}
+      />
 
       <Modal
         visible={exitConfirmOpen}

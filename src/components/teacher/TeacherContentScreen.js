@@ -82,7 +82,7 @@ const ContentListItem = memo(function ContentListItem({ item, styles, onPress, o
       <Text style={styles.cardDesc}>{item.description}</Text>
       <Text style={styles.fileLink}>{item.file?.url ? 'Tap to view details' : 'No attachment'}</Text>
       </Pressable>
-      {item.type === 'homework' ? (
+      {item.type === 'homework' || item.type === 'notes' ? (
         <View style={styles.modalActions}>
           <Pressable accessibilityRole="button" accessibilityLabel={`Edit ${item.title}`} style={[styles.submitBtn, busy && styles.pageBtnDisabled]} disabled={busy} onPress={() => onEdit(item)}><Text style={styles.submitText}>Edit</Text></Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel={`Delete ${item.title}`} style={[styles.submitBtn, styles.deleteHomeworkBtn, busy && styles.pageBtnDisabled]} disabled={busy} onPress={() => onDelete(item)}><Text style={styles.submitText}>{deletingId === item.id ? 'Deleting...' : 'Delete'}</Text></Pressable>
@@ -165,39 +165,132 @@ export default function TeacherContentScreen() {
     return () => clearTimeout(timer);
   }, [message.text, message.type]);
 
-  const editHomework = useCallback(item => {
+  const editContent = useCallback(item => {
     setEditError('');
-    setEditing({ id: item.id, title: item.title, subject: item.subject, description: item.description });
+    setEditing({
+      id: item.id,
+      type: item.type === 'notes' ? 'notes' : 'homework',
+      title: item.title,
+      subject: item.subject,
+      description: item.description,
+      file: null,
+      existingFile: item.file || null,
+      removeFile: false,
+    });
   }, []);
 
-  const deleteHomework = useCallback(item => {
-    Alert.alert('Delete homework?', `Delete "${item.title}" and its attachment permanently?`, [
+  const deleteContent = useCallback(item => {
+    const contentType = item.type === 'notes' ? 'notes' : 'homework';
+    const label = contentType === 'notes' ? 'notes' : 'homework';
+    Alert.alert(`Delete ${label}?`, `Delete "${item.title}" and its attachment permanently?`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: async () => {
         try {
-          await remove.mutateAsync(item.id);
+          await remove.mutateAsync({ id: item.id, type: contentType });
           setSelectedItem(null);
-          setMessage({ type: 'success', text: 'Homework deleted successfully.' });
+          setMessage({
+            type: 'success',
+            text: contentType === 'notes' ? 'Notes deleted successfully.' : 'Homework deleted successfully.',
+          });
         } catch (error) {
-          setMessage({ type: 'error', text: getErrorMessage(error, 'Unable to delete homework.') });
+          setMessage({
+            type: 'error',
+            text: getErrorMessage(error, contentType === 'notes' ? 'Unable to delete notes.' : 'Unable to delete homework.'),
+          });
         }
       } },
     ]);
   }, [remove]);
 
-  const saveHomework = async () => {
+  const pickEditFile = async () => {
+    const hasNativeDocPicker =
+      Boolean(NativeModules?.RNDocumentPicker) ||
+      Boolean(global?.__turboModuleProxy?.('RNDocumentPicker'));
+
+    if (!hasNativeDocPicker) {
+      setEditError('File picker native module missing. Please rebuild Android app once.');
+      return;
+    }
+
+    try {
+      const picked = await pick({
+        presentationStyle: 'fullScreen',
+        type: [types.allFiles],
+        mode: 'import',
+      });
+      const selected = Array.isArray(picked) && picked.length ? picked[0] : null;
+      if (!selected) return;
+
+      if (Number(selected?.size ?? 0) > MAX_FILE_BYTES) {
+        setEditError('File size must be 10MB or less.');
+        return;
+      }
+
+      let uploadUri = selected.uri;
+      if (selected?.uri && selected?.name) {
+        try {
+          const copied = await keepLocalCopy({
+            destination: 'cachesDirectory',
+            files: [{ uri: selected.uri, fileName: selected.name }],
+          });
+          const firstCopy = Array.isArray(copied) ? copied[0] : null;
+          if (firstCopy?.status === 'success' && firstCopy.localUri) {
+            uploadUri = firstCopy.localUri;
+          }
+        } catch {
+          // keep original uri
+        }
+      }
+
+      const mime =
+        selected.type ||
+        (String(selected.name || '').toLowerCase().endsWith('.pdf')
+          ? 'application/pdf'
+          : 'application/octet-stream');
+
+      setEditing(prev => ({
+        ...prev,
+        file: {
+          uri: uploadUri || selected.fileCopyUri || selected.uri,
+          name: selected.name || 'attachment',
+          type: mime,
+          size: Number(selected.size ?? 0),
+        },
+        removeFile: false,
+      }));
+      setEditError('');
+    } catch (error) {
+      if (!isErrorWithCode(error) || error.code !== errorCodes.OPERATION_CANCELED) {
+        setEditError(getErrorMessage(error, 'Unable to select file.'));
+      }
+    }
+  };
+
+  const saveContent = async () => {
     if (!editing.title.trim() || !editing.description.trim() || !editing.subject.trim()) {
       setEditError('Title, subject and description are required.');
       return;
     }
     setEditError('');
+    const contentType = editing.type === 'notes' ? 'notes' : 'homework';
     try {
-      await update.mutateAsync(editing);
+      await update.mutateAsync({
+        id: editing.id,
+        type: contentType,
+        title: editing.title.trim(),
+        subject: editing.subject.trim(),
+        description: editing.description.trim(),
+        file: editing.file,
+        removeFile: Boolean(editing.removeFile && !editing.file),
+      });
       setEditing(null);
       setSelectedItem(null);
-      setMessage({ type: 'success', text: 'Homework updated successfully.' });
+      setMessage({
+        type: 'success',
+        text: contentType === 'notes' ? 'Notes updated successfully.' : 'Homework updated successfully.',
+      });
     } catch (error) {
-      setEditError(getErrorMessage(error, 'Unable to update homework.'));
+      setEditError(getErrorMessage(error, contentType === 'notes' ? 'Unable to update notes.' : 'Unable to update homework.'));
     }
   };
 
@@ -326,8 +419,18 @@ export default function TeacherContentScreen() {
   const openDetails = useCallback(item => setSelectedItem(item), []);
   const keyExtractor = useCallback(item => item.id, []);
   const renderItem = useCallback(
-    ({ item }) => <ContentListItem item={item} styles={styles} onPress={openDetails} onEdit={editHomework} onDelete={deleteHomework} busy={busy} deletingId={remove.isPending ? remove.variables : ''} />,
-    [openDetails, styles, editHomework, deleteHomework, busy, remove.isPending, remove.variables],
+    ({ item }) => (
+      <ContentListItem
+        item={item}
+        styles={styles}
+        onPress={openDetails}
+        onEdit={editContent}
+        onDelete={deleteContent}
+        busy={busy}
+        deletingId={remove.isPending ? (remove.variables?.id || remove.variables) : ''}
+      />
+    ),
+    [openDetails, styles, editContent, deleteContent, busy, remove.isPending, remove.variables],
   );
   const listFooter = useMemo(
     () => (
@@ -439,19 +542,75 @@ export default function TeacherContentScreen() {
 
       <Modal visible={Boolean(editing)} transparent animationType="slide" onRequestClose={() => { if (!update.isPending) setEditing(null); }}>
         <KeyboardAwareModal overlayStyle={styles.modalOverlay} scrollContentStyle={styles.modalScrollContent} contentContainerStyle={styles.modalCard} dismissKeyboardOnBackdrop>
-          <Text style={styles.modalTitle}>Edit Homework</Text>
+          <Text style={styles.modalTitle}>{editing?.type === 'notes' ? 'Edit Notes' : 'Edit Homework'}</Text>
           <MessageBanner text={editError} type="error" onClose={() => setEditError('')} styles={styles} />
           {['title', 'subject', 'description'].map(field => (
             <View key={field}>
               <Text style={styles.inputLabel}>{field === 'title' ? 'Title' : field === 'subject' ? 'Subject' : 'Description'}</Text>
               <View style={[styles.inputRow, field === 'description' && styles.inputRowMulti]}>
-                <TextInput accessibilityLabel={`Homework ${field}`} style={[styles.input, field === 'description' && styles.inputMulti]} value={editing?.[field] || ''} editable={!update.isPending} maxLength={field === 'description' ? 10000 : field === 'title' ? 200 : 100} multiline={field === 'description'} onChangeText={value => setEditing(current => ({ ...current, [field]: value }))} />
+                <TextInput
+                  accessibilityLabel={`${editing?.type === 'notes' ? 'Notes' : 'Homework'} ${field}`}
+                  style={[styles.input, field === 'description' && styles.inputMulti]}
+                  value={editing?.[field] || ''}
+                  editable={!update.isPending}
+                  maxLength={field === 'description' ? 10000 : field === 'title' ? 200 : 100}
+                  multiline={field === 'description'}
+                  onChangeText={value => setEditing(current => ({ ...current, [field]: value }))}
+                />
               </View>
             </View>
           ))}
+          <Text style={styles.inputLabel}>Attachment (optional, max 10MB)</Text>
+          <View style={styles.fileRow}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Change attachment"
+              style={[styles.filePickerBtn, update.isPending && styles.pageBtnDisabled]}
+              disabled={update.isPending}
+              onPress={pickEditFile}
+            >
+              <AppIcon name="attach-outline" size={15} color={colors.teacher.accent} />
+              <Text style={styles.filePickerText}>
+                {editing?.file || (editing?.existingFile && !editing?.removeFile) ? 'Change File' : 'Pick File'}
+              </Text>
+            </Pressable>
+            {editing?.file || (editing?.existingFile && !editing?.removeFile) ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Remove attachment"
+                style={[styles.removeFileBtn, update.isPending && styles.pageBtnDisabled]}
+                disabled={update.isPending}
+                onPress={() =>
+                  setEditing(prev => ({
+                    ...prev,
+                    file: null,
+                    removeFile: Boolean(prev.existingFile),
+                  }))
+                }
+              >
+                <AppIcon name="trash-outline" size={14} color={colors.state.error} />
+                <Text style={styles.removeFileText}>Remove</Text>
+              </Pressable>
+            ) : null}
+          </View>
+          <Text style={styles.helperText}>
+            {editing?.file
+              ? `New: ${editing.file.name} (${Math.ceil((editing.file.size || 0) / 1024)} KB)`
+              : editing?.existingFile && !editing?.removeFile
+                ? `Current: ${editing.existingFile.name || 'Attachment'}`
+                : 'No file selected'}
+          </Text>
           <View style={styles.modalActions}>
             <Pressable style={styles.cancelBtn} disabled={update.isPending} onPress={() => setEditing(null)}><Text style={styles.cancelText}>Cancel</Text></Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel="Save homework" style={styles.submitBtn} disabled={update.isPending} onPress={saveHomework}><Text style={styles.submitText}>{update.isPending ? 'Saving...' : 'Save'}</Text></Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={editing?.type === 'notes' ? 'Save notes' : 'Save homework'}
+              style={styles.submitBtn}
+              disabled={update.isPending}
+              onPress={saveContent}
+            >
+              <Text style={styles.submitText}>{update.isPending ? 'Saving...' : 'Save'}</Text>
+            </Pressable>
           </View>
         </KeyboardAwareModal>
       </Modal>

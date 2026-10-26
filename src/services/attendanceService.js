@@ -85,6 +85,7 @@ function normalizeClassAttendanceResponse(data = {}) {
     message: String(data?.message ?? ''),
     data: {
       class: normalizeClassInfo(payload?.class),
+      isHoliday: Boolean(payload?.isHoliday),
       attendanceTaken: Boolean(payload?.attendanceTaken),
       date: String(payload?.date ?? ''),
       presentCount: Number(payload?.presentCount ?? 0),
@@ -170,8 +171,10 @@ export async function getTeacherAttendancePolicy() {
     success: Boolean(data?.success),
     data: {
       canMarkPastDates: Boolean(data?.data?.canMarkPastDates),
+      allowTeacherHolidayMark: Boolean(data?.data?.allowTeacherHolidayMark),
       updatedAt: String(data?.data?.updatedAt ?? ''),
       updatedByName: String(data?.data?.updatedByName ?? '').trim(),
+      holidayUpdatedByName: String(data?.data?.holidayUpdatedByName ?? '').trim(),
     },
   };
 }
@@ -265,26 +268,97 @@ export async function getAdminTeacherAttendancePolicy() {
     success: Boolean(data?.success),
     data: {
       canMarkPastDates: Boolean(data?.data?.canMarkPastDates),
+      allowTeacherHolidayMark: Boolean(data?.data?.allowTeacherHolidayMark),
       updatedAt: String(data?.data?.updatedAt ?? ''),
       updatedByName: String(data?.data?.updatedByName ?? '').trim(),
+      holidayUpdatedByName: String(data?.data?.holidayUpdatedByName ?? '').trim(),
     },
   };
 }
 
-export async function updateAdminTeacherAttendancePolicy(canMarkPastDates) {
-  const { data } = await apiClient.put('/attendance/admin/teacher-policy', {
-    canMarkPastDates: Boolean(canMarkPastDates),
-  });
+export async function updateAdminTeacherAttendancePolicy(payload = {}) {
+  const body = {};
+  if (typeof payload?.canMarkPastDates === 'boolean') {
+    body.canMarkPastDates = payload.canMarkPastDates;
+  }
+  if (typeof payload?.allowTeacherHolidayMark === 'boolean') {
+    body.allowTeacherHolidayMark = payload.allowTeacherHolidayMark;
+  }
+
+  const { data } = await apiClient.put('/attendance/admin/teacher-policy', body);
 
   return {
     success: Boolean(data?.success),
     message: String(data?.message ?? ''),
     data: {
       canMarkPastDates: Boolean(data?.data?.canMarkPastDates),
+      allowTeacherHolidayMark: Boolean(data?.data?.allowTeacherHolidayMark),
       updatedAt: String(data?.data?.updatedAt ?? ''),
       updatedByName: String(data?.data?.updatedByName ?? '').trim(),
+      holidayUpdatedByName: String(data?.data?.holidayUpdatedByName ?? '').trim(),
     },
   };
+}
+
+export async function markTeacherClassHoliday({ classId, date }) {
+  const normalizedClassId = normalizeEntityId(classId);
+  if (!normalizedClassId) {
+    throw new Error('Invalid class id.');
+  }
+  const { data } = await apiClient.put(`/attendance/teacher/class/${normalizedClassId}/holiday`, {
+    date: toIsoDate(date || new Date()),
+  });
+  return normalizeClassAttendanceResponse(data);
+}
+
+export async function unmarkTeacherClassHoliday({ classId, date }) {
+  const normalizedClassId = normalizeEntityId(classId);
+  if (!normalizedClassId) {
+    throw new Error('Invalid class id.');
+  }
+  const { data } = await apiClient.delete(`/attendance/teacher/class/${normalizedClassId}/holiday`, {
+    params: { date: toIsoDate(date || new Date()) },
+  });
+  return normalizeClassAttendanceResponse(data);
+}
+
+function emptyAttendanceReport() {
+  return {
+    totalDays: 0,
+    presentDays: 0,
+    absentDays: 0,
+    presentPercentage: 0,
+    daily: [],
+  };
+}
+
+function extractAttendanceReportPayload(payload) {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const nested = payload?.data;
+  if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+    if (
+      Array.isArray(nested.daily) ||
+      nested.totalDays != null ||
+      nested.presentDays != null ||
+      nested.student
+    ) {
+      return nested;
+    }
+  }
+
+  if (
+    Array.isArray(payload.daily) ||
+    payload.totalDays != null ||
+    payload.presentDays != null ||
+    payload.student
+  ) {
+    return payload;
+  }
+
+  return nested && typeof nested === 'object' && !Array.isArray(nested) ? nested : null;
 }
 
 export async function getAdminStudentAttendanceReport({ classId, studentId, from, to, sessionId }) {
@@ -295,15 +369,17 @@ export async function getAdminStudentAttendanceReport({ classId, studentId, from
   }
 
   const params = {};
-  if (from) {
-    params.from = toIsoDate(from);
-  }
-  if (to) {
-    params.to = toIsoDate(to);
-  }
+  // Prefer session-scoped history. Only send dates when explicitly useful.
   const normalizedSessionId = normalizeEntityId(sessionId);
   if (normalizedSessionId) {
     params.sessionId = normalizedSessionId;
+  } else {
+    if (from) {
+      params.from = toIsoDate(from);
+    }
+    if (to) {
+      params.to = toIsoDate(to);
+    }
   }
 
   const { data } = await apiClient.get(
@@ -311,9 +387,14 @@ export async function getAdminStudentAttendanceReport({ classId, studentId, from
     { params },
   );
 
+  if (data && data.success === false) {
+    throw new Error(String(data?.message || 'Unable to load attendance report.'));
+  }
+
+  const report = extractAttendanceReportPayload(data);
   return {
-    success: Boolean(data?.success),
-    data: data?.data ?? {},
+    success: true,
+    data: report && typeof report === 'object' ? report : emptyAttendanceReport(),
   };
 }
 

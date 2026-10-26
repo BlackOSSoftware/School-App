@@ -170,7 +170,13 @@ export default function LoginScreen({ onLoginSuccess }) {
     }
 
     try {
-      const deviceFcmToken = await getDeviceFcmToken();
+      let deviceFcmToken = '';
+      try {
+        deviceFcmToken = await getDeviceFcmToken();
+      } catch {
+        deviceFcmToken = '';
+      }
+
       const result = await loginMutation.loginWithIdentifier({
         identifier,
         password,
@@ -193,6 +199,11 @@ export default function LoginScreen({ onLoginSuccess }) {
         } catch (fcmError) {
           console.warn('FCM token sync failed:', getApiErrorMessage(fcmError));
         }
+      } else {
+        // Best-effort: sync FCM after login when token was unavailable at submit time.
+        getDeviceFcmToken()
+          .then(token => (token ? updateMyFcmToken(token) : null))
+          .catch(() => {});
       }
       onLoginSuccess?.({
         token: result.token,

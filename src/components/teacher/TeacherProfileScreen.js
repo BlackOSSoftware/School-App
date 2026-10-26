@@ -4,7 +4,7 @@ import AppIcon from '../common/AppIcon.js';
 import { useAppTheme } from '../../theme/ThemeContext';
 import ConfirmModal from '../common/ConfirmModal';
 
-export default function TeacherProfileScreen({ session, onLogout, onOpenResults }) {
+export default function TeacherProfileScreen({ session, onLogout, onOpenResults, onOpenTimetable }) {
   const { colors } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [logoutVisible, setLogoutVisible] = useState(false);
@@ -58,6 +58,17 @@ export default function TeacherProfileScreen({ session, onLogout, onOpenResults 
           <View style={styles.logoutBody}>
             <Text style={styles.logoutTitle}>Result & Marksheet</Text>
             <Text style={styles.logoutSub}>Create and submit student exam results</Text>
+          </View>
+          <AppIcon name="chevron-forward" size={15} color={colors.teacher.accent} />
+        </Pressable>
+
+        <Pressable style={styles.actionRow} onPress={onOpenTimetable}>
+          <View style={styles.actionIconWrap}>
+            <AppIcon name="calendar-outline" size={16} color={colors.teacher.accent} />
+          </View>
+          <View style={styles.logoutBody}>
+            <Text style={styles.logoutTitle}>Exam Timetable</Text>
+            <Text style={styles.logoutSub}>Upload and manage exam timetable</Text>
           </View>
           <AppIcon name="chevron-forward" size={15} color={colors.teacher.accent} />
         </Pressable>
@@ -229,6 +240,7 @@ const createStyles = colors =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 9,
+      marginBottom: 8,
     },
     actionIconWrap: {
       width: 32,

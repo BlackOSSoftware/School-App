@@ -3,6 +3,7 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from '
 import AppIcon from '../common/AppIcon.js';
 import ResultDetailModal from '../common/ResultDetailModal';
 import { useStudentResultsQuery } from '../../hooks/useResultQueries';
+import { getResultTotalOutOf } from '../../constants/resultConstants';
 import { useAppTheme } from '../../theme/ThemeContext';
 
 function formatDate(value) {
@@ -49,7 +50,7 @@ export default function StudentResultsScreen() {
             <View style={styles.metricsRow}>
               <View style={styles.metricChip}>
                 <Text style={styles.metricLabel}>Total</Text>
-                <Text style={styles.metricValue}>{item.totalMarks ?? 0} / {(item.outOf ?? 0) * (item.subjectMarks?.length ?? 0)}</Text>
+                <Text style={styles.metricValue}>{item.totalMarks ?? 0} / {getResultTotalOutOf(item)}</Text>
               </View>
               <View style={styles.metricChip}>
                 <Text style={styles.metricLabel}>Subjects</Text>

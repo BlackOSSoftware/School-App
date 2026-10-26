@@ -12,6 +12,8 @@ import {
   getTeacherClassAttendanceByDate,
   getTeacherStudentAttendanceReport,
   markTeacherClassAttendance,
+  markTeacherClassHoliday,
+  unmarkTeacherClassHoliday,
 } from '../services/attendanceService';
 
 export const ATTENDANCE_QUERY_KEYS = {
@@ -41,6 +43,26 @@ export function useMarkTeacherClassAttendanceMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: markTeacherClassAttendance,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ATTENDANCE_QUERY_KEYS.all });
+    },
+  });
+}
+
+export function useMarkTeacherClassHolidayMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: markTeacherClassHoliday,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ATTENDANCE_QUERY_KEYS.all });
+    },
+  });
+}
+
+export function useUnmarkTeacherClassHolidayMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: unmarkTeacherClassHoliday,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ATTENDANCE_QUERY_KEYS.all });
     },

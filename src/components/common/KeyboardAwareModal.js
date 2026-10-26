@@ -37,15 +37,22 @@ export default function KeyboardAwareModal({
     };
   }, []);
 
+  // Android: only extra bottom padding (no KAV padding) so form does not jump off-screen.
+  // iOS: KAV padding handles lift; keep a small safe bottom inset only.
+  const bottomPad =
+    Platform.OS === 'android'
+      ? Math.max(insets.bottom + keyboardHeight + 12, 24)
+      : Math.max(insets.bottom + 24, 24);
+
   return (
     <View style={[styles.overlay, overlayStyle]}>
       {dismissKeyboardOnBackdrop ? (
         <Pressable style={StyleSheet.absoluteFill} onPress={Keyboard.dismiss} />
       ) : null}
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardAvoidingView}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 20}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
       >
         <ScrollView
           keyboardShouldPersistTaps="handled"
@@ -53,11 +60,7 @@ export default function KeyboardAwareModal({
           showsVerticalScrollIndicator={false}
           nestedScrollEnabled
           contentInsetAdjustmentBehavior="always"
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingBottom: Math.max(insets.bottom + keyboardHeight, 24) },
-            scrollContentStyle,
-          ]}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPad }, scrollContentStyle]}
         >
           <View style={contentContainerStyle}>{children}</View>
         </ScrollView>

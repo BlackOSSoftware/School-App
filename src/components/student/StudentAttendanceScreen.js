@@ -151,7 +151,9 @@ export default function StudentAttendanceScreen() {
               ? styles.dayPresent
               : status === 'absent'
                 ? styles.dayAbsent
-                : styles.dayNormal;
+                : status === 'holiday'
+                  ? styles.dayHoliday
+                  : styles.dayNormal;
             return (
               <View key={dateIso} style={styles.dayCell}>
                 <View style={[styles.dayBubble, style, isFuture ? styles.dayFuture : null]}>
@@ -166,6 +168,7 @@ export default function StudentAttendanceScreen() {
       <View style={styles.legendRow}>
         <View style={styles.legendItem}><View style={[styles.legendDot, styles.dayPresent]} /><Text style={styles.legendText}>Present</Text></View>
         <View style={styles.legendItem}><View style={[styles.legendDot, styles.dayAbsent]} /><Text style={styles.legendText}>Absent</Text></View>
+        <View style={styles.legendItem}><View style={[styles.legendDot, styles.dayHoliday]} /><Text style={styles.legendText}>Holiday</Text></View>
         <View style={styles.legendItem}><View style={[styles.legendDot, styles.dayNormal]} /><Text style={styles.legendText}>No data</Text></View>
       </View>
     </View>
@@ -229,9 +232,10 @@ const createStyles = colors =>
     dayText: { color: colors.student.textPrimary, fontSize: 11.5, fontWeight: '700' },
     dayPresent: { backgroundColor: colors.student.successBg, borderColor: colors.student.successBorder },
     dayAbsent: { backgroundColor: colors.student.dangerBg, borderColor: colors.student.dangerBorder },
-    dayNormal: { backgroundColor: colors.student.surfaceStrong, borderColor: colors.student.borderSubtle },
+    dayHoliday: { backgroundColor: colors.student.surfaceStrong, borderColor: colors.student.borderStrong },
+    dayNormal: { backgroundColor: colors.student.surface, borderColor: colors.student.borderSoft },
     dayFuture: { opacity: 0.45 },
-    legendRow: { marginTop: 10, flexDirection: 'row', justifyContent: 'space-between' },
+    legendRow: { marginTop: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between' },
     legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     legendDot: { width: 10, height: 10, borderRadius: 5, borderWidth: 1 },
     legendText: { color: colors.student.textSecondary, fontSize: 10.5, fontWeight: '700' },

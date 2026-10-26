@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Modal, Platform, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -12,7 +12,7 @@ import { displayRemoteNotification } from './src/services/notificationService';
 import { ThemeProvider } from './src/theme/ThemeContext';
 import { setAuthToken, setUnauthorizedHandler } from './src/api/client';
 import { getDeviceFcmToken, requestNotificationPermissionPrompt } from './src/services/fcmService';
-import { updateMyFcmToken } from './src/services/authService';
+import { logoutFromServer, updateMyFcmToken } from './src/services/authService';
 import {
   clearLocalSession,
   readLocalSession,
@@ -64,6 +64,7 @@ export default function App() {
     targetTab: string;
     receivedAt: number;
   }>(null);
+  const sessionEpochRef = useRef(0);
   const queryClient = useMemo(
     () =>
       new QueryClient({
@@ -184,8 +185,12 @@ export default function App() {
     if (!session?.token || showSplash || restoringSession) {
       return;
     }
+    const epoch = sessionEpochRef.current;
     getDeviceFcmToken()
       .then(token => {
+        if (sessionEpochRef.current !== epoch) {
+          return null;
+        }
         if (token) {
           return updateMyFcmToken(token);
         }
@@ -195,14 +200,22 @@ export default function App() {
   }, [restoringSession, session?.token, showSplash]);
 
   const logout = useCallback(() => {
-    setAuthToken('');
-    queryClient.clear();
-    setSession(null);
-    clearLocalSession();
+    sessionEpochRef.current += 1;
+    const clearLocal = () => {
+      setAuthToken('');
+      queryClient.clear();
+      setSession(null);
+      clearLocalSession();
+    };
+
+    Promise.resolve(logoutFromServer())
+      .catch(() => {})
+      .finally(clearLocal);
   }, [queryClient]);
 
   const handleLoginSuccess = useCallback(
     (nextSession: { token: string; role: string; user?: Record<string, unknown> | null }) => {
+      sessionEpochRef.current += 1;
       setSession(nextSession);
       saveLocalSession(nextSession);
     },

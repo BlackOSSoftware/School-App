@@ -74,6 +74,11 @@ export async function updateMyFcmToken(fcmToken) {
   return data;
 }
 
+export async function logoutFromServer() {
+  const { data } = await apiClient.post('/auth/logout');
+  return data;
+}
+
 export async function changeAdminPassword({ oldPassword, newPassword }) {
   const payload = {
     oldPassword: String(oldPassword ?? ''),

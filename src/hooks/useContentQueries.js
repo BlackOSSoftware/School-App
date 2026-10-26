@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createTeacherContentByType, getAdminHomework, getStudentMyContent, getTeacherMyContent, updateAdminHomework, deleteAdminHomework, updateTeacherHomework, deleteTeacherHomework } from '../services/contentService';
+import { createTeacherContentByType, getAdminHomework, getStudentMyContent, getTeacherMyContent, updateAdminHomework, deleteAdminHomework, updateTeacherContent, deleteTeacherContent } from '../services/contentService';
 
 export const CONTENT_QUERY_KEYS = {
   all: ['content'],
@@ -63,8 +63,14 @@ export function useAdminHomeworkMutations() {
 export function useTeacherHomeworkMutations() {
   const client = useQueryClient();
   const onSuccess = () => client.invalidateQueries({ queryKey: CONTENT_QUERY_KEYS.all });
-  const update = useMutation({ mutationFn: updateTeacherHomework, onSuccess });
-  const remove = useMutation({ mutationFn: deleteTeacherHomework, onSuccess });
+  const update = useMutation({ mutationFn: updateTeacherContent, onSuccess });
+  const remove = useMutation({
+    mutationFn: payload =>
+      typeof payload === 'string' || typeof payload === 'number'
+        ? deleteTeacherContent({ type: 'homework', id: payload })
+        : deleteTeacherContent(payload),
+    onSuccess,
+  });
   return { update, remove };
 }
 

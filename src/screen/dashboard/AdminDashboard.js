@@ -14,6 +14,7 @@ import AdminSessionUpgradeScreen from '../../components/admin/AdminSessionUpgrad
 import AdminStudentScreen from '../../components/admin/AdminStudentScreen';
 import AdminStudentResultsScreen from '../../components/admin/AdminStudentResultsScreen';
 import AdminTeacherScreen from '../../components/admin/AdminTeacherScreen';
+import AdminTimetableScreen from '../../components/admin/AdminTimetableScreen';
 import AdminTopBar from '../../components/admin/AdminTopBar';
 import AdminVideoScreen from '../../components/admin/AdminVideoScreen';
 import { useAppTheme } from '../../theme/ThemeContext';
@@ -163,6 +164,10 @@ export default function AdminDashboard({ session, onLogout }) {
       setCurrentScreen('manage-bus');
       return;
     }
+    if (key === 'timetable') {
+      setCurrentScreen('timetable');
+      return;
+    }
     setNote(`${key} module ready for next integration.`);
   }, [onTabChange]);
 
@@ -181,6 +186,8 @@ export default function AdminDashboard({ session, onLogout }) {
           ? 'Manage Bus'
           : currentScreen === 'student-results'
             ? 'Student Results'
+          : currentScreen === 'timetable'
+            ? 'Exam Timetable'
           : activeTab === 'videos'
             ? 'Videos'
         : 'Admin Dashboard';
@@ -249,6 +256,7 @@ export default function AdminDashboard({ session, onLogout }) {
       currentScreen === 'manage-teacher' ||
       currentScreen === 'manage-bus' ||
       currentScreen === 'student-results' ||
+      currentScreen === 'timetable' ||
       currentScreen === 'session-upgrade' ||
       (currentScreen === 'root' && (activeTab === 'announcement' || activeTab === 'attendance' || activeTab === 'videos')) ? (
         <Animated.View
@@ -264,6 +272,7 @@ export default function AdminDashboard({ session, onLogout }) {
           {currentScreen === 'manage-teacher' ? <AdminTeacherScreen /> : null}
           {currentScreen === 'manage-bus' ? <AdminBusScreen /> : null}
           {currentScreen === 'student-results' ? <AdminStudentResultsScreen /> : null}
+          {currentScreen === 'timetable' ? <AdminTimetableScreen /> : null}
           {currentScreen === 'session-upgrade' ? <AdminSessionUpgradeScreen /> : null}
           {currentScreen === 'root' && activeTab === 'announcement' ? <AdminAnnouncementScreen /> : null}
           {currentScreen === 'root' && activeTab === 'attendance' ? <AdminAttendanceScreen /> : null}

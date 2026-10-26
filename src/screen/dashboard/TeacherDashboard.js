@@ -9,6 +9,7 @@ import TeacherContentScreen from '../../components/teacher/TeacherContentScreen'
 import TeacherDashboardHome from '../../components/teacher/TeacherDashboardHome';
 import TeacherProfileScreen from '../../components/teacher/TeacherProfileScreen';
 import TeacherResultEntryScreen from '../../components/teacher/TeacherResultEntryScreen';
+import TeacherTimetableScreen from '../../components/teacher/TeacherTimetableScreen';
 import TeacherTopBar from '../../components/teacher/TeacherTopBar';
 import TeacherVideoScreen from '../../components/teacher/TeacherVideoScreen';
 import { useTeacherClassesOverviewQuery, useTeacherStudentsByClassQuery } from '../../hooks/useTeacherQueries';
@@ -180,7 +181,9 @@ export default function TeacherDashboard({ session, onLogout }) {
       : activeTab === 'profile'
               ? currentScreen === 'result-entry'
                 ? 'Result Entry'
-                : 'Profile'
+                : currentScreen === 'timetable'
+                  ? 'Exam Timetable'
+                  : 'Profile'
               : 'Teacher Dashboard';
 
   const renderRootScreen = () => {
@@ -211,6 +214,7 @@ export default function TeacherDashboard({ session, onLogout }) {
         session={session}
         onLogout={onLogout}
         onOpenResults={() => setCurrentScreen('result-entry')}
+        onOpenTimetable={() => setCurrentScreen('timetable')}
       />
     );
   };
@@ -266,6 +270,8 @@ export default function TeacherDashboard({ session, onLogout }) {
           />
         ) : currentScreen === 'result-entry' ? (
           <TeacherResultEntryScreen assignedClass={overviewQuery.data?.assignedClasses?.[0] || overviewQuery.data?.teacher?.classTeacherOf} />
+        ) : currentScreen === 'timetable' ? (
+          <TeacherTimetableScreen />
         ) : activeTab === 'announcement' || activeTab === 'attendance' || activeTab === 'homework' || activeTab === 'videos' ? (
           renderRootScreen()
         ) : (

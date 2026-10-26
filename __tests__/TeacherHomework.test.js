@@ -42,7 +42,15 @@ test('teacher can open editor, validate required fields and save homework', asyn
   expect(update.mutateAsync).not.toHaveBeenCalled();
   await act(async () => screen.root.findByProps({ accessibilityLabel: 'Homework title' }).props.onChangeText('Updated homework'));
   await act(async () => screen.root.findByProps({ accessibilityLabel: 'Save homework' }).props.onPress());
-  expect(update.mutateAsync).toHaveBeenCalledWith({ id: 'hw1', title: 'Updated homework', subject: 'MATH', description: 'Read chapter 1' });
+  expect(update.mutateAsync).toHaveBeenCalledWith({
+    id: 'hw1',
+    type: 'homework',
+    title: 'Updated homework',
+    subject: 'MATH',
+    description: 'Read chapter 1',
+    file: null,
+    removeFile: false,
+  });
 });
 
 test('delete waits for confirmation', async () => {
@@ -53,12 +61,29 @@ test('delete waits for confirmation', async () => {
   const actions = alert.mock.calls[0][2];
   expect(actions[0].style).toBe('cancel');
   await act(async () => actions.find(action => action.text === 'Delete').onPress());
-  expect(remove.mutateAsync).toHaveBeenCalledWith('hw1');
+  expect(remove.mutateAsync).toHaveBeenCalledWith({ id: 'hw1', type: 'homework' });
 });
 
-test('notes do not expose homework mutation controls', async () => {
-  useTeacherMyContentQuery.mockReturnValue({ data: { data: [{ ...homework, type: 'notes' }], totalPages: 1 } });
+test('teacher can edit and delete notes', async () => {
+  useTeacherMyContentQuery.mockReturnValue({
+    data: { data: [{ ...homework, type: 'notes', title: 'Math notes' }], totalPages: 1 },
+  });
   await act(async () => { screen = create(<TeacherContentScreen />); });
-  expect(screen.root.findAllByProps({ accessibilityLabel: 'Edit Math homework' })).toHaveLength(0);
-  expect(screen.root.findAllByProps({ accessibilityLabel: 'Delete Math homework' })).toHaveLength(0);
+  await act(async () => screen.root.findByProps({ accessibilityLabel: 'Edit Math notes' }).props.onPress());
+  await act(async () => screen.root.findByProps({ accessibilityLabel: 'Save notes' }).props.onPress());
+  expect(update.mutateAsync).toHaveBeenCalledWith({
+    id: 'hw1',
+    type: 'notes',
+    title: 'Math notes',
+    subject: 'MATH',
+    description: 'Read chapter 1',
+    file: null,
+    removeFile: false,
+  });
+
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  await act(async () => screen.root.findByProps({ accessibilityLabel: 'Delete Math notes' }).props.onPress());
+  const actions = alert.mock.calls[0][2];
+  await act(async () => actions.find(action => action.text === 'Delete').onPress());
+  expect(remove.mutateAsync).toHaveBeenCalledWith({ id: 'hw1', type: 'notes' });
 });

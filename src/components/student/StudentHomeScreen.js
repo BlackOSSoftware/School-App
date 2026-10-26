@@ -74,6 +74,7 @@ export default function StudentHomeScreen({
   onOpenHomework,
   onOpenNotes,
   onOpenAnnouncements,
+  onOpenTimetable,
 }) {
   const { colors } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -148,6 +149,17 @@ export default function StudentHomeScreen({
 
       {attendanceQuery.isLoading ? <ActivityIndicator size="small" color={colors.brand.primary} /> : null}
       <StudentAttendanceOverviewCard report={attendanceQuery.data?.data} subtitle={`Session Snapshot | ${sessionLabel}`} />
+
+      <Pressable style={styles.timetableCard} onPress={() => onOpenTimetable?.()}>
+        <View style={styles.timetableIconWrap}>
+          <AppIcon name="calendar-outline" size={18} color={colors.role.studentAccent} />
+        </View>
+        <View style={styles.timetableBody}>
+          <Text style={styles.timetableTitle}>Exam Timetable</Text>
+          <Text style={styles.timetableSub}>View exam timetable shared for your class</Text>
+        </View>
+        <AppIcon name="chevron-forward" size={15} color={colors.student.textSecondary} />
+      </Pressable>
 
       <ContentPreviewSection
         title="Recent Homework"
@@ -282,6 +294,30 @@ const createStyles = colors =>
     },
     glanceLabel: { color: colors.student.textSecondary, fontSize: 11, fontWeight: '800' },
     glanceValue: { marginTop: 3, color: colors.student.textPrimary, fontSize: 12.5, fontWeight: '800', lineHeight: 17 },
+    timetableCard: {
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.student.borderStrong,
+      backgroundColor: colors.student.surface,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    timetableIconWrap: {
+      width: 36,
+      height: 36,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.student.surfaceStrong,
+      borderWidth: 1,
+      borderColor: colors.student.borderSoft,
+    },
+    timetableBody: { flex: 1 },
+    timetableTitle: { color: colors.student.textPrimary, fontSize: 14.5, fontWeight: '900' },
+    timetableSub: { marginTop: 2, color: colors.student.textSecondary, fontSize: 12, fontWeight: '600' },
     panel: {
       borderRadius: 16,
       borderWidth: 1,

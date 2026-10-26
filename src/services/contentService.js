@@ -51,7 +51,9 @@ function normalizeContentItem(item, { viewerRole = 'student' } = {}) {
   const fileUrl = normalizeFileUrl(item?.file?.url ?? item?.file?.storagePath ?? '');
   const openUrl = normalizeFileUrl(item?.file?.openUrl ?? item?.file?.url ?? item?.file?.storagePath ?? '');
   const defaultDownloadPath = contentId
-    ? `/${viewerRole === 'teacher' ? 'teacher' : 'student'}/me/content/download/${contentId}`
+    ? viewerRole === 'admin'
+      ? `/admin/homework/download/${contentId}`
+      : `/${viewerRole === 'teacher' ? 'teacher' : 'student'}/me/content/download/${contentId}`
     : '';
   const downloadUrl = normalizeFileUrl(item?.file?.downloadUrl ?? defaultDownloadPath);
 
@@ -324,7 +326,7 @@ export async function getTeacherMyContent({ type = 'all', page = 1, limit = 10, 
 
 export async function getAdminHomework({ page = 1, limit = 10, search = '' } = {}) {
   const { data } = await apiClient.get('/admin/homework', { params: { page, limit, search } });
-  return normalizePaginatedResponse(data);
+  return normalizePaginatedResponse(data, { viewerRole: 'admin' });
 }
 
 export async function updateAdminHomework({ id, ...payload }) {
@@ -337,14 +339,124 @@ export async function deleteAdminHomework(id) {
   return data;
 }
 
-export async function updateTeacherHomework({ id, ...payload }) {
-  const { data } = await apiClient.patch(`/teacher/me/homework/${id}`, payload);
-  return data;
-}
-
 export async function deleteTeacherHomework(id) {
   const { data } = await apiClient.delete(`/teacher/me/homework/${id}`, { timeout: 25000 });
   return data;
+}
+
+export async function deleteTeacherNotes(id) {
+  const { data } = await apiClient.delete(`/teacher/me/notes/${id}`, { timeout: 25000 });
+  return data;
+}
+
+async function prepareLocalUploadUri(file) {
+  const originalUri = String(file?.uri ?? '').trim();
+  if (!originalUri) return '';
+
+  const localPath = resolveUploadFilePath(originalUri);
+  if (localPath) {
+    try {
+      if (await RNFS.exists(localPath)) {
+        return originalUri.startsWith('file://') ? originalUri : `file://${localPath}`;
+      }
+    } catch {
+      // continue
+    }
+  }
+
+  try {
+    const safeName = String(file?.name || `content-${Date.now()}.bin`).replace(/[<>:"/\\|?*]/g, '_');
+    const destPath = `${RNFS.CachesDirectoryPath}/${Date.now()}-${safeName}`;
+    try {
+      await RNFS.copyFile(
+        originalUri.startsWith('file://') ? originalUri.replace(/^file:\/\//, '') : originalUri,
+        destPath,
+      );
+    } catch {
+      const base64 = await RNFS.readFile(originalUri, 'base64');
+      await RNFS.writeFile(destPath, base64, 'base64');
+    }
+    if (await RNFS.exists(destPath)) {
+      return `file://${destPath}`;
+    }
+  } catch {
+    // fall through
+  }
+
+  return originalUri.startsWith('file://') || originalUri.startsWith('content://')
+    ? originalUri
+    : originalUri.startsWith('/')
+      ? `file://${originalUri}`
+      : originalUri;
+}
+
+export async function updateTeacherContent({
+  type = 'homework',
+  id,
+  title,
+  subject,
+  description,
+  file = null,
+  removeFile = false,
+}) {
+  const normalizedType = String(type ?? 'homework').trim().toLowerCase() === 'notes' ? 'notes' : 'homework';
+  const contentId = normalizeEntityId(id);
+  const endpoint = `/teacher/me/${normalizedType}/${contentId}`;
+  const requestUrl = resolveApiUrl(endpoint);
+  const authToken = getAuthToken();
+  const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+
+  const fields = {
+    title: String(title ?? '').trim(),
+    subject: String(subject ?? '').trim().toUpperCase(),
+    description: String(description ?? '').trim(),
+  };
+  if (removeFile && !file?.uri) {
+    fields.removeFile = 'true';
+  }
+
+  // Always use multipart when replacing/removing file so multer can parse it.
+  if (file?.uri || removeFile) {
+    const formData = new FormData();
+    Object.entries(fields).forEach(([key, value]) => formData.append(key, value));
+
+    if (file?.uri) {
+      const uploadUri = await prepareLocalUploadUri(file);
+      formData.append('file', {
+        uri: uploadUri || file.uri,
+        name: String(file?.name || 'attachment').trim() || 'attachment',
+        type: String(file?.type || 'application/octet-stream').trim() || 'application/octet-stream',
+      });
+    }
+
+    const response = await fetch(requestUrl, {
+      method: 'PATCH',
+      headers,
+      body: formData,
+    });
+    const data = parseJsonSafe(await response.text());
+    if (!response.ok) {
+      const error = new Error(extractErrorMessage(data, `Update failed with status ${response.status}`));
+      error.response = { status: response.status, data };
+      throw error;
+    }
+    return {
+      success: Boolean(data?.success),
+      message: String(data?.message ?? ''),
+      data: normalizeContentItem(data?.data, { viewerRole: 'teacher' }),
+    };
+  }
+
+  const { data } = await apiClient.patch(endpoint, fields);
+  return data;
+}
+
+export async function deleteTeacherContent({ type = 'homework', id }) {
+  const normalizedType = String(type ?? 'homework').trim().toLowerCase() === 'notes' ? 'notes' : 'homework';
+  if (normalizedType === 'notes') {
+    return deleteTeacherNotes(id);
+  }
+  return deleteTeacherHomework(id);
 }
 
 export async function getStudentMyContent({ type = 'all', page = 1, limit = 10, subject = '' } = {}) {

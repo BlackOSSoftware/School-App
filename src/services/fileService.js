@@ -46,7 +46,8 @@ export function resolveContentFileUrl(url) {
   const isApiPath =
     value.startsWith('/api/') ||
     value.startsWith('/student/me/content/download/') ||
-    value.startsWith('/teacher/me/content/download/');
+    value.startsWith('/teacher/me/content/download/') ||
+    value.startsWith('/admin/homework/download/');
   return isApiPath ? resolveApiUrl(value) : resolveServerFileUrl(value);
 }
 
@@ -84,7 +85,8 @@ export async function downloadContentFile({ downloadUrl, contentId, url, fileNam
   const isApiDownloadPath =
     modeAwarePath.startsWith('/api/') ||
     modeAwarePath.startsWith('/student/me/content/download/') ||
-    modeAwarePath.startsWith('/teacher/me/content/download/');
+    modeAwarePath.startsWith('/teacher/me/content/download/') ||
+    modeAwarePath.startsWith('/admin/homework/download/');
   const absoluteUrl = isApiDownloadPath
     ? resolveApiUrl(modeAwarePath)
     : resolveContentFileUrl(modeAwarePath);
@@ -168,7 +170,8 @@ async function openRemoteFile(params = {}) {
   const isApiPath =
     modeAwarePath.startsWith('/api/') ||
     modeAwarePath.startsWith('/student/me/content/download/') ||
-    modeAwarePath.startsWith('/teacher/me/content/download/');
+    modeAwarePath.startsWith('/teacher/me/content/download/') ||
+    modeAwarePath.startsWith('/admin/homework/download/');
   const absoluteUrl = isApiPath ? resolveApiUrl(modeAwarePath) : resolveContentFileUrl(modeAwarePath);
   if (!absoluteUrl) {
     throw new Error('Open URL missing.');
