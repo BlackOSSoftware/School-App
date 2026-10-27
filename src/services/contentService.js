@@ -210,6 +210,17 @@ export async function createTeacherContentByType({ type, classId, subject, title
   const canRetryWithAlternateField = Boolean(file?.uri);
   const triedFields = new Set();
 
+  // Prefer FormData+fetch. RNFS.uploadFiles often throws ENOENT with the API URL
+  // when the picked local path is stale (common for PDFs / content:// copies).
+  let preparedFile = file;
+  if (file?.uri) {
+    const uploadUri = await prepareLocalUploadUri(file);
+    preparedFile = {
+      ...file,
+      uri: uploadUri || file.uri,
+    };
+  }
+
   const tryUploadWithField = async (fieldName) => {
     triedFields.add(fieldName);
     const body = buildCreatePayload({
@@ -217,49 +228,9 @@ export async function createTeacherContentByType({ type, classId, subject, title
       subject: normalizedSubject,
       title: normalizedTitle,
       description: normalizedDescription,
-      file,
+      file: preparedFile,
       fileFieldName: fieldName,
     });
-
-    const uploadPath = resolveUploadFilePath(file?.uri);
-    if (uploadPath) {
-      const fields = {
-        classId: normalizedClassId,
-        title: normalizedTitle,
-        description: normalizedDescription,
-      };
-      if (normalizedSubject) {
-        fields.subject = normalizedSubject;
-      }
-
-      const uploadResult = await RNFS.uploadFiles({
-        toUrl: requestUrl,
-        method: 'POST',
-        headers,
-        fields,
-        files: [
-          {
-            name: fieldName,
-            filename: String(file?.name || 'attachment').trim() || 'attachment',
-            filepath: uploadPath,
-            filetype: String(file?.type || 'application/octet-stream').trim() || 'application/octet-stream',
-          },
-        ],
-      }).promise;
-
-      const data = parseJsonSafe(uploadResult?.body);
-      if (uploadResult.statusCode >= 200 && uploadResult.statusCode < 300) {
-        return {
-          success: Boolean(data?.success),
-          data: normalizeContentItem(data?.data, { viewerRole: 'teacher' }),
-        };
-      }
-
-      const message = extractErrorMessage(data, `Upload failed with status ${uploadResult.statusCode}`);
-      const error = new Error(message);
-      error.response = { status: uploadResult.statusCode, data };
-      throw error;
-    }
 
     const response = await fetch(requestUrl, {
       method: 'POST',

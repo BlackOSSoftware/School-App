@@ -351,12 +351,18 @@ export default function TeacherContentScreen() {
         }
       }
 
+      const mime =
+        selected.type ||
+        (String(selected.name || '').toLowerCase().endsWith('.pdf')
+          ? 'application/pdf'
+          : 'application/octet-stream');
+
       setForm(prev => ({
         ...prev,
         file: {
           uri: uploadUri || selected.fileCopyUri || selected.uri,
           name: selected.name || 'attachment',
-          type: selected.type || 'application/octet-stream',
+          type: mime,
           size: Number(selected.size ?? 0),
         },
       }));
